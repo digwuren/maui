@@ -1,0 +1,9 @@
+GPL-3
+Makefile
+Manifest.txt
+README.fab
+README.html
+bin/maui
+lib/mau/fabricator.rb
+maui.fab
+maui.gemspec

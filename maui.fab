@@ -1,0 +1,3576 @@
+This is Mau Independent Fabricator, a standalone literate
+programming tool with wiki-like notation.
+
+<< IDENT >>:
+  Mau Independent Fabricator << VERSION >>
+
+<< VERSION >>:
+  3.1.0
+
+
+== Parsing
+
+* Parser's frontend.
+
+For the parser, [[input]] will be an open [[IO]] instance.  For
+parsing ease (most crucially, in order to support blank lines in
+chunks and indented blocks), we'll wrap it into a
+[[Vertical_Peeker]].  The parser will generate [[OpenStruct]]
+instances for vertical elements extracted from the input, in
+order, and feed them into [[Integrator]] that will take care of
+establishing a proper document tree, collecting the chunks for
+later tangling, and preparing the cross-references.
+
+<< Parse fabric from [[input]] >>:
+
+  vp = Fabricator::Vertical_Peeker.new input
+  integrator = Fabricator::Integrator.new
+
+
+The Mau notation has an ambiguity: a line starting with
+whitespace, dash, and whitespace can start an indented block but
+it can also start a bulleted list's item.  In order to resolve
+the ambiguity, we'll require that top-level bullet lists be
+unindented, and indented bullet items can only appear if a
+higher-level list has already been established.  We'll track
+whether that is the case by the [[in_list]] flag.
+
+  in_list = false
+  loop do
+    << Pass and count blank lines >>
+    break if vp.eof?
+    << Handle explicit section break >>
+    element_location = vp.location_ahead
+    case vp.peek_line
+    << Vertical elements' parsing rules >>
+    else raise 'assertion failed'
+    end
+    integrator.integrate element
+    in_list = element.type == :item
+  end
+  << Handle the end of fabric >>
+  integrator.check_chunk_sizes(chunk_size_limit)
+
+
+<< Pass and count blank lines >>:
+  vertical_separation = 0
+  while vp.peek_line == '' do
+    if vertical_separation == 2 then
+      integrator.warn vp.location_ahead,
+          "more than two consecutive blank lines"
+    end
+    vertical_separation += 1
+    vp.get_line
+  end
+
+
+<< Vertical elements' parsing rules >>:
+  when /^\s+/ then
+    if !in_list or
+        vp.peek_line !~ /^
+            (?<margin> \s+ )
+            - (?<separator> \s+ )
+            /x then
+      << Parse indented block >>
+    else
+      << Parse deep bullet >>
+    end
+
+
+What looks to us like an indented block may need to be upgraded
+into a chunk by the integrator.  Our parser does not know
+whether this is the case because it does not keep track of
+diversions.  Since location data is needed for chunks, we'll
+record it, even if it might not be useful for ordinary indented
+blocks.
+
+<< Parse indented block >>:
+  body_location = vp.location_ahead
+  element = vp.get_indented_lines_with_skip
+  element.type = :block
+  element.body_loc = element_location
+
+
+<< in [[Vertical_Peeker]] >>:
+  def get_indented_lines_with_skip
+    indent = nil; lines = []
+    while peek_line =~ /^\s+/ or
+        (peek_line == '' and
+         !lines.empty? and
+         peek_line(1) =~ /^\s+/) do
+      # If the line ahead is not indented but we passed the
+      # test, then [[get_line]] will return [[""]] and [[$&]]
+      # is the __following__ line's indentation.
+      indent = $&.length if indent.nil? or $&.length < indent
+      lines.push get_line
+    end
+    return nil if lines.empty?
+    lines.each{|l| l[0 ... indent] = ''}
+    return OpenStruct.new(lines: lines, indent: indent)
+  end
+
+
+<< Parse deep bullet >>:
+  margin = $~['margin']
+  lines = [$~['separator'] + $']
+  vp.get_line
+  while !vp.eof? and
+      vp.peek_line.start_with? margin and
+      vp.peek_line !~ /^\s*-\s/ do
+    lines.push vp.get_line[margin.length .. -1]
+  end
+  element = OpenStruct.new(
+    type: :item,
+    lines: lines,
+    content: parse_markup(lines.map(&:strip).join ' '),
+    indent: margin.length,
+    loc: element_location)
+
+
+A standard chunk header is by its own a divert.  However, if
+it's followed by an indented block, it's a chunk.
+
+<< Vertical elements' parsing rules >>:
+
+  when /^<<\s*
+      (?: (?<root-type> \.file|\.script)\s+ )?
+      (?<raw-name> [^\s].*?)
+      \s*>>:$/x then
+    name = canonicalise_chunk_name $~['raw-name']
+    vp.get_line
+    element = OpenStruct.new(
+      type: :divert,
+      root_type: $~['root-type'],
+      name: name,
+      header_loc: element_location)
+
+    body_location = vp.location_ahead
+    body = vp.get_indented_lines_with_skip
+    if body then
+      element.type = :chunk
+      element.lines = body.lines
+      element.indent = body.indent
+      element.body_loc = body_location
+      element.initial = element.final = true
+    end
+
+
+Next, let's consider top-level bullets.
+
+  when /^-\s/ then
+    # We'll discard the leading dash but save the following
+    # whitespace.
+    lines = [vp.get_line[1 .. -1]]
+    while !vp.eof? and
+        vp.peek_line != '' and
+        vp.peek_line !~ /^\s*-\s/ do
+      lines.push vp.get_line
+    end
+    element = OpenStruct.new(
+      type: :item,
+      lines: lines,
+      content: parse_markup(lines.map(&:strip).join ' '),
+      indent: 0,
+      loc: element_location)
+
+
+Finally, a line starting with a non-whitespace character starts
+an ordinary paragraph, a title, or a rubric.
+
+  when /^[^\s]/ then
+    lines = []
+    while vp.peek_line =~ /^[^\s]/ and
+        vp.peek_line !~ /^-\s/ do
+      lines.push vp.get_line
+    end
+    mode_flags_to_suppress = 0
+    case lines[0]
+    << Rules for interpreting a paragraph-like element >>
+    end
+    element.lines = lines
+    element.content =
+        parse_markup(lines.map(&:strip).join(' '),
+        mode_flags_to_suppress)
+
+
+<< Rules for interpreting a paragraph-like element >>:
+
+  when /^(==+)(\s+)/ then
+    lines[0] = $2 + $'
+    element = OpenStruct.new(
+      type: :title,
+      level: $1.length - 1,
+      loc: element_location)
+    mode_flags_to_suppress |= Fabricator::MF::LINK
+
+
+  when /^\*\s+/ then
+    lines[0] = $'
+    element = OpenStruct.new(
+        type: :rubric,
+        loc: element_location)
+
+
+  else
+    element = OpenStruct.new(
+        type: :paragraph,
+        loc: element_location)
+
+
+Now, let's go back to the main parsing loop.  Seeing two
+consecutive blank lines in front our element triggers an
+explicit section break.
+
+<< Handle explicit section break >>:
+  if vertical_separation >= 2 then
+    integrator.force_section_break
+    in_list = false
+  end
+
+
+The integrator adds the [[final]] tag to a diverted chunk
+chain's last chunk and checks whether a diversion actually
+applies to any chunks when the chain ends.  Inside a fabric,
+this happens by the appearance of certain types of elements --
+chunks, diversions, titles -- but when the fabric is over, we'll
+have to make it explicit.
+
+<< Handle the end of fabric >>:
+
+  integrator.clear_diversion
+
+
+Once we have all the chunks, we can check that the root types of
+all root chunks match each other.  It's not (usually) a serious
+error, but the user might want to know.
+
+  integrator.check_root_type_consistency
+
+
+For this check, we iterate over chunk headers, so as not to
+generate excessive warnings when the fault lies in a [[divert]].
+(And also, to make sure to generate a warning regarding this if
+a faulty [[divert]] is not actually ever used.)
+
+<< in [[Integrator]] >>:
+  def check_root_type_consistency
+    @output.roots.each do |name|
+      cbn_entry = @output.chunks_by_name[name]
+      effective_root_type = cbn_entry.root_type
+      cbn_entry.headers.each do |element|
+        unless element.root_type == effective_root_type then
+          warn element.header_loc,
+              "inconsistent root type, assuming %s" %
+                  effective_root_type
+        end
+      end
+    end
+    return
+  end
+
+
+* Vertical peekaboo.
+
+The [[Vertical_Peeker]] class implements a line-level lookahead
+on an [[IO]] instance.  We won't limit the lookahead, although
+we'll only need two lines (when checking whether a blank line in
+an indented block is followed by another indented line).
+
+<< in [[Fabricator]] >>:
+  class Vertical_Peeker
+    << in [[Vertical_Peeker]] >>
+  end
+
+
+<< in [[Vertical_Peeker]] >>:
+
+  def initialize port
+    super()
+    @port = port
+    if @port.respond_to? :path then
+      @filename = @port.path
+    elsif @port == $stdin then
+      @filename = '(stdin)'
+    else
+      @filename = '(unknown)'
+    end
+    @buffer = []
+    @line_number = 1 # number of the first line in the buffer
+    @eof_seen = false
+    return
+  end
+
+
+  def peek_line ahead = 0
+    raise 'invalid argument' unless ahead >= 0
+    until @buffer.length > ahead or @eof_seen do
+      line = @port.gets
+      if line then
+        line.rstrip!
+        @buffer.push line
+      else
+        @eof_seen = true
+      end
+    end
+    return @buffer[ahead] # nil if past eof
+  end
+
+
+  def get_line
+    # ensure that if a line is available, it's in [[@buffer]]
+    peek_line
+
+    @line_number += 1 unless @buffer.empty?
+    return @buffer.shift
+  end
+
+
+  def eof?
+    return peek_line.nil?
+  end
+
+
+  def lineno_ahead
+    return @line_number + (@line_consumed ? 1 : 0)
+  end
+
+
+  def location_ahead
+    return OpenStruct.new(
+      filename: @filename, line: lineno_ahead)
+  end
+
+
+* Integration.
+
+An [[Integrator]] builds an internal representation of a fabric
+from the vertical elements extracted by a parser.
+
+<< in [[Fabricator]] >>:
+  class Integrator
+    << in [[Integrator]] >>
+  end
+
+
+The root of the result, which will be a graph built out of
+[[OpenStruct]]s, can be accessed by the method
+[[Integrator#output]].
+
+<< in [[Integrator]] >>:
+  attr_reader :output
+
+
+Its top-level structure is evident from the initialisation
+construct.
+
+<< Initialise [[Integrator@output]] >>:
+  @output = OpenStruct.new(
+    warnings: [],
+    presentation: [], # list of titles and sections
+    toc: [],
+    chunks_by_name: {},
+        # canonical_name => {
+        #   root_type: String,
+        #   chunks: list of :chunk/:diverted_chunk records,
+        #   headers: list of :chunk/:divert records,
+        # }
+    roots: [], # list of canonical names
+  )
+
+
+The integrator has a number of other internal variables which
+are only used while the fabric is being integrated.  In essence,
+they hold a high-level state of the parser.  Let's initialise
+them next:
+
+<< in [[Integrator]] >>:
+
+  def initialize
+    super()
+    << Initialise [[Integrator@output]] >>
+    @cursec = nil # The current section if started
+    @section_count = 0 # The number of last section
+    @title_counters = [0]
+    @curdivert = nil # The current diversion if active
+    @last_divertee = nil
+        # last chunk diverted by [[@curdivert]]
+    @list_stack = nil
+    @in_code = false
+    @last_title_level = 0
+    @warning_counter = 0
+    return
+  end
+
+
+The integrator's main entry point.
+
+  def integrate element
+    if element.type == :title then
+      << Integrate the [[title]] element >>
+    else
+      << Integrate the sub-[[section]] element >>
+    end
+    return
+  end
+
+
+Title nodes are subject to level restriction, are automatically
+numbered using three-level identifiers, and are in addition to
+[[presentation]] collected into [[toc]].
+
+<< Integrate the [[title]] element >>:
+  # Check the title's level restriction
+  if element.level > @last_title_level + 1 then
+    warn element.loc, "title level too deep"
+    element.level = @last_title_level + 1
+  end
+  @last_title_level = element.level
+
+  # Number the title
+  while @title_counters.length > element.level do
+    @title_counters.pop
+  end
+  if @title_counters.length < element.level then
+    @title_counters.push 0
+  end
+  @title_counters[-1] += 1
+  element.number = @title_counters.join '.'
+
+  # Append the node to [[presentation]] and [[toc]]
+  force_section_break
+  @output.presentation.push element
+  @output.toc.push element
+
+  # Enforce (sub(sub))chapter-locality of diversions
+  clear_diversion
+
+
+<< Integrate the sub-[[section]] element >>:
+  << [[block]] and diverting?  Upgrade to [[diverted_chunk]] >>
+  << New chunk header?  Clear diversion >>
+  << ? Break section and warn >>
+  << ? Begin new section >>
+  << [[rubric]]?  Link to [[toc]] >>
+  << [[divert]]?  Apply it >>
+
+  if element.type == :item then
+    << Integrate the [[item]] element >>
+  else
+    @cursec.elements.push element
+
+    if [:chunk, :diverted_chunk].
+        include?(element.type) then
+      element.section_number = @cursec.section_number
+      @in_code = true
+          # so we can generate a section break if a
+          # narrative-type element follows
+      << Parse the chunk's content >>
+    end
+    << Chunk or divert?  Link to [[chunks_by_name]] >>
+    @list_stack = nil
+  end
+
+
+An indented block can be either a piece of sample code, which is
+just shown in the woven output, or a headerless code chunk,
+which needs to be tangled, also.  Whether it's one or the other
+depends on whether a diversion is in effect; a piece of context
+that the parser does not track.  Accordingly, we'll upgrade
+[[block]] nodes to [[diverted_chunk]] nodes in the integrator
+when a diversion is in effect.
+
+This is also a convenient place to keep track of the chains of
+diverted chunks.  To that end, we'll set the [[initial]] flag if
+the current divert was not used before, and we'll also point
+[[@last_divertee]] to the diverted block so that we can set the
+[[final]] flag on it later.
+
+<< [[block]] and diverting?  Upgrade to [[diverted_chunk]] >>:
+  if element.type == :block and @curdivert then
+    element.type = :diverted_chunk
+    element.name = @curdivert.name
+    element.divert = @curdivert
+
+    element.initial = true if @last_divertee.nil?
+    @last_divertee = element
+  end
+
+
+<< New chunk header?  Clear diversion >>:
+  if [:divert, :chunk].include? element.type then
+    clear_diversion
+  end
+
+
+As Knuth's original WEB did, we'll generally follow the
+rubric-narrative-code structure in our sections, with the main
+difference being that multiple chunks can appear in a single
+section.  A transition from code to narrative thus causes a
+section break.
+
+Also, a [[rubric]] causes a section break.
+
+In both cases, we'll warn the user if there wasn't an explicit
+section break.
+
+<< ? Break section and warn >>:
+  if (@cursec and element.type == :rubric) or
+      (@in_code and
+          [:paragraph, :block, :item].include?(
+              element.type)) then
+    (@cursec.warnings ||= []).push \
+        warn(element.loc,
+            "silent section break",
+            inline: true)
+    force_section_break
+  end
+
+
+<< ? Begin new section >>:
+  if @cursec.nil? then
+    @cursec = OpenStruct.new(
+      type: :section,
+      section_number: (@section_count += 1),
+      elements: [])
+    @output.presentation.push @cursec
+  end
+
+
+<< [[rubric]]?  Link to [[toc]] >>:
+  if element.type == :rubric then
+    element.section_number = @cursec.section_number
+    @output.toc.push element
+  end
+
+
+<< [[divert]]?  Apply it >>:
+  if element.type == :divert then
+    @curdivert = element
+    raise 'assertion failed' unless @last_divertee.nil?
+  end
+
+
+<< Integrate the [[item]] element >>:
+  # Is this a top-level or descendant item?
+  unless @list_stack then
+    raise 'assertion failed' unless element.indent == 0
+
+    # Create a new [[list]] node.
+    new_list = OpenStruct.new(
+      type: :list,
+      items: [],
+      indent: element.indent)
+    @cursec.elements.push new_list
+    @list_stack = [new_list]
+  else
+    << Discard pending lists deeper than [[element.indent]] >>
+    << ? Start a new sublist >>
+  end
+
+  # The list structure has been prepared.  Append the
+  # new element to the innermost list in progress.
+  @list_stack.last.items.push element
+
+
+<< Discard pending lists deeper than [[element.indent]] >>:
+  while @list_stack.last.indent > element.indent do
+    if @list_stack[-2].indent < element.indent then
+      # Unexpected de-dent, like this:
+      #    - master list
+      #         - child 1
+      #       - child 2
+      @list_stack.last.indent = element.indent
+      (element.warnings ||= []).push \
+          warn(element.loc,
+              "unexpected dedent", inline: true)
+      break
+    end
+    @list_stack.pop
+  end
+
+
+<< ? Start a new sublist >>:
+  if @list_stack.last.indent < element.indent then
+    if @list_stack.last.sublist then
+      raise 'assertion failed'
+    end
+    new_list = OpenStruct.new(
+      type: :list,
+      items: [],
+      indent: element.indent)
+    @list_stack.last.items.last.sublist = new_list
+    @list_stack.push new_list
+  end
+
+
+Chunks come out of the parser as series of lines.  For
+cross-referencing and tangling, we'll need a slightly more
+complex presentation: a sequence of ([[verbatim]]), reference
+([[use]] and [[newline]] nodes.  This parsing is done by the
+integrator.  (It can't be done in the parser because it can't
+tell apart sample code from true chunks if the latter have no
+headers.)
+
+Chunk parsing is done by scanning the [[lines]] field of the
+chunk node and constructing a new field, [[content]], along it.
+[[content]] is not line-oriented; rather, it has [[newline]]
+nodes to separate lines.  This makes the tangling loop a bit
+easier.
+
+<< Parse the chunk's content >>:
+  element.content = []
+  element.lines.each_with_index do
+      |line, lineno_in_chunk|
+    unless lineno_in_chunk.zero? then
+      element.content.push \
+          OpenStruct.new(type: :newline)
+    end
+    << Parse a line of chunk content >>
+  end
+
+
+When parsing chunk lines, we'll want to properly pinpoint the
+locations of [[use]] nodes so that we can issue correct
+warnings.  We'll do this by starting from the number of the
+chunk's leftmost column and updating it as we traverse through
+the line, which we'll split using [[String#split]] with a
+capturing regex.
+
+<< Parse a line of chunk content >>:
+  column = 1 + element.indent
+  line.split(/(<<\s*
+      (?:
+       \[\[.*?\]*\]\]
+       | .
+      )+?
+      \s*>>)/x, -1).each_with_index do
+        |raw_piece, piece_index|
+    << Parse a piece of a line of chunk content >>
+    column += raw_piece.length
+  end
+
+<< Parse a piece of a line of chunk content >>:
+  node = nil
+  if piece_index.odd? then
+    << Attempt to parse [[raw_piece]] as a [[use]] node >>
+    # If failed, [[node]] is still [[nil]].
+  end
+  if node.nil? and !raw_piece.empty? then
+    node = OpenStruct.new(
+      type: :verbatim,
+      data: raw_piece)
+  end
+  element.content.push node if node
+
+<< Attempt to parse [[raw_piece]] as a [[use]] node >>:
+  name = raw_piece[2 ... -2].strip
+      # discard the surrounding double brokets
+      # together with adjacent whitespace
+  node = OpenStruct.new(type: :use,
+      name: nil,
+          # for ordering; will be replaced below
+      raw: raw_piece,
+      loc: OpenStruct.new(
+          filename: element.body_loc.filename,
+          line: element.body_loc.line +
+              lineno_in_chunk,
+          column: column)
+  )
+  << Extract affixes from [[name]] into [[node]] >>
+  if !name.empty? then
+    node.name =
+        Fabricator.canonicalise_chunk_name(name)
+  else
+    # not a proper reference, after all
+    node = nil
+  end
+
+<< Extract affixes from [[name]] into [[node]] >>:
+  if name =~ /(?:^|\s+)(\|[\w>-]+)$/ and
+      Fabricator::POSTPROCESSES.has_key? $1 then
+    node.postprocess = $1; name = $`
+  end
+  if name =~ /(?:^|\s+)(\.dense)$/ then
+    node.vertical_separation = $1; name = $`
+  end
+  if name =~ /^(\.clearindent)(?:\s+|$)/ then
+    node.clearindent = true; name = $'
+  end
+
+
+Chunks and diverts we'll be linking under [[chunk_by_name]].
+We'll keep separate track of chunk bodies ([[chunk]] or
+[[diverted_chunk]]), linked under
+[[chunks_by_name[...].chunks]], and chunk headers ([[chunk]] or
+[[divert]]), linked under [[chunks_by_name[...].headers]].
+
+<< Chunk or divert?  Link to [[chunks_by_name]] >>:
+  if [:chunk, :diverted_chunk, :divert].include?(
+      element.type) then
+    cbn_record =
+        @output.chunks_by_name[element.name] ||=
+            OpenStruct.new(chunks: [], headers: [])
+    if [:chunk, :diverted_chunk].include?(
+        element.type) then
+      cbn_record.chunks.push element
+    end
+    if [:chunk, :divert].include? element.type then
+      cbn_record.headers.push element
+    end
+
+    << Root?  Check the filename for sanity >>
+
+    << Update [[cbn_record.root_type]] from [[element]] >>
+  end
+
+<< Root?  Check the filename for sanity >>:
+  if element.root_type then
+    # check the filename's reasonability
+    bad_name = false
+    parts = element.name.split '/'
+    if ['', '.', '..'].any?{|d| parts.include? d} then
+      bad_name = true
+    end
+    unless parts.all?{|p| p =~ /\A[\w.-]+\Z/} then
+      bad_name = true
+    end
+    if bad_name then
+      (element.warnings ||= []).push \
+          warn(element.header_loc,
+              "unuseable filename",
+              inline: true)
+      element.root_type = nil
+    end
+  end
+
+<< Update [[cbn_record.root_type]] from [[element]] >>:
+  # The :chunks_by_name record will hold the highest
+  # root_type for chunks of this name, with the order
+  # defined as [[nil]] < [['.file']] < [['.script']].
+  if element.root_type and
+      cbn_record.root_type.nil? then
+    cbn_record.root_type = element.root_type
+    @output.roots.push element.name
+  end
+  if element.root_type == '.script' then
+    cbn_record.root_type = element.root_type
+  end
+
+
+This concludes the main integration decision tree.
+
+
+* Integrator's utilities.
+
+<< in [[Integrator]] >>:
+
+  def force_section_break
+    @cursec = nil
+    @list_stack = nil
+    @in_code = false
+    return
+  end
+
+
+In addition to clearing [[@curdivert]], [[clear_diversion]] also
+sets the [[final]] flag of the last divertee in a chain.  In
+order for this to work properly, the main parser calls this, via
+<< Handle the end of fabric >>, once the input fabric ends.
+
+  def clear_diversion
+    if @curdivert then
+      if !@last_divertee then
+        (@curdivert.warnings ||= []).push \
+            warn(@curdivert.header_loc,
+                "unused diversion",
+                inline: true)
+      elsif @last_divertee.initial then
+        (@curdivert.warnings ||= []).push \
+            warn(@curdivert.header_loc,
+                "single-use diversion",
+                inline: true)
+      end
+      @curdivert = nil
+      @last_divertee.final = true if @last_divertee
+      @last_divertee = nil
+    end
+    return
+  end
+
+
+* Chunk length limit check.
+
+<< in [[Integrator]] >>:
+  def check_chunk_sizes limit
+    return unless limit
+    @output.presentation.each do |node|
+      next unless node.type == :section
+      node.elements.each do |element|
+        next unless element.type == :chunk
+        if element.lines.length > limit then
+          if element.lines.length > limit * 2 then
+            assessment, factor = "very long chunk", 2
+          else
+            assessment, factor = "long chunk", 1
+          end
+          limit_loc = element.body_loc.dup
+          limit_loc.column = nil
+          limit_loc.line += limit * factor
+          (element.warnings ||= []).push \
+              warn(limit_loc, "%s (%i lines)" %
+                      [assessment, element.lines.length],
+                  inline: true)
+        end
+      end
+    end
+    return
+  end
+
+
+* The warning subsystem.
+
+Warnings are recorded in the [[warnings]] list of a fabric and
+may also be recorded in individual elements.
+[[Integrator#warn]] generates a record for such storage.  Note
+that it does not actually display the warning, for the fabric
+loader doesn't really know anything about the I/O system
+available for this.
+
+<< in [[Integrator]] >>:
+  def warn location, message, inline: false
+    record = OpenStruct.new(
+      loc: location,
+      message: message,
+      number: @warning_counter += 1,
+      inline: inline)
+    @output.warnings.push record
+    return record # so it can also be attached elsewhere
+  end
+
+
+In the command line interface, we'll output the warnings once a
+fabric has been fully loaded.
+
+<< Other methods >>:
+  def show_warnings fabric
+    fabric.warnings.each do |warning|
+      $stderr.puts "%s: %s" %
+          [format_location(warning.loc), warning.message]
+    end
+    return
+  end
+
+
+* Location pinpointing.
+
+Locations are encoded using [[OpenStruct]] instances with the
+fields [[filename]] and [[line]] and optionally [[column]].
+
+<< Other methods >>:
+
+  def format_location h
+    if h.column then
+      return "%s:%i.%i" % [h.filename, h.line, h.column]
+    else
+      return "%s:%i" % [h.filename, h.line]
+    end
+  end
+
+
+In order to encode a region's location, we'll save its two
+endpoints, both inclusive, in an [[OpenStruct]] instance as
+[[from]] and [[to]], as standard locations.  The [[dash]] is a
+parameter so as to permit n-dash to be used in HTML output.
+
+  def format_location_range h, dash: "-"
+    if h.from.filename != h.to.filename then
+      return format_location(h.from) + dash +
+          format_location(h.to)
+    else
+      if h.from.line != h.to.line then
+        result = h.from.filename + ":"
+        result << h.from.line.to_s
+        result << "." << h.from.column.to_s if h.from.column
+        result << dash
+        result << h.to.line.to_s
+        result << "." << h.to.column.to_s if h.to.column
+      else
+        result = h.from.filename + ":"
+        result << h.from.line.to_s
+        if h.from.column or h.to.column then
+          result << "." <<
+            h.from.column.to_s << dash << h.to.column.to_s
+        end
+      end
+      return result
+    end
+  end
+
+
+== Horizontal parsing
+
+* Chunk name canonicalisation.
+
+This amounts to compressing all whitespace that is not marked as
+monospaced by double brackets.
+
+<< Other methods >>:
+  def canonicalise_chunk_name raw_name
+    name = ''
+    raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
+        each_with_index do |part, i|
+      part.gsub! /\s+/, ' ' if i.even?
+      name << part
+    end
+    return name
+  end
+
+
+* Markup parsing.
+
+The markup parser materialises as a function that takes a string
+as its input and returns a list of syntactic nodes.  The parser
+itself is a fairly simple linear scanner, the main trick being
+[[Markup_Parser_Stack]] that holds the currently open markup
+constructs.
+
+<< Other methods >>:
+  def parse_markup s, suppress_modes = 0
+    ps = Fabricator::Pointered_String.new s
+    stack = Fabricator::Markup_Parser_Stack.new suppress_modes
+    while ps.pointer < s.length do
+      << Parse a bit of markup >>
+    end
+    while stack.length > 1 do
+      stack.unspawn
+    end
+    return stack.last.content
+  end
+
+
+So, let's consider [[Markup_Parser_Stack]] next.  Since it's a
+stack, we'll derive it from [[Array]]:
+
+<< in [[Fabricator]] >>:
+  class Markup_Parser_Stack < Array
+    << in [[Markup_Parser_Stack]] >>
+  end
+
+
+At initialisation, the stack will have one frame.  We'll
+implement stack frames as [[OpenStruct]] instances.  The slot
+[[content]] holds collected markup nodes; [[mode]] is a bitfield
+for currently permitted markup notations, and [[term_type]] is
+the frame marker for unwinding.  [[term_type]] normally holds a
+bit, as used in mode, but it is not a bitfield.
+
+<< in [[Markup_Parser_Stack]] >>:
+  def initialize suppress_modes = 0
+    super()
+    push OpenStruct.new(
+        content: [],
+        mode: Fabricator::MF::DEFAULTS & ~suppress_modes,
+        term_type: 0,
+      )
+    return
+  end
+
+
+Next, let's list all the bits a [[Markup_Parser_Stack]] frame's
+[[mode]] can hold:
+
+<< in [[Fabricator]] >>:
+  module MF
+    BOLD            = 0x01
+    END_BOLD        = 0x02
+    ITALIC          = 0x04
+    END_ITALIC      = 0x08
+    UNDERSCORE      = 0x10
+    END_UNDERSCORE  = 0x20
+    LINK            = 0x40
+    END_LINK        = 0x80
+
+    DEFAULTS = BOLD | ITALIC | UNDERSCORE | LINK
+  end
+
+
+Whenever the markup parser encounters what looks like a markup
+start notation, it /spawns/ a new frame onto the stack.  The new
+frame will contain the notation as [[face]] so that we can
+[[unspawn]] it, should the start later turn out to be a false
+start.  It overrides the [[mode]] of the top stack frame by
+enabling the corresponding markup's end notation and disabling
+another start notation of the same kind.  Finally, it tags the
+new frame with a [[term_type]], which is used in order to find
+this stack frame when we actually get to the end notation.
+
+[[OpenStruct]]'s flexibility lets us add extra fields when
+needed.  This is useful for dealing with links, as we'll see
+later.
+
+<< in [[Markup_Parser_Stack]] >>:
+
+  def spawn face, start_flag, end_flag
+    self.push OpenStruct.new(
+      face: face,
+      content: [],
+      mode: self.last.mode & ~start_flag | end_flag,
+      term_type: end_flag,
+    )
+    return
+  end
+
+
+The frame can be merged back into its parent frame by
+/unspawning/ it.  This happens when we need to reinterpret what
+once looked like a start notation as a plain piece of string.
+
+  def unspawn
+    raise 'assertion failed' unless length >= 2
+    top = self.pop
+    self.last.content.push OpenStruct.new(
+      type: :plain,
+      data: top.face,
+    ), *top.content
+    return
+  end
+
+
+Finally, when we encounter a valid markup end notation, we'll
+wrap up the current stack frame, /ennoding/ its [[content]] into
+the matching ancestral stack frame's.  Because the markup region
+may contain a few intervening faux start notations, we may have
+to first unspawn a few times; the [[frame_type]] parameter will
+tell [[ennode]] how to recognise the last stack frame to eat up.
+
+  def ennode node_type, frame_type
+    while self.last.term_type != frame_type do
+      self.unspawn
+    end
+    top = self.pop
+    node = OpenStruct.new(
+        type: node_type,
+        content: top.content,
+    )
+    self.last.content.push node
+    return node # for possible further manipulation
+  end
+
+
+Let's now consider the main markup parsing loop.  We'll set it
+up as a series of [[if ... elsif ... elsif ... end]] clauses.
+
+The easist markup to parse is undoubtedly [[[[foo]]]] for
+monospaced text, which doesn't even need a stack frame.  The
+main trick here is that if the terminal [[]]]] contains more
+than two adjacent closing brackets, we'll pick the two last
+ones.  This trick, originally from Norman Ramsey's [[noweb]],
+lets the user to use multiple terminal closing brackets in a
+natural manner, as in [[[[a[b[i]]]]]].
+
+When parsing the monospaced string, we'll split it into
+[[plain]] and [[space]] nodes.  This is one of the rare cases in
+Maui's notation when whitespace needs to be recorded, for we'll
+want to retain sequences of multiple whitespaces in monospaced
+text.
+
+<< Parse a bit of markup >>:
+  if ps.at? "[[" and
+      end_offset = s.index("]]", ps.pointer + 2) then
+    while ps[end_offset + 2] == ?] do
+      end_offset += 1
+    end
+    monospaced_content = []
+    ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
+        each_with_index do |part, i|
+      monospaced_content.push OpenStruct.new(
+          type: i.even? ? :plain : :space,
+          data: part
+      )
+    end
+    stack.last.content.push OpenStruct.new(
+        type: :monospace,
+        content: monospaced_content)
+    ps.pointer = end_offset + 2
+
+
+Detecting the notation for *bold*, /italic/, or _underscore_ is
+a bit more complicated, so we'll encapsulate it in a separate
+function.  Since it operates on a [[Pointered_String]], we'll
+insert it into it as an extra method.
+
+The main rules are:
+- the starting character is alone, not next to another copy of
+  itself, and
+- the starter is not immediately followed by a whitespace.
+
+<< in [[Pointered_String]] >>:
+  def biu_starter? c
+    return char_ahead == c &&
+        char_ahead(-1) != c &&
+        ![?\s, c].include?(char_ahead(1))
+  end
+
+
+When these conditions trigger, we'll establish a new markup
+parser stack frame:
+
+<< Parse a bit of markup >>:
+  elsif stack.last.mode & Fabricator::MF::BOLD != 0 and
+      ps.biu_starter? ?* then
+    stack.spawn '*',
+        Fabricator::MF::BOLD,
+        Fabricator::MF::END_BOLD
+    ps.pointer += 1
+
+  elsif stack.last.mode & Fabricator::MF::ITALIC != 0 and
+      ps.biu_starter? ?/ then
+    stack.spawn '/',
+        Fabricator::MF::ITALIC,
+        Fabricator::MF::END_ITALIC
+    ps.pointer += 1
+
+  elsif stack.last.mode & Fabricator::MF::UNDERSCORE \
+          != 0 and
+      ps.biu_starter? ?_ then
+    stack.spawn '_',
+        Fabricator::MF::UNDERSCORE,
+        Fabricator::MF::END_UNDERSCORE
+    ps.pointer += 1
+
+
+The conditions for BIU-terminating markup are similar, except
+in this case, we'll prohibit whitespace /preceding/ the
+markup character.
+
+<< in [[Pointered_String]] >>:
+  def biu_terminator? c
+    return char_ahead == c &&
+        char_ahead(1) != c &&
+        ![?\s, c].include?(char_ahead(-1))
+  end
+
+
+The parser's rules are similarly straightforward, too.
+
+<< Parse a bit of markup >>:
+
+  elsif stack.last.mode & Fabricator::MF::END_BOLD != 0 and
+      ps.biu_terminator? ?* then
+    stack.ennode :bold, Fabricator::MF::END_BOLD
+    ps.pointer += 1
+
+  elsif stack.last.mode & Fabricator::MF::END_ITALIC \
+          != 0 and
+      ps.biu_terminator? ?/ then
+    stack.ennode :italic, Fabricator::MF::END_ITALIC
+    ps.pointer += 1
+
+  elsif stack.last.mode & Fabricator::MF::END_UNDERSCORE \
+          != 0 and
+      ps.biu_terminator? ?_ then
+    stack.ennode :underscore, Fabricator::MF::END_UNDERSCORE
+    ps.pointer += 1
+
+
+Let's now move on to parsing links.
+
+Maui's basic link notation is [[<override|target>]], or when
+override is not desired, just [[<target>]].  This presents a
+slight conundrum, in that when we pass the initial [[<]], we
+don't yet know whether we should parse the following as
+marked-up text -- for the /override/ -- or as a plain string --
+for /target/.  We'll resolve this by beginning parsing as plain
+text, but storing the offset of the initial broket in the stack
+frame as [[start_offset]] so we can return to the beginning,
+should we encounter the terminal [[>]] without an intervening
+[[|]].
+
+  elsif stack.last.mode & Fabricator::MF::LINK != 0 and
+      ps.biu_starter? ?< then
+    stack.spawn '<',
+        Fabricator::MF::LINK,
+        Fabricator::MF::END_LINK
+    stack.last.start_offset = ps.pointer
+    ps.pointer += 1
+
+
+When we see [[|]], we have completed parsing the link's
+override.  We can now pick up the plain-text link target,
+terminated by [[>]], and wrap up the link node.
+
+  elsif stack.last.mode & Fabricator::MF::END_LINK != 0 and
+      ps.at? '|' and
+      end_offset = s.index(?>, ps.pointer + 1) then
+    target = ps[ps.pointer + 1 ... end_offset]
+    if link_like? target then
+      stack.ennode(:link,
+          Fabricator::MF::END_LINK).target = target
+      ps.pointer = end_offset + 1
+    else
+      # False alarm: this is not a link, after all.
+      stack.cancel_link
+      stack.last.content.push OpenStruct.new(
+        type: :plain,
+        data: '|',
+      )
+      ps.pointer += 1
+    end
+
+
+When we see [[>]] with [[END_LINK]] enabled, we know that
+this is an unoverridden link.  The text between the brokets is
+now supposed to be plain text link, any markup-like looking
+symbols such as underscores or slashes notwithstanding, so we'll
+discard the work we did trying to parse this as markup, and
+construct a simple link node.
+
+  elsif stack.last.mode & Fabricator::MF::END_LINK != 0 and
+      ps.at? '>' then
+    j = stack.rindex do |x|
+      x.term_type == Fabricator::MF::END_LINK
+    end
+    target = ps[stack[j].start_offset + 1 ... ps.pointer]
+    if link_like? target then
+      stack[j .. -1] = []
+      stack.last.content.push OpenStruct.new(
+          type: :link,
+          implicit_face: true,
+          target: target,
+          content: [OpenStruct.new(
+            type: :plain,
+            data: target,
+          )],
+      )
+    else
+      # False alarm: this is not a link, after all.
+      stack.cancel_link
+      stack.last.content.push OpenStruct.new(
+        type: :plain,
+        data: '>',
+      )
+    end
+    ps.pointer += 1
+
+
+The [[link_like?]] test lets us avoid misinterpreting some
+(very) basic broketed constructs such as [[<*>]] --- which may
+appear when Maui wikitext is generated by copy-pasting
+ASCII-formatted text --- as links.
+
+<< Other methods >>:
+  def link_like? s
+    return !!(s =~ /\A(?:#\s*)?[[:alnum:]]/)
+  end
+
+
+When an apparent link turns out to not be a link at all, we'll
+/cancel/ it.  This involves clearing the [[END_LINK]] flag
+(and the relevant [[term_type]]) in all affected stack frames
+and restoring the [[LINK]] flag so that we can parse another,
+more proper link.  (Note that we can always restore [[LINK]]:
+[[cancel_link]] is only called if we were in [[END_LINK]]
+mode, and this makes only sense if, at a previous point in
+parsing, we had [[LINK]] set and encountered an opening broket.)
+We can't perform unwinding at this point because we may have
+passed over starts of some markup regions which have not ended
+yet but will end later.
+
+<< in [[Markup_Parser_Stack]] >>:
+  def cancel_link
+    i = self.length
+    begin
+      i -= 1
+      self[i].mode &= ~Fabricator::MF::END_LINK
+      self[i].mode |= Fabricator::MF::LINK
+    end until self[i].term_type == Fabricator::MF::END_LINK
+    self[i].term_type = 0
+    return
+  end
+
+
+Because whitespace has meaning for Maui markup --- it indicates
+places suitable for linebreaks when word-wrapping ---, we'll
+parse it as a kind of special node.
+
+<< Parse a bit of markup >>:
+  elsif ps.at? ' ' then
+    ps.pointer += 1
+    while ps.at? ' ' do
+      ps.pointer += 1
+    end
+    stack.last.content.push OpenStruct.new(type: :space)
+
+
+We'll consider the [[U+00A0 NO-BREAK SPACE]] a form of markup.
+Each such character will be a node of the type [[:nbsp]], with
+no attributes.
+
+<< Parse a bit of markup >>:
+  elsif ps.at? "\u00A0" then
+    stack.last.content.push OpenStruct.new(type: :nbsp)
+    ps.pointer += 1
+
+
+Finally, if none of the rules matched, we'll pick the following
+character up as a plain text node.  As an optimisation, we'll
+merge it with any folllowing characters that definitely are not
+markup characters.  Since we don't want the generated node's
+[[data]] field to retain the type of [[Pointered_String]], we'll
+construct a new [[String]] instance with its content.
+
+<< Parse a bit of markup >>:
+  else
+    j = ps.pointer + 1
+    while j < s.length and !" */<>[_|".include? ps[j] do
+      j += 1
+    end
+    stack.last.content.push OpenStruct.new(
+        type: :plain,
+        data: String.new(ps[ps.pointer ... j]),
+    )
+    ps.pointer = j
+  end
+
+
+* String traversal.
+
+The final part of the markup parser's puzzle is
+[[Pointered_String]], which provides convenient lookahead (and
+lookbehind) while traversing the string.  We'll derive it from
+[[String]] by augmenting it with the [[pointer]] field.
+
+<< in [[Fabricator]] >>:
+  class Pointered_String < String
+    def initialize value
+      super value
+      @pointer = 0
+      return
+    end
+
+    attr_accessor :pointer
+
+    << in [[Pointered_String]] >>
+  end
+
+
+The most basic operation is extracting up to a given number of
+characters of lookahead.
+
+<< in [[Pointered_String]] >>:
+
+  def ahead length
+    return self[@pointer, length]
+  end
+
+
+An alternative way of lookahead extracts only a single
+character, specified via a relative offset from [[@pointer]].
+The [[delta]] parameter can be negative for lookbehind, and
+attempts to look before the string begins produce [[nil]] rather
+than wrapping over to the end of the string.
+
+  def char_ahead delta = 0
+    offset = @pointer + delta
+    return offset >= 0 ? self[offset] : nil
+  end
+
+
+Parsing decisions often depend on whether the current lookahead
+matches an etalon.  We'll call this operation [[at?]].
+
+  def at? etalon
+    return ahead(etalon.length) == etalon
+  end
+
+
+There is no point in implementing basic methods for moving
+[[@pointer]] around, as it has already been fully exposed.
+
+
+* Construction outside parser.
+
+In order to simplify constructing the markup structures, we'll
+subclass [[Array]] into a variant with methods for the markup
+node types.  Calling any such a method results in appending a
+matching [[OpenStruct]] to the array.
+
+<< Other methods >>:
+  def markup
+    return Fabricator::Markup_Constructor.new
+  end
+
+<< in [[Fabricator]] >>:
+  class Markup_Constructor < Array
+    << in [[Markup_Constructor]] >>
+  end
+
+
+Let's first write an abstract appender and specialise it later.
+
+<< in [[Markup_Constructor]] >>:
+
+  def node type, **attr
+    return push(OpenStruct.new(type: type, **attr))
+    # [[Array#push]] will return self, allowing [[node]] calls
+    # to be chained.
+  end
+
+
+  def plain data
+    return node(:plain, data: data)
+  end
+
+
+  def space data = nil
+    return node(:space, data: data)
+  end
+
+
+Now, in order to have some convenience atop our convenience,
+we'll define the [[words]] method that will parse a given string
+into 'whitespace' and 'other'.  This distinction in the markup
+is necessary to make sure the whitespace can be broken when
+word-wrapping the result.
+
+  def words s
+    s.split(/(\s+)/, -1).each_with_index do |part, i|
+      node(i.even? ? :plain : :space, data: part)
+    end
+    return self
+  end
+
+
+== Tangling
+
+* The main tangling loop.
+
+Our tangler does not treat the parsed fabric as a purely passive
+object; rather, it adds cross-references, annotates chunks with
+the output locations, and issues warnings over reference
+problems.  Thus, it lives inside the [[Integrator]].  In order
+to not mislead the programmer to think it's the top-level
+tangling method, we'll give it a more specific name:
+[[tangle_chunks]].
+
+It takes four parameters: [[cbn_entry]] is the
+[[chunks_by_name]] entry of the node to be tangled (we'll pass a
+pre-resolved node so as to prevent resolution failure at this
+point), [[sink]] is the [[Tangling_Sink]] instance to use,
+[[trace]] is a [[Set]] used to detect circular references, and
+[[vsep]] can override the number of linebreaks to be generated
+between adjacent chunks.  By default, we'll leave one blank
+line, hence two linebreaks.  The [[.dense]] option removes the
+blank line, leaving only one separating linebreak.
+
+During tangling, we'll collect each chunk's tangling locations.
+(Note that it's possible that one chunk will be tangled into
+multiple places).  We'll store this data into the chunk as the
+[[tangle_locs]] list.  We'll also collect tangling locations of
+chunk chains -- sequences of [[diverted_chunk]] elements
+diverted by the same [[divert]].  We'll store this data into the
+[[divert]] node as the [[chain_tangle_locs]] list.
+
+<< in [[Integrator]] >>:
+  def tangle_chunks cbn_entry, sink, trace, vsep = 2
+    chain_start_loc = nil
+    cbn_entry.chunks.each_with_index do |chunk, i|
+      vsep.times{sink.newline} unless i.zero?
+      if chunk.divert and chunk.initial then
+        raise 'assertion failed' if chain_start_loc
+        chain_start_loc = sink.location_ahead
+      end
+      << Tangle [[chunk]] to [[sink]] >>
+      if chunk.divert and chunk.final then
+        raise 'assertion failed' unless chain_start_loc
+        (chunk.divert.chain_tangle_locs ||= []).push \
+            OpenStruct.new(
+                from: chain_start_loc,
+                to: sink.location_behind)
+        chain_start_loc = nil
+      end
+    end
+    return
+  end
+
+
+In addition to expanding the chunk's content to [[sink]], we'll
+also record its location in the output file, as kept track by
+[[Tangling_Sink]].
+
+<< Tangle [[chunk]] to [[sink]] >>:
+  start_location = sink.location_ahead
+  chunk.content.each do |node|
+    case node.type
+    when :verbatim then
+      sink.write node.data
+    when :newline then
+      sink.newline
+    when :use then
+      tangle_transclusion node, sink, trace, chunk
+    else raise 'data structure error'
+    end
+  end
+  end_location = sink.location_behind
+
+  # Both endpoints are inclusive.
+  (chunk.tangle_locs ||= []).push OpenStruct.new(
+    from: start_location,
+    to: end_location)
+
+
+For circular or dangling references, we'll write the raw
+transclusion directive, as it appeared in the fabric, to output.
+It's possible that we mistakenly parsed something that was not
+intended as a reference, and while this should be fixed by
+appropriate escaping (or, well, dividing the bogus reference
+onto multiple code lines), this non-destructive approach is
+probably optimal as workarounds go.
+
+<< in [[Integrator]] >>:
+  def tangle_transclusion node, sink, trace, referrer
+    name = node.name
+    if trace.include? name then
+      warn node.loc, "circular reference"
+      sink.write node.raw
+    else
+      cbn_entry = @output.chunks_by_name[name]
+      if cbn_entry.nil? or cbn_entry.chunks.empty? then
+        warn node.loc, "dangling reference"
+        sink.write node.raw
+      else
+        << Cross-reference the transclusion >>
+        << Recurse and transclude >>
+      end
+    end
+    return
+  end
+
+
+<< Cross-reference the transclusion >>:
+  (cbn_entry.transcluders ||= []).push(
+      OpenStruct.new(
+        name: referrer.name,
+        section_number: referrer.section_number,
+        ))
+
+
+<< Recurse and transclude >>:
+  trace.add name
+  if node.postprocess then
+    # redirect the tangler
+    outer_sink = sink
+    inner_sport = StringIO.new
+    sink = Fabricator::Tangling_Sink.new '(pipe)',
+        inner_sport
+  end
+  sink.pin_indent node.clearindent ? 0 : nil do
+    tangle_chunks cbn_entry, sink, trace,
+        node.vertical_separation == '.dense' ? 1 : 2
+  end
+  if node.postprocess then
+    # revert the redirect and apply the filter
+    sink.newline
+    filter_output =
+        Fabricator::POSTPROCESSES[node.postprocess].
+        call(inner_sport.string)
+    sink = outer_sink
+    sink.pin_indent node.clearindent ? 0 : nil do
+      sink.write_long filter_output
+    end
+  end
+  trace.delete name
+
+
+<< in [[Fabricator]] >>:
+  POSTPROCESSES = {
+    '|scss->css' => proc do |input|
+      require 'sass'
+      Sass::Engine.new(input,
+          syntax: :scss,
+          load_paths: [],
+          filename: '(pipe)').render
+    end,
+
+    '|sass->css' => proc do |input|
+      require 'sass'
+      Sass::Engine.new(input,
+          syntax: :sass,
+          load_paths: [],
+          filename: '(pipe)').render
+    end,
+  }
+
+
+* Tangle all the files.
+
+The high-level tangling interface, [[Integrator#tangle_roots]],
+sets up the [[tangles]] branch in the fabric.  (For idempotency,
+it does nothing if it already exists.  This is mainly useful
+because it calls [[tangle_chunks]] which has the side effect of
+inserting cross-reference information into the fabric.)
+
+<< in [[Integrator]] >>:
+  def tangle_roots
+    return if @output.tangles
+    @output.tangles = {}
+    @output.roots.each do |name|
+      sport = StringIO.new
+      sink = Fabricator::Tangling_Sink.new name, sport
+      cbn_entry = @output.chunks_by_name[name]
+      # We can assume that [[cbn_entry]] is not [[nil]], for
+      # otherwise there wouldn't be a [[roots]] entry.
+      tangle_chunks cbn_entry, sink, Set.new([name])
+      sink.newline
+      @output.tangles[name] = OpenStruct.new(
+        filename: name,
+        root_type: cbn_entry.root_type,
+        content: sport.string,
+        line_count: sink.line_count,
+        nonblank_line_count: sink.nonblank_line_count,
+        longest_line_length: sink.longest_line_length,
+      )
+    end
+    return
+  end
+
+
+Finally, at the command line interface level, we'll just need to
+call [[tangle_roots]] and write the results into files.  The
+latter is done through the [[writeout_plan]] abstraction layer.
+
+<< Tangle all roots >>:
+  integrator.tangle_roots
+
+<< Other methods >>:
+  # Take a [[results]] record from tangling and construct a
+  # matching [[proc]] to be stored in the [[writeout_plan]].
+  def plan_to_write_out results
+    return proc do |output_filename|
+      File.write output_filename, results.content
+      puts "Tangled #{results.filename},"
+      if results.line_count != 1 then
+        print "  #{results.line_count} lines"
+      else
+        print "  #{results.line_count} line"
+      end
+      puts " (#{results.nonblank_line_count} non-blank),"
+      if results.longest_line_length != 1 then
+        puts "  longest #{results.longest_line_length} chars."
+      else
+        puts "  longest #{results.longest_line_length} char."
+      end
+      << Script root?  Make executable >>
+    end
+  end
+
+
+<< Script root?  Make executable >>:
+  if results.root_type == '.script' and
+      !Fabricator::WINDOWS_HOSTED_P then
+    stat = File.stat output_filename
+    m = stat.mode
+    uc = ""
+    [(m |= 0o100), (uc << "u")] if m & 0o400 != 0
+    [(m |= 0o010), (uc << "g")] if m & 0o040 != 0
+    [(m |= 0o001), (uc << "o")] if m & 0o004 != 0
+    File.chmod m, output_filename
+    puts "Set %s+x on %s, resulting in %03o" % [
+      uc,
+      output_filename,
+      m & 0o777,
+    ]
+  end
+
+<< in [[Fabricator]] >>:
+  WINDOWS_HOSTED_P =
+      (RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/)
+
+
+=== The tangling sink.
+
+* The tangling sink.
+
+The tangling sink serves as a backend to the tangling loop,
+taking care of indentation, right-stripping the generated lines,
+and keeping track of the output location so as to permit
+cross-referencing chunks with where they appear in the generated
+files.
+
+<< in [[Fabricator]] >>:
+  class Tangling_Sink
+    def initialize filename, port
+      super()
+      @filename = filename
+      @port = port
+      @lineno = 1
+      @line = ''
+      @indent = 0
+      << Initialise statistical trackers >>
+      return
+    end
+
+    << in [[Tangling_Sink]] >>
+  end
+
+<< in [[Tangling_Sink]] >>:
+
+
+* Simple output.
+
+  def write s
+    @line << s
+    return
+  end
+
+
+  def newline
+    @line.rstrip!
+    @port.puts @line
+    @lineno += 1
+    << Count [[@line]] for statistics >>
+    @line = ' ' * @indent
+    return
+  end
+
+
+We'll use Ruby's block idiom for indentation.  By default,
+[[pin_indent]] will retain the current column as the beginning
+column for lines beginning during the thunk passed to it.  The
+amount of indentation can be overridden by passing it to
+[[pin_indent]] as a parameter.  (The parameter of [[nil]] can be
+used to explicitly request the implicit behaviour.)  Such an
+override is used to implement the [[.clearindent]] directive.
+
+  def pin_indent level = nil
+    previous_indent = @indent
+    begin
+      @indent = level || @line.length
+      yield
+    ensure
+      @indent = previous_indent
+    end
+    return
+  end
+
+
+A filter's output is written into a sink as a long multiline
+string.  Note that we'll ignore trailing linebreaks in such a
+string.
+
+  def write_long s
+    s.split(/\n/).each_with_index do |line, i|
+      newline unless i.zero?
+      write line
+    end
+    return
+  end
+
+
+* Location tracking.
+
+  def location_ahead
+    return OpenStruct.new(
+      filename: @filename,
+      line: @lineno,
+      column: @line.length + 1)
+  end
+
+  def location_behind
+    return OpenStruct.new(
+      filename: @filename,
+      line: @lineno,
+      column: @line.length)
+  end
+
+
+* And finally, statistics.
+
+The number of output lines is easily calculated from the line
+number tracker.
+
+  def line_count
+    return @lineno - 1
+  end
+
+
+The number of processed sections does not even need any
+calculation.
+
+<< in [[Integrator]] >>:
+  attr_reader :section_count
+
+
+In order to count non-blank lines, we need a separate counter.
+
+<< Initialise statistical trackers >>:
+  @nonblank_line_count = 0
+
+<< in [[Tangling_Sink]] >>:
+  attr_reader :nonblank_line_count
+
+<< Count [[@line]] for statistics >>:
+  @nonblank_line_count += 1 unless @line.empty?
+
+
+We also want to find out the generated file's width.
+
+<< Initialise statistical trackers >>:
+  @longest_line_length = 0
+
+<< in [[Tangling_Sink]] >>:
+  attr_reader :longest_line_length
+
+<< Count [[@line]] for statistics >>:
+  @longest_line_length = @line.length \
+      if @line.length > @longest_line_length
+
+== Fabric loader's façade
+
+For user's convenience, we'll encapsulate the parsing,
+integration, and tangling of a fabric into a single procedure.
+
+<< Other methods >>:
+  def load_fabric input, chunk_size_limit: 24
+    << Parse fabric from [[input]] >>
+    << Tangle all roots >>
+    return integrator.output
+  end
+
+== Weaving
+
+=== Coloured text
+
+* Coloured text.
+
+This output mode is convenient for use in a modern (x)terminal.
+
+<< Weave [[fabric]] (ctxt) >>:
+  open filename, 'w' do |port|
+    Fabricator.weave_ctxt fabric, port,
+        width: $cmdline.output_width,
+        pseudographics: $cmdline.pseudographics
+  end
+  puts "Weaved #{filename}"
+
+<< Other methods >>:
+  def weave_ctxt fabric, port,
+      width: 80,
+      pseudographics: Fabricator::UNICODE_PSEUDOGRAPHICS
+    wr = Fabricator::Text_Wrapper.new port,
+        width: width,
+        pseudographics: pseudographics
+    << Weave fabric's warnings (ctxt) >>
+    << Weave presentation (ctxt) >>
+    return
+  end
+
+<< Weave fabric's warnings (ctxt) >>:
+  unless fabric.warnings.empty? then
+    wr.styled :section_title do
+      wr.add_plain 'Warnings'
+    end
+    wr.linebreak
+    wr.linebreak
+    weave_ctxt_warning_list fabric.warnings, wr
+    wr.linebreak
+  end
+
+
+Since warning lists can be output not only in the beginning of
+the woven fabric but also inline, we'll implement this as a
+procedure.
+
+We'll want to be able to pass any random node's [[.warnings]] to
+[[weave_ctxt_warning_list]] even if there aren't any warnings.
+To that end, we'll first pass the [[list]] parameter through
+[[#to_a]], which is a no-op for proper arrays but maps [[nil]]
+to an empty list.
+
+<< Other methods >>:
+  def weave_ctxt_warning_list list, wr, inline: false,
+      indent: true
+    list.to_a.each do |warning|
+      wr.styled inline ? :inline_warning : :null do
+        wr.add_plain (indent ? '  ' : '') + '!!! ' if inline
+        wr.add_plain format_location(warning.loc)
+        wr.add_plain ':'
+        wr.add_space
+        wr.hang do
+          warning.message.split(/(\s+)/).
+              each_with_index do |part, i|
+            if i.even? then
+              wr.add_plain part
+            else
+              wr.add_space part
+            end
+          end
+        end
+      end
+      wr.linebreak
+    end
+    return
+  end
+
+
+<< Weave presentation (ctxt) >>:
+  toc_generated = false
+  fabric.presentation.each do |element|
+    case element.type
+    when :title then
+      << Weave the [[title]] node (ctxt) >>
+    when :section then
+      << Weave the [[section]] (ctxt) >>
+    else raise 'data structure error'
+    end
+  end
+
+
+<< Weave the [[section]] (ctxt) >>:
+  rubricated = element.elements[0].type == :rubric
+  # If we're encountering the first rubric/title, output
+  # the table of contents.
+  if rubricated and !toc_generated then
+    weave_ctxt_toc fabric.toc, wr
+    toc_generated = true
+  end
+
+  << Weave the section's lead and set [[start_index]] (ctxt) >>
+
+  << Weave the section's body from [[start_index]] on (ctxt) >>
+
+  << Weave the section's top-level warnings (ctxt) >>
+
+
+Weaving a section is a bit tricky, for we want to pretend that
+both the section number, which is a field of a [[section]] node,
+and the rubric (if any), which is optionally the first child of
+it, comprise the section's title.  Furthermore, following
+Knuth's practice, we'll want both to precede the first regular
+paragraph, if any, without a separating paragraph break.
+
+If the section has a rubric, we'll paint both the section number
+and the rubric red (style [[:rubric]])  If there's no rubric,
+the section number will be just bold ([[:section_number]], to be
+precise).  This distinction corresponds to the Knuth's original
+(C)WEB's practice of distinguishing 'starred sections' from
+plain ones.
+
+<< Weave the section's lead and set [[start_index]] (ctxt) >>:
+  start_index = 0 # index of the first non-special child
+  << Output section number and, possibly, the rubric (ctxt) >>
+
+  # If the rubric or the section sign is followed by a
+  # paragraph, a chunk header, or a divert, we'll output
+  # it in the same paragraph.
+  starter = element.elements[start_index]
+  if starter then
+    case starter.type
+    when :paragraph, :divert, :chunk then
+      wr.add_space
+      weave_ctxt_section_part starter, fabric, wr
+      start_index += 1
+    else
+      wr.linebreak
+    end
+  end
+
+  # Finally, the blank line that separates the special
+  # paragraph from the section's body, if any.
+  wr.linebreak
+
+<< Output section number and, possibly, the rubric (ctxt) >>:
+  if rubricated then
+    start_index += 1
+    wr.styled :rubric do
+      wr.add_plain "§%i." % element.section_number
+      wr.add_space
+      wr.add_nodes element.elements.first.content
+    end
+  else
+    wr.styled :section_number do
+      wr.add_plain "§%i." % element.section_number
+    end
+  end
+
+<< Weave the section's body from [[start_index]] on (ctxt) >>:
+  element.elements[start_index .. -1].each do |child|
+    weave_ctxt_section_part child, fabric, wr
+    wr.linebreak
+  end
+
+<< Other methods >>:
+  def weave_ctxt_section_part element, fabric, wr
+    case element.type
+    << [[weave_ctxt_section_part]] rules >>
+    else
+      raise 'data structure error'
+    end
+    return
+  end
+
+
+<< [[weave_ctxt_section_part]] rules >>:
+
+  when :paragraph then
+    wr.add_nodes element.content
+    wr.linebreak
+
+
+  when :divert, :chunk, :diverted_chunk then
+    if [:divert, :chunk].include? element.type then
+      weave_ctxt_chunk_header element, wr
+      weave_ctxt_warning_list element.warnings, wr,
+          inline: true
+    end
+    if [:chunk, :diverted_chunk].include? element.type then
+      << Weave the chunk's lines (ctxt) >>
+      << ? Output the chain's finality marker >>
+      weave_ctxt_warning_list element.warnings, wr,
+          inline: true
+      if element.final then
+        wr.styled :chunk_xref do
+          wr.add_nodes xref_chain(element, fabric)
+        end
+        wr.linebreak
+      end
+    end
+
+
+  when :list then
+    weave_ctxt_list element.items, wr
+
+
+  when :block then
+    weave_ctxt_block element, wr
+
+
+<< Weave the section's top-level warnings (ctxt) >>:
+  unless (element.warnings || []).empty? then
+    weave_ctxt_warning_list element.warnings, wr,
+        inline: true, indent: false
+    wr.linebreak
+  end
+
+
+* Weaving code elements.
+
+This method is good for both chunks with headers and diverts,
+which in its regard, are just chunk headers.
+
+<< Other methods >>:
+
+  def weave_ctxt_chunk_header element, wr
+    wr.styled :chunk_header do
+      wr.add_pseudographics :before_chunk_name
+      if element.root_type then
+        wr.styled :root_type do
+          wr.add_plain element.root_type
+        end
+        wr.add_space
+      end
+      wr.add_nodes(
+          parse_markup(element.name, Fabricator::MF::LINK))
+      wr.add_pseudographics :after_chunk_name
+      wr.add_plain ":"
+    end
+    wr.linebreak
+    return
+  end
+
+
+  def weave_ctxt_block element, wr
+    element.lines.each do |line|
+      wr.styled :block_frame do
+        wr.add_pseudographics :block_margin
+      end
+      wr.styled :monospace do
+        wr.add_plain line
+      end
+      wr.linebreak
+    end
+    return
+  end
+
+
+<< Weave the chunk's lines (ctxt) >>:
+  wr.styled :chunk_frame do
+    wr.add_pseudographics element.initial ?
+      :initial_chunk_margin :
+      :chunk_margin
+  end
+  wr.styled :monospace do
+    element.content.each do |node|
+      case node.type
+      when :verbatim then
+        wr.add_plain node.data
+      when :newline then
+        wr.linebreak
+        wr.styled :chunk_frame do
+          wr.add_pseudographics :chunk_margin
+        end
+      when :use then
+        weave_ctxt_use node, wr
+      else raise 'data structure error'
+      end
+    end
+  end
+  wr.linebreak
+
+
+<< Other methods >>:
+  def weave_ctxt_use node, wr
+    wr.styled :use do
+      wr.add_pseudographics :before_chunk_name
+      if node.clearindent then
+        wr.add_plain ".clearindent "
+      end
+      wr.add_nodes parse_markup(node.name, Fabricator::MF::LINK)
+      if node.vertical_separation then
+        wr.add_plain " " + node.vertical_separation
+      end
+      if node.postprocess then
+        wr.add_plain " " + node.postprocess
+      end
+      wr.add_pseudographics :after_chunk_name
+    end
+    return
+  end
+
+
+<< ? Output the chain's finality marker >>:
+  if element.final then
+    wr.styled :chunk_frame do
+      wr.add_pseudographics :final_chunk_marker
+    end
+    wr.linebreak
+  end
+
+
+<< Other methods >>:
+  # Given a chunk, prepare its transclusion summary as a list of
+  # markup nodes.  Should only be used on chunks that are the
+  # last in a chunk chain (i.e., that have [[final]] set).
+  def xref_chain element, fabric, dash: "-"
+    xref = markup
+    if element.initial then
+      xref.words "This chunk is "
+    else
+      xref.words "These chunks are "
+    end
+    << Summarise chunk's referrers into [[xref]] >>
+    xref.words " and "
+    << List chunk's tangled locations into [[xref]] >>
+    return xref
+  end
+
+<< Summarise chunk's referrers into [[xref]] >>:
+  cbn_entry = fabric.chunks_by_name[element.name]
+  transcluders = cbn_entry.transcluders
+  if transcluders then
+    xref.words "transcluded by "
+    xref.push *commatise_oxfordly(
+        transcluders.map{|ref| markup.
+            node(:mention_chunk, name: ref.name).
+            space.
+            plain("(§%i)" % ref.section_number)
+        })
+  else
+    if cbn_entry.root_type then
+      xref.words "solely a transclusion root"
+    else
+      xref.words "never transcluded"
+    end
+  end
+
+<< List chunk's tangled locations into [[xref]] >>:
+  tlocs = element.divert ?
+      element.divert.chain_tangle_locs :
+      element.tangle_locs
+  if tlocs then
+    xref.
+        words("tangled to ").
+        push(*commatise_oxfordly(
+        tlocs.map{|range| markup.
+            plain(format_location_range(range, dash: dash))
+        })).
+        plain(".")
+  else
+    xref.words "never tangled."
+  end
+
+
+This contraption generates lists with Oxford/Harvard-style
+commas.  The input is a list of lists of markup nodes.  The
+output is a single list of markup nodes, with appropriate
+joiners interspersed.
+
+<< Other methods >>:
+  def commatise_oxfordly items
+    result = []
+    items.each_with_index do |item, i|
+      unless i.zero? then
+        unless items.length == 2 then
+          result.push OpenStruct.new(:type => :plain,
+              :data => ',')
+        end
+        result.push OpenStruct.new(:type => :space)
+        if i == items.length - 1 then
+          result.push OpenStruct.new(:type => :plain,
+              :data => 'and')
+          result.push OpenStruct.new(:type => :space)
+        end
+      end
+      result.push *item
+    end
+    return result
+  end
+
+
+* Weaving other narrative elements.
+
+<< Weave the [[title]] node (ctxt) >>:
+  if !toc_generated then
+    weave_ctxt_toc fabric.toc, wr
+    toc_generated = true
+  end
+  wr.styled :section_title do
+    wr.add_plain "#{element.number}."
+    wr.add_space
+    wr.hang do
+      wr.add_nodes element.content
+    end
+  end
+  wr.linebreak
+  wr.linebreak
+
+
+<< Other methods >>:
+
+  def weave_ctxt_list items, wr
+    items.each do |item|
+      wr.add_pseudographics :bullet
+      wr.add_plain " "
+      wr.hang do
+        wr.add_nodes item.content
+      end
+      wr.linebreak
+      unless (item.warnings || []).empty? then
+        wr.hang do
+          weave_ctxt_warning_list item.warnings, wr,
+              inline: true
+        end
+      end
+      if item.sublist then
+        wr.add_plain "  "
+        wr.hang do
+          weave_ctxt_list item.sublist.items, wr
+        end
+      end
+    end
+    return
+  end
+
+
+  def weave_ctxt_toc toc, wr
+    if toc.length >= 2 then
+      wr.styled :section_title do
+        wr.add_plain 'Contents'
+      end
+      wr.linebreak; wr.linebreak
+      rubric_level = 0
+      toc.each do |entry|
+        << Weave the TOC entry (ctxt) >>
+      end
+      wr.linebreak
+    end
+    return
+  end
+
+
+<< Weave the TOC entry (ctxt) >>:
+  case entry.type
+  when :title then
+    rubric_level = entry.level - 1 + 1
+    wr.add_plain '  ' * (entry.level - 1)
+    wr.add_plain entry.number + '.'
+    wr.add_space
+    wr.hang do
+      wr.add_nodes entry.content
+    end
+
+  when :rubric then
+    wr.add_plain '  ' * rubric_level
+    wr.add_plain '§%i.' % entry.section_number
+    wr.add_space
+    wr.hang do
+      wr.add_nodes entry.content
+    end
+
+  else
+    raise 'assertion failed'
+  end
+  wr.linebreak
+
+
+* The text wrapper.
+
+We'll word-wrap the narrative (but not code) to a specified
+output width using [[Text_Wrapper]].  It also accounts for the
+escape sequences for colours, mainly by considering that their
+width, for word-wrapping purposes, is zero.
+
+<< in [[Fabricator]] >>:
+  class Text_Wrapper
+    def initialize port = $stdout,
+        width: 80,
+        pseudographics: UNICODE_PSEUDOGRAPHICS,
+        palette: DEFAULT_PALETTE
+      super()
+      @port = port
+      @width = width
+      @pseudographics = pseudographics
+      @palette = palette
+      @hangindent = 0
+      @curpos = 0
+      @curspace = nil
+      @curword = OpenStruct.new(
+        prepared_output: '',
+        width: 0)
+      @curmode = @palette.null
+      return
+    end
+
+    << in [[Text_Wrapper]] >>
+  end
+
+
+<< in [[Text_Wrapper]] >>:
+
+Process a series of 'word' characters.  Note that these do not
+have to comprise a whole word; a word can be fed into the
+[[Text_Wrapper]] using multiple consecutive [[add_plain]] calls.
+All word characters, even whitespaces among them, are considered
+nonbreakable.
+
+  def add_plain data
+    if @curspace and @curpos + data.length > @width then
+      # the space becomes a linebreak
+      @port.puts @palette.null
+      @port.print ' ' * @hangindent + @curmode
+      @curspace = nil
+      @curpos = @hangindent + @curword.width
+    end
+    @curword.prepared_output << data
+    @curpos += data.length
+    return
+  end
+
+
+Process a space character (or several, or zero).  This sets up a
+permitted line break point.
+
+  def add_space data = ' '
+    @port.print @curspace.prepared_output if @curspace
+    @port.print @curword.prepared_output
+    @curspace = OpenStruct.new(
+      prepared_output: data,
+      width: data.length)
+    @curword = OpenStruct.new(
+      prepared_output: '',
+      width: 0)
+    @curpos += data.length
+    return
+  end
+
+
+Explicit linebreak.
+
+  def linebreak
+    @port.print @curspace.prepared_output if @curspace
+    @port.print @curword.prepared_output
+    @port.puts @palette.null
+    @port.print ' ' * @hangindent + @curmode
+    @curspace = nil
+    @curword = OpenStruct.new(
+      prepared_output: '',
+      width: 0)
+    @curpos = @hangindent
+    return
+  end
+
+
+Process a node, as generated by [[parse_markup]].
+
+  def add_node node
+    case node.type
+    when :plain then
+      add_plain node.data
+    when :space then
+      add_space node.data || ' '
+    when :nbsp then
+      add_plain ' '
+    when :monospace, :bold, :italic, :underscore then
+      styled node.type do
+        add_nodes node.content
+      end
+    when :mention_chunk then
+      add_pseudographics :before_chunk_name
+      add_nodes(
+          Fabricator.parse_markup(node.name,
+              Fabricator::MF::LINK))
+      add_pseudographics :after_chunk_name
+    when :link then
+      if node.implicit_face then
+        styled :link do
+          add_plain '<'
+          add_nodes node.content
+          add_plain '>'
+        end
+      else
+        add_plain '<'
+        add_nodes node.content
+        unless node.implicit_face then
+          add_space ' '
+          styled :link do
+            add_plain node.target
+          end
+        end
+        add_plain '>'
+      end
+    else
+      # Uh-oh, a bug: the parser generated a node of a type
+      # unknown to the weaver.
+      raise 'invalid node type'
+    end
+    return
+  end
+
+
+Process a whole list of nodes.
+
+  def add_nodes nodes
+    nodes.each do |node|
+      add_node node
+    end
+    return
+  end
+
+
+Hanging indentation.  Used, for example, in the table of content
+and in lists.  The content is to be fed into the
+[[Text_Wrapper]] by the block supplied by the caller.
+
+  def hang
+    # convert the preceding whitespace, if any, into 'hard'
+    # space not subject to future wrapping
+    if @curspace then
+      @port.print @curspace.prepared_output
+      @curspace = nil
+    end
+    prev_hangindent = @hangindent
+    begin
+      @hangindent = @curpos
+      yield
+    ensure
+      @hangindent = prev_hangindent
+    end
+    return
+  end
+
+
+A region wrapped in an escape sequence.  The sequence is looked
+up in [[@palette]], is treated as having zero width, and it gets
+turned off (using the [[:null]] style) during linebreaks; see
+[[add_plain]].  The region's content is to be fed into the
+[[Text_Wrapper]] by the block supplied by the caller.
+
+Note that [[styled]] calls can be nested, but only the innermost
+style is restored after linebreaks.
+
+  def styled sequence_name
+    sequence = @palette[sequence_name]
+    raise 'unknown palette entry' unless sequence
+    prev_mode = @curmode
+    begin
+      @curmode = sequence
+      @curword.prepared_output << sequence
+      yield
+    ensure
+      @curmode = prev_mode
+      @curword.prepared_output << prev_mode
+    end
+    return
+  end
+
+
+* Pseudographics.
+
+We'll mark code chunks with running vertical lines on the left,
+with a turn at the head or tail to indicate whether this chunk
+is initial or final in its chain.  This is best done using box
+graphics, for which we'll use Unicode, but for archaic devices,
+we'll also support plain ASCII box graphics.
+
+<< in [[Fabricator]] >>:
+
+  UNICODE_PSEUDOGRAPHICS = OpenStruct.new(
+    bullet: [0x2022].pack('U*'),
+    before_chunk_name: [0x00AB].pack('U*'),
+    after_chunk_name: [0x00BB].pack('U*'),
+    initial_chunk_margin: [0x2500, 0x2510].pack('U*'),
+    chunk_margin: [0x0020, 0x2502].pack('U*'),
+    block_margin: "  ",
+    final_chunk_marker:
+        ([0x0020, 0x2514] + [0x2500] * 3).pack('U*'),
+  )
+
+
+  ASCII_PSEUDOGRAPHICS = OpenStruct.new(
+    bullet: "-",
+    before_chunk_name: "<<",
+    after_chunk_name: ">>",
+    initial_chunk_margin: "+ ",
+    chunk_margin: "| ",
+    block_margin: "  ",
+    final_chunk_marker: "----",
+  )
+
+
+As implied before, the default is Unicode.
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.pseudographics = Fabricator::UNICODE_PSEUDOGRAPHICS
+
+
+Client code can output the pseudographics by this method.
+
+<< in [[Text_Wrapper]] >>:
+  def add_pseudographics name
+    seq = @pseudographics[name]
+    raise 'unknown pseudographics item' unless seq
+    add_plain seq
+    return
+  end
+
+
+* Palette.
+
+<< in [[Fabricator]] >>:
+  DEFAULT_PALETTE = OpenStruct.new(
+    monospace: "\e[38;5;71m",
+    bold: "\e[1m",
+    italic: "\e[3m",
+    underscore: "\e[4m",
+    root_type: "\e[4m",
+    chunk_frame: "\e[38;5;59m",
+    block_frame: "",
+    chunk_xref: "\e[38;5;59;3m",
+    section_title: "\e[1;48;5;17m",
+        # unspecified intense on dark blue background
+    rubric: "\e[31;1m",
+    section_number: "\e[0;1m",
+    chunk_header: "\e[0;33;1m",
+    use: "\e[34;1m",
+    null: "\e[0m",
+    inline_warning: "\e[31m",
+    link: "\e[38;5;32m",
+  )
+
+
+=== HTML
+
+* Overview.
+
+First, let's take care of the I/O.
+
+<< Weave [[fabric]] (HTML) >>:
+  open filename, 'w' do |port|
+    port.set_encoding 'utf-8'
+    Fabricator.weave_html fabric, port,
+        title: $cmdline.fabric_filename,
+        link_css: $cmdline.link_css
+  end
+  puts "Weaved #{filename}"
+
+
+The next issue is the basic HTML structure.  We'll follow HTML 5
+conventions.
+
+<< Other methods >>:
+  def weave_html fabric, port,
+      title: nil,
+      link_css: []
+    title ||= "(Untitled)"
+    port.puts '<!doctype html>'
+    port.puts '<html>'
+    << Generate woven HTML's [[head]] >>
+    port.puts '<body>'
+    port.puts
+    port.puts "<h1>#{title.to_xml}</h1>"
+    << Weave fabric's warnings (HTML) >>
+    << Weave presentation (HTML) >>
+    port.puts '</html>'
+    port.puts '</body>'
+    port.puts '</html>'
+    return
+  end
+
+<< Generate woven HTML's [[head]] >>:
+  port.puts '<head>'
+  port.puts "<meta http-equiv='Content-type' " +
+      "content='text/html; charset=utf-8' />"
+  port.puts "<title>#{title.to_xml}</title>"
+  if link_css.empty? then
+    port.puts "<style type='text/css'>"
+    port.puts '<< .clearindent maui.scss |scss->css >>'
+    port.puts "</style>"
+  else
+    link_css.each do |link|
+      port.puts ("<link rel='stylesheet' type='text/css' " +
+          "href='%s' />") % link.to_xml
+    end
+  end
+  port.puts '</head>'
+
+<< Weave presentation (HTML) >>:
+  toc_generated = false
+  fabric.presentation.each do |element|
+    case element.type
+    when :title then
+      << Weave the [[title]] node (HTML) >>
+    when :section then
+      << Weave the [[section]] (HTML) >>
+    else raise 'data structure error'
+    end
+    port.puts
+  end
+
+<< Weave the [[title]] node (HTML) >>:
+  if !toc_generated then
+    weave_html_toc fabric.toc, port
+    toc_generated = true
+  end
+  port.print '<h%i' % (element.level + 1)
+  port.print " id='%s'" % "T.#{element.number}"
+  port.print '>'
+  port.print "#{element.number}. "
+  htmlify element.content, port
+  port.puts '</h%i>' % (element.level + 1)
+
+<< Weave the [[section]] (HTML) >>:
+  rubricated = element.elements[0].type == :rubric
+  # If we're encountering the first rubric/title, output
+  # the table of contents.
+  if rubricated and !toc_generated then
+    weave_html_toc fabric.toc, port
+    toc_generated = true
+  end
+
+  start_index = 0
+  port.puts "<section class='maui-section' id='%s'>" %
+      "S.#{element.section_number}"
+  port.puts
+  << Weave the [[section]]'s lead (HTML) >>
+  port.puts
+  element.elements[start_index .. -1].each do |child|
+    weave_html_section_part child, fabric, port
+    port.puts
+  end
+  << Weave the section's top-level warnings, if any (HTML) >>
+  port.puts "</section>"
+
+<< Weave the [[section]]'s lead (HTML) >>:
+  port.print "<p>"
+  << Weave section's number and rubric (HTML) >>
+  subelement = element.elements[start_index]
+  warnings = nil
+  case subelement && subelement.type
+    when :paragraph then
+      port.print " "
+      htmlify subelement.content, port
+      start_index += 1
+    when :divert then
+      port.print " "
+      weave_html_chunk_header subelement, 'maui-divert',
+          port, tag: 'span'
+      warnings = subelement.warnings
+      start_index += 1
+  end
+  port.puts "</p>"
+  if warnings then
+    weave_html_warning_list warnings, port, inline: true
+  end
+
+<< Weave section's number and rubric (HTML) >>:
+  port.print "<b class='%s'>" %
+      (rubricated ? 'maui-rubric' : 'maui-section-number')
+  port.print "\u00A7#{element.section_number}."
+  if rubricated then
+    port.print " "
+    htmlify element.elements[start_index].content, port
+    start_index += 1
+  end
+  port.print "</b>"
+
+
+<< Other methods >>:
+  def weave_html_section_part element, fabric, port
+    case element.type
+    << [[weave_html_section_part]] rules >>
+    else
+      raise 'data structure error'
+    end
+    return
+  end
+
+
+<< [[weave_html_section_part]] rules >>:
+
+  when :paragraph then
+    port.print "<p>"
+    htmlify element.content, port
+    port.puts "</p>"
+
+
+  when :list then
+    weave_html_list element.items, port
+
+
+  when :divert then
+    weave_html_chunk_header element, 'maui-divert',
+        port
+    port.puts
+    weave_html_warning_list element.warnings, port,
+        inline: true
+
+
+  when :chunk, :diverted_chunk then
+    port.print "<div class='maui-chunk"
+    port.print " maui-initial-chunk" if element.initial
+    port.print " maui-final-chunk" if element.final
+    port.print "'>"
+    if element.type == :chunk then
+      weave_html_chunk_header element, 'maui-chunk-header',
+          port
+      port.puts
+    end
+    weave_html_chunk_body element, port
+    unless (element.warnings || []).empty? then
+      weave_html_warning_list element.warnings, port,
+          inline: true
+    end
+    if element.final then
+      port.print "<div class='maui-chunk-xref'>"
+      htmlify(
+          xref_chain(element, fabric, dash: "\u2013"),
+          port)
+      port.puts "</div>"
+    end
+    port.puts "</div>"
+
+
+  when :block then
+    port.print "<pre class='maui-block'>"
+    element.lines.each_with_index do |line, i|
+      port.puts unless i.zero?
+      port.print line.to_xml
+    end
+    port.puts "</pre>"
+
+
+As in the coloured text output, the table of content takes a
+general form of a tree.  However, there's a new feature: we're
+going to make each entry into a local link, either in the
+[[#T.foo]] form for titles or [[#S.foo]] form for sections.
+
+<< Other methods >>:
+  def weave_html_toc toc, port
+    if toc.length >= 2 then
+      port.puts "<h2>Contents</h2>"
+      port.puts
+      last_level = 0
+      # What level should the rubrics in the current
+      # (sub(sub))chapter appear at?
+      rubric_level = 1
+      toc.each do |entry|
+        if entry.type == :rubric then
+          level = rubric_level
+        else
+          level = entry.level
+          rubric_level = entry.level + 1
+        end
+        << Generate [[ul]]/[[li]] tags to match [[level]] >>
+        << Weave the TOC entry (HTML) >>
+        last_level = level
+      end
+      port.puts "</li></ul>" * last_level
+      port.puts
+    end
+    return
+  end
+
+<< Generate [[ul]]/[[li]] tags to match [[level]] >>:
+  if level > last_level then
+    raise 'assertion failed' \
+        unless level == last_level + 1
+    port.print "\n<ul><li>"
+  elsif level == last_level then
+    port.print "</li>\n<li>"
+  else
+    port.print "</li></ul>" * (last_level - level) +
+        "\n<li>"
+  end
+
+<< Weave the TOC entry (HTML) >>:
+  case entry.type
+  when :title then
+    port.print "#{entry.number}. "
+    port.print "<a href='#T.#{entry.number}'>"
+    htmlify entry.content, port
+    port.print "</a>"
+  when :rubric then
+    port.print "\u00A7#{entry.section_number}. "
+    port.print "<a href='#S.#{entry.section_number}'>"
+    htmlify entry.content, port
+    port.print "</a>"
+  else
+    raise 'assertion failed'
+  end
+
+<< Other methods >>:
+
+  def weave_html_list items, port
+    port.puts "<ul>"
+    items.each do |item|
+      port.print "<li>"
+      htmlify item.content, port
+      if item.sublist then
+        port.puts
+        weave_html_list item.sublist.items, port
+      end
+      unless (item.warnings || []).empty? then
+        port.puts
+        weave_html_warning_list item.warnings, port,
+            inline: true
+      end
+      port.puts "</li>"
+    end
+    port.puts "</ul>"
+    return
+  end
+
+
+  def weave_html_chunk_header element, cls, port, tag: 'div'
+    port.print "<#{tag} class='%s'>" % cls
+    port.print "&#xAB;"
+    if element.root_type then
+      port.print "<u>%s</u> " % element.root_type.to_xml
+    end
+    htmlify(
+        parse_markup(element.name, Fabricator::MF::LINK),
+        port)
+    port.print "&#xBB;:"
+    port.print "</#{tag}>"
+    # Note that we won't output a trailing linebreak here.
+    return
+  end
+
+
+  def weave_html_chunk_body element, port
+    port.print "<pre class='maui-chunk-body'>"
+    element.content.each do |node|
+      case node.type
+      when :verbatim then
+        port.print node.data.to_xml
+      when :newline then
+        port.puts
+      when :use then
+        << Weave the [[use]] node (HTML) >>
+      else raise 'data structure error'
+      end
+    end
+    port.puts "</pre>"
+    return
+  end
+
+<< Weave the [[use]] node (HTML) >>:
+  port.print "<span class='maui-transclude'>"
+  port.print "&#xAB;"
+  if node.clearindent then
+    port.print ".clearindent "
+  end
+  htmlify(
+      parse_markup(node.name, Fabricator::MF::LINK),
+      port)
+  if node.vertical_separation then
+    port.print " " + node.vertical_separation.to_xml
+  end
+  if node.postprocess then
+    port.print " " + node.postprocess.to_xml
+  end
+  port.print "&#xBB;"
+  port.print "</span>"
+
+
+* Displaying warnings in HTML.
+
+<< Weave the section's top-level warnings, if any (HTML) >>:
+  unless (element.warnings || []).empty? then
+    weave_html_warning_list element.warnings, port,
+        inline: true
+    port.puts
+  end
+
+<< Weave fabric's warnings (HTML) >>:
+  unless fabric.warnings.empty? then
+    port.puts "<h2>Warnings</h2>"
+    port.puts
+    weave_html_warning_list fabric.warnings, port
+    port.puts
+  end
+
+<< Other methods >>:
+  def weave_html_warning_list list, port, inline: false
+    if list and !list.empty? then
+      port.print "<ul class='maui-warnings"
+      port.print " maui-inline-warnings" if inline
+      port.puts "'>"
+      list.each do |warning|
+        port.print "<li"
+        port.print " id='W.#{warning.number}'" if inline
+        port.print ">"
+        port.print "!!! " if inline
+        if !inline and warning.inline then
+          port.print "<a href='#W.%i'>" % warning.number
+        end
+        port.print "<tt>%s</tt>" %
+            format_location(warning.loc).to_xml
+        port.print ": " + warning.message
+        port.print "</a>" if !inline and warning.inline
+        port.puts "</li>"
+      end
+      port.puts "</ul>"
+    end
+    return
+  end
+
+
+* Conversion of a horizontal markup tree to HTML.
+
+<< Other methods >>:
+  def htmlify nodes, port
+    nodes.each do |node|
+      case node.type
+      << [[case]] clauses of [[htmlify]] >>
+      else
+        raise 'invalid node type'
+      end
+    end
+    return
+  end
+
+
+<< [[case]] clauses of [[htmlify]] >>:
+
+  when :plain then
+    port.print node.data.to_xml
+
+
+  when :space then
+    port.print((node.data || ' ').to_xml)
+
+
+  when :nbsp then
+    port.print '&nbsp;'
+
+
+  when :monospace, :bold, :italic, :underscore then
+    html_tag = Fabricator::MARKUP2HTML[node.type]
+    port.print "<%s>" % html_tag
+    htmlify node.content, port
+    port.print "</%s>" % html_tag
+
+
+  when :mention_chunk then
+    port.print "<span class='maui-chunk-mention'>\u00AB"
+    htmlify(
+        parse_markup(node.name, Fabricator::MF::LINK),
+        port)
+    port.print "\u00BB</span>"
+
+
+  when :link then
+    port.print "<a href='#{node.target.to_xml}'>"
+    htmlify node.content, port
+    port.print "</a>"
+
+
+<< in [[Fabricator]] >>:
+  MARKUP2HTML = {
+    :monospace => 'code',
+    :bold => 'b',
+    :italic => 'i',
+    :underscore => 'u',
+  }
+
+
+* XML escaping.
+
+<< Outer definitions >>:
+  class ::String
+    # Local enclosed variable for [[#to_xml]]
+    char_entities = {
+      '&' => '&amp;',
+      '<' => '&lt;',
+      '>' => '&gt;',
+      '"' => '&quot;',
+      "'" => '&apos;',
+    }.freeze
+
+    define_method :to_xml do ||
+      return gsub(/[&<>'"]/){char_entities[$&]}
+    end
+  end
+
+
+* The built-in stylesheet.
+
+Our built-in stylesheet has been written in SCSS.  Maui runs it
+through Sass to get plain CSS at tangling time.
+
+<< maui.scss >>:
+  /**** Fonts ****/
+  << SCSS [[@import]] clauses for Google fonts >>
+
+  // Dimensions
+  << SCSS dimensions >>
+
+  // Colours
+  << SCSS colours >>
+
+  /**** Rules ****/
+  << SCSS rules >>
+
+
+Maui's HTML-woven output uses two font families: a 'plain text'
+one for most of the narrative and a 'monospaced' one for actual
+code.  We have chosen Roboto for the former and Cousine for the
+latter.
+
+<< SCSS [[@import]] clauses for Google fonts >>:
+  $fontsrc: "http://fonts.googleapis.com/css?family=";
+  @import url("#{$fontsrc}Roboto");
+  @import url("#{$fontsrc}Cousine");
+
+<< SCSS rules >>:
+  body, .maui-transclude {
+    font-family: "Roboto", sans-serif;
+  }
+
+  pre, tt, code {
+    font-family: "Cousine", monospace;
+  }
+
+
+The main text for Maui's output will be black on white.
+
+<< SCSS colours >>:
+  $main-foreground: black;
+  $main-background: white;
+
+<< SCSS rules >>:
+  body {
+    colour: $main-foreground;
+    background: $main-background;
+  }
+
+
+Furthermore, when monospaced text appears in narrative (as
+contrary to code chunks), we'll dye it green for extra
+highlighting.
+
+<< SCSS colours >>:
+  $narrative-monospaced-colour: forestgreen;
+
+<< SCSS rules >>:
+  tt, code {
+    color: $narrative-monospaced-colour;
+  }
+
+
+Inline warnings we'll paint bright red for high visibility.
+(Note that the class' name is in plural --- a single HTML
+element can contain multiple warnings.)
+
+<< SCSS colours >>:
+  $inline-warning-colour: red;
+
+<< SCSS rules >>:
+  .maui-inline-warnings {
+    color: $inline-warning-colour;
+  }
+
+
+The rules so far have a conflict.  What happens when a [[tt]]
+element appears inside an inline warning?  Left alone, they
+would become green.  However, in this context, we'll want them
+red.
+
+<< SCSS rules >>:
+  .maui-warnings tt {
+    color: inherit;
+  }
+
+
+By medieval tradition, rubrics should be red.  We'll use a
+slightly darker shade and go with what CSS calls [[crimson]]
+instead of [[red]].
+
+<< SCSS colours >>:
+  $rubric-colour: crimson;
+
+<< SCSS rules >>:
+  .maui-rubric {
+    color: $rubric-colour;
+  }
+
+
+Maui outputs warnings in unordered lists, but we don't actually
+want bullets in front of them.
+
+<< SCSS rules >>:
+  ul.maui-warnings {
+    padding-left: 0;
+    > li {
+      list-style: none;
+    }
+  }
+
+
+Let us now proceed to styling the code chunks themselves.
+First, the rules:
+
+<< SCSS colours >>:
+  $chunk-rule-colour: #cccccc;
+
+<< SCSS dimensions >>:
+  $chunk-body-indent: 20px;
+  $chunk-rule-thickness: 2px;
+  $chunk-rule-separation: 5px;
+  $final-chunk-rule-length: 40px;
+
+<< SCSS rules >>:
+  .maui-chunk-body {
+    margin-left: $chunk-body-indent;
+    border-left: $chunk-rule-thickness solid $chunk-rule-colour;
+    padding-left: $chunk-rule-separation;
+  }
+
+  .maui-initial-chunk>.maui-chunk-body:before {
+    content: "";
+    display: block;
+    width: $chunk-body-indent + $chunk-rule-thickness;
+    border-top: solid $chunk-rule-thickness $chunk-rule-colour;
+    margin-left: -($chunk-body-indent + $chunk-rule-thickness +
+        $chunk-rule-separation);
+  }
+
+  .maui-final-chunk>.maui-chunk-body:after {
+    content: "";
+    display: block;
+    margin-left:
+        -($chunk-rule-thickness + $chunk-rule-separation);
+    width: $final-chunk-rule-length;
+    border-bottom:
+        solid $chunk-rule-thickness $chunk-rule-colour;
+  }
+
+
+A chunk's body shall have zero vertical margins; its containing
+[[maui-chunk]] will take care of vertical separation.  This also
+applies to the block of warnings inside a chunk.
+
+<< SCSS dimensions >>:
+  $paragraph-sep: 16px;
+
+<< SCSS rules >>:
+
+  .maui-chunk-body, .maui-chunk>.maui-warnings {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .maui-chunk {
+    margin-top: $paragraph-sep;
+    margin-bottom: $paragraph-sep;
+  }
+
+
+The cross-references following (final) chunks are smaller and in
+italic for reduced obtrusivity, and they align with the chunk's
+vertical rule but are deliberately slightly off from aligning
+with the code inside the chunk.
+
+  .maui-chunk-xref {
+    font-size: small;
+    font-style: italic;
+    margin-left:
+        $chunk-body-indent + $chunk-rule-thickness;
+  }
+
+
+Finally, this rule tells pre-HTML5 browsers that [[section]] is
+[[div]]-like, not [[span]]-like:
+
+<< SCSS rules >>:
+  /* Backwards compatibility with pre-HTML5 browsers */
+  section {
+    display: block;
+  }
+
+
+== The skeletal composition of the library
+
+<< .file lib/mau/fabricator.rb >>:
+  # encoding: UTF-8
+
+  require 'ostruct'
+  require 'rbconfig'
+  require 'set'
+  require 'stringio'
+
+  << Outer definitions >>
+
+  module Fabricator
+    << in [[Fabricator]] >>
+  end
+
+  class << Fabricator
+    << Other methods >>
+  end
+
+
+== The command line interface
+
+<< .script bin/maui >>:
+  #! /usr/bin/ruby -rubygems
+  # encoding: UTF-8
+
+  require 'getoptlong'
+  require 'mau/fabricator'
+
+  $0 = 'maui' # for [[GetoptLong]] error reporting
+  << Parse command line >>
+
+  fabric = open $cmdline.fabric_filename, 'r' do |port|
+    Fabricator.load_fabric port,
+        chunk_size_limit: $cmdline.chunk_size_limit
+  end
+
+  << Set up the [[writeout_plan]] >>
+
+  Fabricator.show_warnings fabric
+
+  << Execute the [[writeout_plan]] >>
+
+
+<< Set up the [[writeout_plan]] >>:
+  writeout_plan = {}
+  << Plan to write out tangling results >>
+  << Plan to write out specially generated files >>
+
+
+<< Plan to write out tangling results >>:
+  fabric.tangles.each_value do |results|
+    writeout_plan[results.filename] =
+        Fabricator.plan_to_write_out(results)
+  end
+
+
+<< Plan to write out specially generated files >>:
+  [
+    << Special out-writables >>
+  ].each do |special|
+    filename = File.basename($cmdline.fabric_filename).
+        sub(/(\.fab)?$/i, special.suffix)
+    if writeout_plan.has_key? filename then
+      number = fabric.warnings.length + 1
+      first_header = fabric.chunks_by_name[filename].
+          headers.first
+      warning = OpenStruct.new(
+        loc: first_header.header_loc,
+        message: "name clash with #{special.description}",
+        number: number,
+        inline: true,
+      )
+      fabric.warnings.push warning
+      (first_header.warnings ||= []).push warning
+      # For ordering purposes, we'll delete the old value before
+      # adding the new one at the same key.
+      writeout_plan.delete filename
+    end
+    writeout_plan[filename] = special.generator
+  end
+
+
+<< Special out-writables >>:
+
+  OpenStruct.new(
+    suffix: '.html',
+    description: 'HTML weaving',
+    generator: proc do |filename|
+      << Weave [[fabric]] (HTML) >>
+    end,
+  ),
+
+
+  OpenStruct.new(
+    suffix: '.ctxt',
+    description: 'ctxt weaving',
+    generator: proc do |filename|
+      << Weave [[fabric]] (ctxt) >>
+    end,
+  ),
+
+
+<< Execute the [[writeout_plan]] >>:
+  exit_code = 0
+  (ARGV.empty? ? writeout_plan.keys : ARGV.uniq).
+      each do |filename|
+    if thunk = writeout_plan[filename] then
+      path = filename.split '/'
+      (0 .. path.length - 2).each do |i|
+        dirname = path[0 .. i].join '/'
+        begin
+          Dir.mkdir dirname
+          puts "Created directory #{dirname}"
+        rescue Errno::EEXIST
+        end
+      end
+      thunk.call filename
+    else
+      $stderr.puts "maui: #{filename}: unknown output file"
+      exit_code = 1
+    end
+  end
+  exit exit_code
+
+
+== Rubygem metadata
+
+<< .file maui.gemspec >>:
+  # This file is tangled from [[maui.fab]].
+  # Please do not edit directly.
+
+  Gem::Specification.new do |s|
+    s.name = 'maui'
+    s.version = '<< VERSION >>'
+    s.date = '2014-09-23'
+    s.homepage = 'https://github.com/digwuren/maui'
+    s.summary = 'A wiki-style literate programming engine'
+    s.author = 'Andres Soolo'
+    s.email = 'dig@mirky.net'
+    s.files = File.read('Manifest.txt').split(/\n/)
+    s.executables << 'maui'
+    s.license = 'GPL-3'
+    s.description = <<EOD
+  Fabricator is a literate programming engine with wiki-like
+  notation.  Mau is a PIM-oriented wiki engine built around
+  Fabricator.  This gem contains Maui, the Mau Independent
+  Fabricator, allowing Fabricator to be used via a command line
+  interface or via the Ruby API without a need to employ a full
+  installation of Mau.
+  EOD
+    s.has_rdoc = false
+  end
+
+<< .file Manifest.txt >>:
+  GPL-3
+  Makefile
+  Manifest.txt
+  README.fab
+  README.html
+  bin/maui
+  lib/mau/fabricator.rb
+  maui.fab
+  maui.gemspec
+
+
+* The command line parser.
+
+<< Parse command line >>:
+  begin
+    << Parse command line options >>
+    << Parse command line arguments >>
+  rescue GetoptLong::Error => e
+    # no need to display; it has already been reported
+    exit 1
+  end
+
+<< Parse command line options >>:
+  $cmdline = OpenStruct.new
+  << Initialise [[$cmdline]] .dense >>
+
+  GetoptLong.new(
+      << Option declarations >>
+      ).each do |opt, arg|
+    case opt
+    << Command line option handlers >>
+    else
+      raise 'assertion failed'
+    end
+  end
+
+
+<< Option summary >>:
+  --output-width=N
+      Word-wrap the woven ctxt at this width.
+
+<< Option declarations >>:
+  ['--output-width', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.output_width = 80
+
+<< Command line option handlers >>:
+  when '--output-width' then
+    unless arg =~ /\A\d+\Z/ then
+      $stderr.puts "maui: --output-width requires a number"
+      exit 1
+    end
+    $cmdline.output_width = arg.to_i
+
+
+Chunks longer than this many lines will be dubbed 'long' by a
+warning.  If longer than twice this many lines, 'very long'.
+Zero disables this check.
+
+<< Option summary >>:
+  --chunk-size-limit=LINE-COUNT
+      Consider chunks longer than this many lines warnably long.
+      Chunks longer than twice this many lines will be
+      considered warnably very long.
+
+<< Option declarations >>:
+  ['--chunk-size-limit', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.chunk_size_limit = 24
+
+<< Command line option handlers >>:
+  when '--chunk-size-limit' then
+    unless arg =~ /\A\d+\Z/ then
+      $stderr.puts "maui: --chunk-size-limit " +
+          "requires a number"
+      exit 1
+    end
+    arg = arg.to_i
+    arg = nil if arg <= 0
+    $cmdline.chunk_size_limit = arg
+
+
+For HTML output, the [[--link-css]] option permits the user to
+specify one or more stylesheets that should be applied to the
+result.
+
+<< Option summary >>:
+  --link-css=URL
+      Specify a stylesheet to be applied to the woven HTML.
+      Availability of the target CSS to the browser and the
+      relativity of the link are user's responsibility.  If used
+      multiple times, all these links will be used, and their
+      order is preserved.
+
+      Usage of this option suppresses including the default,
+      built-in stylesheet in the output.
+
+<< Option declarations >>:
+  ['--link-css', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.link_css = []
+
+<< Command line option handlers >>:
+  when '--link-css' then
+    $cmdline.link_css.push arg
+
+
+<< Parse command line arguments >>:
+  if ARGV.empty? then
+    $stderr.puts "maui: no fabric filename given"
+    exit 1
+  end
+  $cmdline.fabric_filename = ARGV.shift
+
+
+<< Command line option handlers >>:
+  when '--unicode-boxes' then
+    $cmdline.pseudographics =
+        Fabricator::UNICODE_PSEUDOGRAPHICS
+
+<< Option declarations >>:
+  ['--unicode-boxes', GetoptLong::NO_ARGUMENT],
+
+
+<< Command line option handlers >>:
+  when '--ascii-boxes' then
+    $cmdline.pseudographics = Fabricator::ASCII_PSEUDOGRAPHICS
+
+<< Option declarations >>:
+  ['--ascii-boxes', GetoptLong::NO_ARGUMENT],
+
+
+Finally, the GNU Coding Standards recommend implementing
+[[--help]] and [[--version]].
+
+<< Option summary >>:
+  --help
+      Print this usage.
+
+<< Option declarations >>:
+  ['--help', GetoptLong::NO_ARGUMENT],
+
+<< Command line option handlers >>:
+  when '--help' then
+    puts "<< .clearindent Usage help >>"
+    puts
+    exit 0
+
+<< Usage help >>:
+  Usage: maui [options] fabric-file
+
+  Process the given Mau fabric, tangle its files and weave its
+  narrative into both HTML and coloured text.
+
+  << Option summary >>
+
+  Report bugs to: <dig@mirky.net>
+
+
+<< Option summary >>:
+  --version
+      Show version data.
+
+<< Option declarations >>:
+  ['--version', GetoptLong::NO_ARGUMENT],
+
+<< Command line option handlers >>:
+  when '--version' then
+    puts "<< .clearindent [[--version]] output >>"
+    puts
+    exit 0
+
+<< [[--version]] output >>:
+  << IDENT >>
+  Copyright (C) 2003-2014 Andres Soolo
+  Copyright (C) 2013-2014 Knitten Development Ltd.
+
+  Licensed under GPLv3+: GNU GPL version 3 or later
+    <http://gnu.org/licenses/gpl.html>
+
+  This is free software: you are free to change and
+  redistribute it.
+
+  There is NO WARRANTY, to the extent permitted by law.
+

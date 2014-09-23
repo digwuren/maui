@@ -1,0 +1,200 @@
+#! /usr/bin/ruby -rubygems
+# encoding: UTF-8
+
+require 'getoptlong'
+require 'mau/fabricator'
+
+$0 = 'maui' # for [[GetoptLong]] error reporting
+begin
+  $cmdline = OpenStruct.new
+  $cmdline.pseudographics = Fabricator::UNICODE_PSEUDOGRAPHICS
+  $cmdline.output_width = 80
+  $cmdline.chunk_size_limit = 24
+  $cmdline.link_css = []
+
+  GetoptLong.new(
+      ['--output-width', GetoptLong::REQUIRED_ARGUMENT],
+
+      ['--chunk-size-limit', GetoptLong::REQUIRED_ARGUMENT],
+
+      ['--link-css', GetoptLong::REQUIRED_ARGUMENT],
+
+      ['--unicode-boxes', GetoptLong::NO_ARGUMENT],
+
+      ['--ascii-boxes', GetoptLong::NO_ARGUMENT],
+
+      ['--help', GetoptLong::NO_ARGUMENT],
+
+      ['--version', GetoptLong::NO_ARGUMENT],
+      ).each do |opt, arg|
+    case opt
+    when '--output-width' then
+      unless arg =~ /\A\d+\Z/ then
+        $stderr.puts "maui: --output-width requires a number"
+        exit 1
+      end
+      $cmdline.output_width = arg.to_i
+
+    when '--chunk-size-limit' then
+      unless arg =~ /\A\d+\Z/ then
+        $stderr.puts "maui: --chunk-size-limit " +
+            "requires a number"
+        exit 1
+      end
+      arg = arg.to_i
+      arg = nil if arg <= 0
+      $cmdline.chunk_size_limit = arg
+
+    when '--link-css' then
+      $cmdline.link_css.push arg
+
+    when '--unicode-boxes' then
+      $cmdline.pseudographics =
+          Fabricator::UNICODE_PSEUDOGRAPHICS
+
+    when '--ascii-boxes' then
+      $cmdline.pseudographics = Fabricator::ASCII_PSEUDOGRAPHICS
+
+    when '--help' then
+      puts "Usage: maui [options] fabric-file
+
+Process the given Mau fabric, tangle its files and weave its
+narrative into both HTML and coloured text.
+
+--output-width=N
+    Word-wrap the woven ctxt at this width.
+
+--chunk-size-limit=LINE-COUNT
+    Consider chunks longer than this many lines warnably long.
+    Chunks longer than twice this many lines will be
+    considered warnably very long.
+
+--link-css=URL
+    Specify a stylesheet to be applied to the woven HTML.
+    Availability of the target CSS to the browser and the
+    relativity of the link are user's responsibility.  If used
+    multiple times, all these links will be used, and their
+    order is preserved.
+
+    Usage of this option suppresses including the default,
+    built-in stylesheet in the output.
+
+--help
+    Print this usage.
+
+--version
+    Show version data.
+
+Report bugs to: <dig@mirky.net>"
+      puts
+      exit 0
+
+    when '--version' then
+      puts "Mau Independent Fabricator 3.1.0
+Copyright (C) 2003-2014 Andres Soolo
+Copyright (C) 2013-2014 Knitten Development Ltd.
+
+Licensed under GPLv3+: GNU GPL version 3 or later
+  <http://gnu.org/licenses/gpl.html>
+
+This is free software: you are free to change and
+redistribute it.
+
+There is NO WARRANTY, to the extent permitted by law."
+      puts
+      exit 0
+    else
+      raise 'assertion failed'
+    end
+  end
+  if ARGV.empty? then
+    $stderr.puts "maui: no fabric filename given"
+    exit 1
+  end
+  $cmdline.fabric_filename = ARGV.shift
+rescue GetoptLong::Error => e
+  # no need to display; it has already been reported
+  exit 1
+end
+
+fabric = open $cmdline.fabric_filename, 'r' do |port|
+  Fabricator.load_fabric port,
+      chunk_size_limit: $cmdline.chunk_size_limit
+end
+
+writeout_plan = {}
+fabric.tangles.each_value do |results|
+  writeout_plan[results.filename] =
+      Fabricator.plan_to_write_out(results)
+end
+[
+  OpenStruct.new(
+    suffix: '.html',
+    description: 'HTML weaving',
+    generator: proc do |filename|
+      open filename, 'w' do |port|
+        port.set_encoding 'utf-8'
+        Fabricator.weave_html fabric, port,
+            title: $cmdline.fabric_filename,
+            link_css: $cmdline.link_css
+      end
+      puts "Weaved #{filename}"
+    end,
+  ),
+
+  OpenStruct.new(
+    suffix: '.ctxt',
+    description: 'ctxt weaving',
+    generator: proc do |filename|
+      open filename, 'w' do |port|
+        Fabricator.weave_ctxt fabric, port,
+            width: $cmdline.output_width,
+            pseudographics: $cmdline.pseudographics
+      end
+      puts "Weaved #{filename}"
+    end,
+  ),
+].each do |special|
+  filename = File.basename($cmdline.fabric_filename).
+      sub(/(\.fab)?$/i, special.suffix)
+  if writeout_plan.has_key? filename then
+    number = fabric.warnings.length + 1
+    first_header = fabric.chunks_by_name[filename].
+        headers.first
+    warning = OpenStruct.new(
+      loc: first_header.header_loc,
+      message: "name clash with #{special.description}",
+      number: number,
+      inline: true,
+    )
+    fabric.warnings.push warning
+    (first_header.warnings ||= []).push warning
+    # For ordering purposes, we'll delete the old value before
+    # adding the new one at the same key.
+    writeout_plan.delete filename
+  end
+  writeout_plan[filename] = special.generator
+end
+
+Fabricator.show_warnings fabric
+
+exit_code = 0
+(ARGV.empty? ? writeout_plan.keys : ARGV.uniq).
+    each do |filename|
+  if thunk = writeout_plan[filename] then
+    path = filename.split '/'
+    (0 .. path.length - 2).each do |i|
+      dirname = path[0 .. i].join '/'
+      begin
+        Dir.mkdir dirname
+        puts "Created directory #{dirname}"
+      rescue Errno::EEXIST
+      end
+    end
+    thunk.call filename
+  else
+    $stderr.puts "maui: #{filename}: unknown output file"
+    exit_code = 1
+  end
+end
+exit exit_code

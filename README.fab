@@ -1,0 +1,222 @@
+This is Maui, the Mau Independent Fabricator.
+
+Fabricator is a literate programming engine with an unobtrusive,
+wiki-like syntax.  Modern Fabricator lives normally inside Mau,
+a PIM-oriented wiki engine, but Maui makes it available through
+a command line interface or a Ruby API without requiring a full
+Mau installation.
+
+
+== Inline markup
+
+Fabricator's markup can be viewed as a particular wiki markup
+with literate programming extensions.  Here are the inline
+markup elements:
+
+- *Bold* text is marked by surrounding stars: [[*foo*]]
+
+- /Italic/ text is marked by surrounding slashes: [[/foo/]]
+
+- _Underlined_ text is marked by surrounding underscores:
+  [[_foo_]]
+
+- <Links|http://www.techterms.com/definition/hyperlink> are
+  marked by surrounding brokets: [[<link face|URL>]].  Note that
+  the order of the aspects of the link matches that commonly
+  used in paper encyclopedias rather than that used HTML.
+
+
+== Narrative structure
+
+/Paragraphs/ are separated from each other and other input by
+blank lines.
+
+
+Two adjacent blank lines separate /sections/.
+
+
+An indented block of text will be treated as a piece of /sample
+code/, like this:
+
+  These lines were indented.  Note that a block can contain
+  blank lines,
+
+  but only one at a time.  Two consecutive blank lines would be
+  parsed as a section break, and the new section would contain a
+  new block.
+
+
+  Like this.
+
+
+Items in a /bullet list/ are marked by leading dash and space,
+and can be nested:
+
+  - 1
+    - 1.1
+    - 1.2
+      - 1.2.1
+  - 2
+    
+will produce:
+
+- 1
+  - 1.1
+  - 1.2
+    - 1.2.1
+- 2
+  
+
+A document can be divided into /chapters/, /subchapters/, and
+/subsubchapters/ by /titles/.  A title should be separated with
+preceding and following with a blank line and is marked,
+correspondingly, with a leading [[==]], [[===]], or [[====]]
+together with a following separating space.
+
+Furthermore, the document structure can be presented with the
+use of /rubrics/, which correspond to Knuth WEB's /starred
+chunks/.  A rubric is marked similarly to a title except with a
+leading [[*]] instead of equal signs.  The star must be
+separated from the rubric's name with a space lest the parser
+think it's just a bold text marker.  Because rubrics are, if a
+paragraph follows, embedded into the paragraph by Fabricator's
+weaving subsystem, it's a good idea to formulate rubric names as
+full sentences, together with a trailing period or other
+punctuation.
+
+
+== Chunks and transclusion
+
+Each section can contain one or more /chunks/, with the
+following notation:
+
+  << Chunk name >>:
+    Chunk content, possibly on many lines,
+    including single blank lines.
+
+Note that the declaration must be unindented, and the chunk's
+content must be indented.  
+
+Some programming languages make use of [[<<]] and [[>>]] for
+other purposes.  In order to make the plain Fabricator input
+easy to read, no escaping for double brokets is provided.
+You'll have to structure the input in such a way as to avoid
+false transclusion references.
+
+
+A chunk can be marked as a /root/ chunk by prepending a
+[[.file]] or [[.script]] to directive, like this:
+
+  << .script hello.rb >>:
+    #! /usr/bin/ruby -rubygems
+
+    puts "<< Friendly, familiar greeting >>"
+
+
+The (mechanical) power of literate programming comes from
+/transclusion/, which is notated by adding the target chunk's
+name into another chunk, as seen above.
+
+  << Friendly, familiar greeting >>:
+    Hello, world!
+
+It is permitted to define multiple chunks with the same name.
+When the name is referred in a transclusion, all these chunks
+will then be processed, separated with a single blank line.
+In cases when the separating blank line is undesirable, it can
+be suppressed by the [[.dense]] directive:
+
+  @cat_names = qw(
+    << The names of cats .dense >>
+  )
+
+
+Normally, Fabricator obeys indentation in a nested manner.  In
+certain cases --- most importantly, the 'here-documents' in
+shell scripts and languages borrowing their notation ---, you
+may want to suppress this.  This is achieved by the
+[[.clearindent]] directive:
+
+  << ... >>:
+    module Beast
+      DATA = {
+        :cows => << .clearindent Cows heredoc >>
+      }
+
+  << Cows heredoc >>:
+    << 'END-OF-COWS',
+    << Cows >>
+    END-OF-COWS
+
+The extra wrapper, [[<< Cows heredoc >>]], serves two purposes
+in this example:
+
+- It ensures that even the first line of the main transcludee,
+  [[<< Cows >>]], follows a linebreak within the effect zone of
+  [[.clearindent]].  This is necessary because the directive can
+  only clear indentations that exist, and without a linebreak
+  there is no indentation to suppress.
+
+- It also ensures that the terminating [[END-OF-COWS]] is
+  flushed left together with the cows' data, for otherwise the
+  target language might not recognise it as the here-doc's
+  terminator.
+
+
+It's often useful to intersperse many chunks of the same name
+with a narrative explaining the actions taken.  Mau facilitates
+this via /diversions/.  The notation for a diversion is a chunk
+header without the chunk; the subsequent indented blocks ---
+which would otherwise be interpreted as example code --- are
+then treated as chunks of this name.  A diversion is effect
+until another diversion replaces it or until a title begins a
+new narrative unit of the document.  Note that a rubric does not
+cancel a diversion's effect.
+
+
+== Postprocessing
+
+Fabricator provides experimental support for /postprocessing/
+text constructed using the standard LP transclusion mechanism.
+The notation for this is subject to change in future versions,
+and the available postprocessors are environment-dependent.
+
+In the current version, Maui defines two postprocessors related
+to <Sass|http://sass-lang.com>, the preprocessor for CSS.  These
+are [[|scss->css]] and [[|sass->css]], and they are invoked by
+attaching their names to the transclusion notation like this:
+
+  << ... >>:
+    ...
+    puts << EOS
+      Content-type: text/css; charset=UTF-8
+
+      << stylesheet.sass |sass->css >>
+    EOS
+    ...
+
+  << stylesheet.sass >>:
+    .footer
+      font-size: smaller
+
+    ...
+
+== Invocation
+
+Last but not least, the way to run [[maui]] goes like this:
+
+  $ maui foo.fab
+
+By default, this outputs warnings about probable problems with
+the input to the standard error stream and both weaves the input
+into [[foo.html]] and [[foo.ctxt]] as well as tangles all the
+defined roots.  It's also possible to specify that only some of
+these files are to be written out, like this:
+
+  $ maui foo.fab hello.c foo.html
+
+Note, however, that Fabricator necessarily tangles everything
+(into core memory) defined in the [[fab]] file while processing
+it, so such a command will not take significantly less runtime
+than a general [[maui]] command.  It only suppresses writing the
+unwanted results as files.
