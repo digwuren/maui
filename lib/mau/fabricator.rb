@@ -1950,14 +1950,16 @@ section {
     return
   end
 
-  def weave_html_list items, port
+  def weave_html_list items, port, link_processor: nil
     port.puts "<ul>"
     items.each do |item|
       port.print "<li>"
-      htmlify item.content, port
+      htmlify item.content, port,
+          link_processor: link_processor
       if item.sublist then
         port.puts
-        weave_html_list item.sublist.items, port
+        weave_html_list item.sublist.items, port,
+            link_processor: link_processor
       end
       unless (item.warnings || []).empty? then
         port.puts
