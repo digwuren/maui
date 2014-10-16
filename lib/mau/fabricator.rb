@@ -1775,7 +1775,8 @@ section {
     return
   end
 
-  def weave_html_presentation fabric, port
+  def weave_html_presentation fabric, port,
+      link_processor: nil
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
@@ -1809,7 +1810,8 @@ section {
         port.print "\u00A7#{element.section_number}."
         if rubricated then
           port.print " "
-          htmlify element.elements[start_index].content, port
+          htmlify element.elements[start_index].content, port,
+              link_processor: link_processor
           start_index += 1
         end
         port.print "</b>"
@@ -1818,7 +1820,8 @@ section {
         case subelement && subelement.type
           when :paragraph then
             port.print " "
-            htmlify subelement.content, port
+            htmlify subelement.content, port,
+                link_processor: link_processor
             start_index += 1
           when :divert then
             port.print " "
@@ -1833,7 +1836,8 @@ section {
         end
         port.puts
         element.elements[start_index .. -1].each do |child|
-          weave_html_section_part child, fabric, port
+          weave_html_section_part child, fabric, port,
+              link_processor: link_processor
           port.puts
         end
         unless (element.warnings || []).empty? then
