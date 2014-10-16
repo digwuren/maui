@@ -2609,7 +2609,7 @@ conventions.
     port.puts
     port.puts "<h1>#{title.to_xml}</h1>"
     << Weave fabric's warnings (HTML) >>
-    << Weave presentation (HTML) >>
+    weave_html_presentation fabric, port
     port.puts '</html>'
     port.puts '</body>'
     port.puts '</html>'
@@ -2633,17 +2633,20 @@ conventions.
   end
   port.puts '</head>'
 
-<< Weave presentation (HTML) >>:
-  toc_generated = false
-  fabric.presentation.each do |element|
-    case element.type
-    when :title then
-      << Weave the [[title]] node (HTML) >>
-    when :section then
-      << Weave the [[section]] (HTML) >>
-    else raise 'data structure error'
+<< Other methods >>:
+  def weave_html_presentation fabric, port
+    toc_generated = false
+    fabric.presentation.each do |element|
+      case element.type
+      when :title then
+        << Weave the [[title]] node (HTML) >>
+      when :section then
+        << Weave the [[section]] (HTML) >>
+      else raise 'data structure error'
+      end
+      port.puts
     end
-    port.puts
+    return
   end
 
 << Weave the [[title]] node (HTML) >>:
@@ -2959,7 +2962,7 @@ going to make each entry into a local link, either in the
 * Conversion of a horizontal markup tree to HTML.
 
 << Other methods >>:
-  def htmlify nodes, port
+  def htmlify nodes, port, link_processor: nil
     nodes.each do |node|
       case node.type
       << [[case]] clauses of [[htmlify]] >>
@@ -2988,7 +2991,8 @@ going to make each entry into a local link, either in the
   when :monospace, :bold, :italic, :underscore then
     html_tag = Fabricator::MARKUP2HTML[node.type]
     port.print "<%s>" % html_tag
-    htmlify node.content, port
+    htmlify node.content, port,
+        link_processor: link_processor
     port.print "</%s>" % html_tag
 
 
@@ -2996,13 +3000,25 @@ going to make each entry into a local link, either in the
     port.print "<span class='maui-chunk-mention'>\u00AB"
     htmlify(
         parse_markup(node.name, Fabricator::MF::LINK),
-        port)
+        port,
+        link_processor: link_processor)
     port.print "\u00BB</span>"
 
 
   when :link then
-    port.print "<a href='#{node.target.to_xml}'>"
-    htmlify node.content, port
+    target = node.target
+    if link_processor then
+      target, *classes = link_processor.call target
+    else
+      classes = []
+    end
+    port.print "<a href='#{target.to_xml}'"
+    unless classes.empty? then
+      port.print " class='#{classes.join(' ').to_xml}'"
+    end
+    port.print ">"
+    htmlify node.content, port,
+        link_processor: link_processor
     port.print "</a>"
 
 
@@ -3217,6 +3233,15 @@ with the code inside the chunk.
     font-style: italic;
     margin-left:
         $chunk-body-indent + $chunk-rule-thickness;
+  }
+
+
+We'll apply the same left indentation to sample code blocks as
+to chunks, except without the running vertical rule.
+
+  .maui-block {
+    margin-left: $chunk-body-indent + $chunk-rule-thickness +
+            $chunk-rule-separation;
   }
 
 

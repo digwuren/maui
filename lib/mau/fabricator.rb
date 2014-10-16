@@ -1745,6 +1745,9 @@ ul.maui-warnings {
   font-style: italic;
   margin-left: 22px; }
 
+.maui-block {
+  margin-left: 27px; }
+
 /* Backwards compatibility with pre-HTML5 browsers */
 section {
   display: block; }'
@@ -1765,6 +1768,14 @@ section {
       weave_html_warning_list fabric.warnings, port
       port.puts
     end
+    weave_html_presentation fabric, port
+    port.puts '</html>'
+    port.puts '</body>'
+    port.puts '</html>'
+    return
+  end
+
+  def weave_html_presentation fabric, port
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
@@ -1835,9 +1846,6 @@ section {
       end
       port.puts
     end
-    port.puts '</html>'
-    port.puts '</body>'
-    port.puts '</html>'
     return
   end
 
@@ -2033,7 +2041,7 @@ section {
     return
   end
 
-  def htmlify nodes, port
+  def htmlify nodes, port, link_processor: nil
     nodes.each do |node|
       case node.type
       when :plain then
@@ -2048,19 +2056,32 @@ section {
       when :monospace, :bold, :italic, :underscore then
         html_tag = Fabricator::MARKUP2HTML[node.type]
         port.print "<%s>" % html_tag
-        htmlify node.content, port
+        htmlify node.content, port,
+            link_processor: link_processor
         port.print "</%s>" % html_tag
 
       when :mention_chunk then
         port.print "<span class='maui-chunk-mention'>\u00AB"
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
-            port)
+            port,
+            link_processor: link_processor)
         port.print "\u00BB</span>"
 
       when :link then
-        port.print "<a href='#{node.target.to_xml}'>"
-        htmlify node.content, port
+        target = node.target
+        if link_processor then
+          target, *classes = link_processor.call target
+        else
+          classes = []
+        end
+        port.print "<a href='#{target.to_xml}'"
+        unless classes.empty? then
+          port.print " class='#{classes.join(' ').to_xml}'"
+        end
+        port.print ">"
+        htmlify node.content, port,
+            link_processor: link_processor
         port.print "</a>"
       else
         raise 'invalid node type'

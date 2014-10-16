@@ -67,6 +67,9 @@ ul.maui-warnings {
   font-style: italic;
   margin-left: 22px; }
 
+.maui-block {
+  margin-left: 27px; }
+
 /* Backwards compatibility with pre-HTML5 browsers */
 section {
   display: block; }
@@ -190,18 +193,20 @@ new block.</pre>
 
 <p>Note that the declaration must be unindented, and the chunk&apos;s content must be indented.</p>
 
-<p>Some programming languages make use of <code>&lt;&lt;</code> and <code>&gt;&gt;</code> for other purposes. In order to make the plain Fabricator input easy to read, no escaping for double brokets is provided. You&apos;ll have to structure the input in such a way as to avoid false transclusion references.</p>
+<p>Some programming languages make use of <code>&lt;&lt;</code> and <code>&gt;&gt;</code> for other purposes. In order to make the plain Fabricator input easy to read, no escaping for literal double brokets is provided. You&apos;ll have to structure the input in such a way as to avoid false transclusion references.</p>
 
 </section>
 
 <section class='maui-section' id='S.10'>
 
-<p><b class='maui-section-number'>§10.</b> A chunk can be marked as a <i>root</i> chunk by prepending a <code>.file</code> or <code>.script</code> to directive, like this:</p>
+<p><b class='maui-section-number'>§10.</b> A chunk can be marked as a <i>root</i> chunk by applying a <code>.file</code> or <code>.script</code> directive, like this:</p>
 
 <pre class='maui-block'>&lt;&lt; .script hello.rb &gt;&gt;:
   #! /usr/bin/ruby -rubygems
 
   puts &quot;&lt;&lt; Friendly, familiar greeting &gt;&gt;&quot;</pre>
+
+<p>The difference between these two forms is that when Maui writes a <code>.script</code> file on a non-Windows system, it sets its executable permission flag(s).</p>
 
 </section>
 
@@ -238,15 +243,17 @@ new block.</pre>
 <p>The extra wrapper, <code>&lt;&lt; Cows heredoc &gt;&gt;</code>, serves two purposes in this example:</p>
 
 <ul>
-<li>It ensures that even the first line of the main transcludee, <code>&lt;&lt; Cows &gt;&gt;</code>, follows a linebreak within the effect zone of <code>.clearindent</code>. This is necessary because the directive can only clear indentations that exist, and without a linebreak there is no indentation to suppress.</li>
+<li>It ensures that even the first line from the main transcludee, namely <code>&lt;&lt; Cows &gt;&gt;</code>, directly follows a linebreak within the effect zone of <code>.clearindent</code>. This is necessary because the directive can only clear indentations that exist, and without a linebreak there is no indentation to suppress.</li>
 <li>It also ensures that the terminating <code>END-OF-COWS</code> is flushed left together with the cows&apos; data, for otherwise the target language might not recognise it as the here-doc&apos;s terminator.</li>
 </ul>
+
+<p>Please also note the somewhat counterintuitive placement of the comma separating DATA[:cows] from the following possible entry.</p>
 
 </section>
 
 <section class='maui-section' id='S.13'>
 
-<p><b class='maui-section-number'>§13.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks --- which would otherwise be interpreted as example code --- are then treated as chunks of this name. A diversion is effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
+<p><b class='maui-section-number'>§13.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks --- which would otherwise be interpreted as blocks of example code --- are then treated as chunks of this name. A diversion is in effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
 
 </section>
 
