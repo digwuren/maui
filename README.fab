@@ -57,7 +57,7 @@ and can be nested:
     - 1.2
       - 1.2.1
   - 2
-    
+
 will produce:
 
 - 1
@@ -65,7 +65,7 @@ will produce:
   - 1.2
     - 1.2.1
 - 2
-  
+
 
 A document can be divided into /chapters/, /subchapters/, and
 /subsubchapters/ by /titles/.  A title should be separated with
@@ -95,22 +95,26 @@ following notation:
     including single blank lines.
 
 Note that the declaration must be unindented, and the chunk's
-content must be indented.  
+content must be indented.
 
 Some programming languages make use of [[<<]] and [[>>]] for
 other purposes.  In order to make the plain Fabricator input
-easy to read, no escaping for double brokets is provided.
-You'll have to structure the input in such a way as to avoid
-false transclusion references.
+easy to read, no escaping for literal double brokets is
+provided.  You'll have to structure the input in such a way as
+to avoid false transclusion references.
 
 
-A chunk can be marked as a /root/ chunk by prepending a
-[[.file]] or [[.script]] to directive, like this:
+A chunk can be marked as a /root/ chunk by applying a [[.file]]
+or [[.script]] directive, like this:
 
   << .script hello.rb >>:
     #! /usr/bin/ruby -rubygems
 
     puts "<< Friendly, familiar greeting >>"
+
+The difference between these two forms is that when Maui writes
+a [[.script]] file on a non-Windows system, it sets its
+executable permission flag(s).
 
 
 The (mechanical) power of literate programming comes from
@@ -151,27 +155,30 @@ may want to suppress this.  This is achieved by the
 The extra wrapper, [[<< Cows heredoc >>]], serves two purposes
 in this example:
 
-- It ensures that even the first line of the main transcludee,
-  [[<< Cows >>]], follows a linebreak within the effect zone of
-  [[.clearindent]].  This is necessary because the directive can
-  only clear indentations that exist, and without a linebreak
-  there is no indentation to suppress.
+- It ensures that even the first line from the main transcludee,
+  namely [[<< Cows >>]], directly follows a linebreak within the
+  effect zone of [[.clearindent]].  This is necessary because
+  the directive can only clear indentations that exist, and
+  without a linebreak there is no indentation to suppress.
 
 - It also ensures that the terminating [[END-OF-COWS]] is
   flushed left together with the cows' data, for otherwise the
   target language might not recognise it as the here-doc's
   terminator.
 
+Please also note the somewhat counterintuitive placement of the
+comma separating DATA[:cows] from the following possible entry.
+
 
 It's often useful to intersperse many chunks of the same name
 with a narrative explaining the actions taken.  Mau facilitates
 this via /diversions/.  The notation for a diversion is a chunk
 header without the chunk; the subsequent indented blocks ---
-which would otherwise be interpreted as example code --- are
-then treated as chunks of this name.  A diversion is effect
-until another diversion replaces it or until a title begins a
-new narrative unit of the document.  Note that a rubric does not
-cancel a diversion's effect.
+which would otherwise be interpreted as blocks of example code
+--- are then treated as chunks of this name.  A diversion is in
+effect until another diversion replaces it or until a title
+begins a new narrative unit of the document.  Note that a rubric
+does not cancel a diversion's effect.
 
 
 == Postprocessing
