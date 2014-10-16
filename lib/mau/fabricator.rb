@@ -1849,15 +1849,18 @@ section {
     return
   end
 
-  def weave_html_section_part element, fabric, port
+  def weave_html_section_part element, fabric, port,
+      link_processor: nil
     case element.type
     when :paragraph then
       port.print "<p>"
-      htmlify element.content, port
+      htmlify element.content, port,
+          link_processor: link_processor
       port.puts "</p>"
 
     when :list then
-      weave_html_list element.items, port
+      weave_html_list element.items, port,
+          link_processor: link_processor
 
     when :divert then
       weave_html_chunk_header element, 'maui-divert',
