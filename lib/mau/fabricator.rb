@@ -675,6 +675,11 @@ module Fabricator
           load_paths: [],
           filename: '(pipe)').render
     end,
+
+    '|cs->js' => proc do |input|
+      require 'coffee-script'
+      CoffeeScript.compile input
+    end,
   }
 
   WINDOWS_HOSTED_P =

@@ -1599,6 +1599,11 @@ probably optimal as workarounds go.
           load_paths: [],
           filename: '(pipe)').render
     end,
+
+    '|cs->js' => proc do |input|
+      require 'coffee-script'
+      CoffeeScript.compile input
+    end,
   }
 
 
