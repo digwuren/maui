@@ -1314,7 +1314,7 @@ no attributes.
 
 Finally, if none of the rules matched, we'll pick the following
 character up as a plain text node.  As an optimisation, we'll
-merge it with any folllowing characters that definitely are not
+merge it with any following characters that definitely are not
 markup characters.  Since we don't want the generated node's
 [[data]] field to retain the type of [[Pointered_String]], we'll
 construct a new [[String]] instance with its content.
