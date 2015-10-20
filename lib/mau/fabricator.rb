@@ -1707,8 +1707,8 @@ class << Fabricator
     if link_css.empty? then
       port.puts "<style type='text/css'>"
       port.puts '/**** Fonts ****/
-@import url("http://fonts.googleapis.com/css?family=Roboto");
-@import url("http://fonts.googleapis.com/css?family=Cousine");
+@import url("http://fonts.googleapis.com/css?family=Roboto:400,400italic,700,700italic");
+@import url("http://fonts.googleapis.com/css?family=Cousine:400,400italic,700,700italic");
 /**** Rules ****/
 body, .maui-transclude {
   font-family: "Roboto", sans-serif; }

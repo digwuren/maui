@@ -3120,8 +3120,8 @@ latter.
 
 << SCSS [[@import]] clauses for Google fonts >>:
   $fontsrc: "http://fonts.googleapis.com/css?family=";
-  @import url("#{$fontsrc}Roboto");
-  @import url("#{$fontsrc}Cousine");
+  @import url("#{$fontsrc}Roboto:400,400italic,700,700italic");
+  @import url("#{$fontsrc}Cousine:400,400italic,700,700italic");
 
 << SCSS rules >>:
   body, .maui-transclude {
