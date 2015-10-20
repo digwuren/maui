@@ -1975,7 +1975,9 @@ section {
           htmlify entry.content, port
           port.print "</a>"
         when :rubric then
-          port.print "#{section_prefix}#{entry.section_number}. "
+          port.print "%s%i. " % [
+            section_prefix,
+            entry.section_number]
           port.print "<a href='#S.#{entry.section_number}'>"
           htmlify entry.content, port
           port.print "</a>"
