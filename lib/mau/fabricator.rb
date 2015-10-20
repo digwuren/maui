@@ -1790,6 +1790,7 @@ section {
   end
 
   def weave_html_presentation fabric, port,
+      section_prefix: "§",
       link_processor: nil
     toc_generated = false
     fabric.presentation.each do |element|
@@ -1821,7 +1822,7 @@ section {
         port.print "<p>"
         port.print "<b class='%s'>" %
             (rubricated ? 'maui-rubric' : 'maui-section-number')
-        port.print "\u00A7#{element.section_number}."
+        port.print "#{section_prefix}#{element.section_number}."
         if rubricated then
           port.print " "
           htmlify element.elements[start_index].content, port,
@@ -1868,8 +1869,8 @@ section {
   end
 
   def weave_html_section_part element, fabric, port,
-      link_processor: nil,
-      section_prefix: "§"
+      section_prefix: "§",
+      link_processor: nil
     case element.type
     when :paragraph then
       port.print "<p>"
