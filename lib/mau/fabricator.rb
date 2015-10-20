@@ -1708,75 +1708,8 @@ class << Fabricator
     port.puts "<title>#{title.to_xml}</title>"
     if link_css.empty? then
       port.puts "<style type='text/css'>"
-      port.puts '/**** Fonts ****/
-@import url("http://fonts.googleapis.com/css?family=Roboto:400,400italic,700,700italic");
-@import url("http://fonts.googleapis.com/css?family=Cousine:400,400italic,700,700italic");
-/**** Rules ****/
-body, .maui-transclude {
-  font-family: "Roboto", sans-serif; }
-
-pre, tt, code {
-  font-family: "Cousine", monospace; }
-
-body {
-  colour: black;
-  background: white; }
-
-tt, code {
-  color: forestgreen; }
-
-.maui-inline-warnings {
-  color: red; }
-
-.maui-warnings tt {
-  color: inherit; }
-
-.maui-rubric {
-  color: crimson; }
-
-ul.maui-warnings {
-  padding-left: 0; }
-  ul.maui-warnings > li {
-    list-style: none; }
-
-.maui-chunk-body {
-  margin-left: 20px;
-  border-left: 2px solid #cccccc;
-  padding-left: 5px; }
-
-.maui-initial-chunk > .maui-chunk-body:before {
-  content: "";
-  display: block;
-  width: 22px;
-  border-top: solid 2px #cccccc;
-  margin-left: -27px; }
-
-.maui-final-chunk > .maui-chunk-body:after {
-  content: "";
-  display: block;
-  margin-left: -7px;
-  width: 40px;
-  border-bottom: solid 2px #cccccc; }
-
-.maui-chunk-body, .maui-chunk > .maui-warnings {
-  margin-top: 0;
-  margin-bottom: 0; }
-
-.maui-chunk {
-  margin-top: 16px;
-  margin-bottom: 16px; }
-
-.maui-chunk-xref {
-  font-size: small;
-  font-style: italic;
-  margin-left: 22px; }
-
-.maui-block {
-  margin-left: 27px; }
-
-/* Backwards compatibility with pre-HTML5 browsers */
-section {
-  display: block; }'
+      port.write File.read(
+          File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
       port.puts "</style>"
     else
       link_css.each do |link|

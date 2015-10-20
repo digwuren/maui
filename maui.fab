@@ -2650,7 +2650,8 @@ conventions.
   port.puts "<title>#{title.to_xml}</title>"
   if link_css.empty? then
     port.puts "<style type='text/css'>"
-    port.puts '<< .clearindent res/maui.scss |scss->css >>'
+    port.write File.read(
+        File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
     port.puts "</style>"
   else
     link_css.each do |link|
