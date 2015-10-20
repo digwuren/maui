@@ -3313,6 +3313,8 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
   << Outer definitions >>
 
   module Fabricator
+    RESOURCE_DIR = File.expand_path '../../res',
+        File.dirname(__FILE__)
     << in [[Fabricator]] >>
   end
 

@@ -21,6 +21,8 @@ class ::String
 end
 
 module Fabricator
+  RESOURCE_DIR = File.expand_path '../../res',
+      File.dirname(__FILE__)
   class Vertical_Peeker
     def get_indented_lines_with_skip
       indent = nil; lines = []
