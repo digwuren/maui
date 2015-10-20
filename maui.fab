@@ -3099,6 +3099,10 @@ going to make each entry into a local link, either in the
 Our built-in stylesheet has been written in SCSS.  Maui runs it
 through Sass to get plain CSS at tangling time.
 
+<< .file res/maui.css >>:
+  << res/maui.scss |scss->css >>
+
+
 << .file res/maui.scss >>:
   /**** Fonts ****/
   << SCSS [[@import]] clauses for Google fonts >>
@@ -3465,6 +3469,7 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
   README.html
   bin/maui
   lib/mau/fabricator.rb
+  res/maui.css
   res/maui.scss
   maui.fab
   maui.gemspec

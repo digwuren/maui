@@ -5,6 +5,7 @@ README.fab
 README.html
 bin/maui
 lib/mau/fabricator.rb
+res/maui.css
 res/maui.scss
 maui.fab
 maui.gemspec
