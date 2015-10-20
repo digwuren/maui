@@ -1945,8 +1945,7 @@ section {
   def weave_html_toc toc, port,
       section_prefix: "§"
     if toc.length >= 2 then
-      port.puts "<h2>Contents</h2>"
-      port.puts
+      port.puts "<h2>Contents</h2>"; port.puts
       last_level = 0
       # What level should the rubrics in the current
       # (sub(sub))chapter appear at?
@@ -1986,8 +1985,7 @@ section {
         end
         last_level = level
       end
-      port.puts "</li></ul>" * last_level
-      port.puts
+      port.puts "</li></ul>" * last_level; port.puts
     end
     return
   end
