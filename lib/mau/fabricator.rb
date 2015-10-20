@@ -1346,7 +1346,8 @@ class << Fabricator
       case element.type
       when :title then
         if !toc_generated then
-          weave_ctxt_toc fabric.toc, wr
+          weave_ctxt_toc fabric.toc, wr,
+              section_prefix: section_prefix
           toc_generated = true
         end
         wr.styled :section_title do
@@ -1363,7 +1364,8 @@ class << Fabricator
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
-          weave_ctxt_toc fabric.toc, wr
+          weave_ctxt_toc fabric.toc, wr,
+              section_prefix: section_prefix
           toc_generated = true
         end
 
