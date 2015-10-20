@@ -1,0 +1,114 @@
+/**** Fonts ****/
+$fontsrc: "http://fonts.googleapis.com/css?family=";
+$fontvariants: "400,400italic,700,700italic";
+@import url("#{$fontsrc}Roboto:#{$fontvariants}");
+@import url("#{$fontsrc}Cousine:#{$fontvariants}");
+
+// Dimensions
+$chunk-body-indent: 20px;
+$chunk-rule-thickness: 2px;
+$chunk-rule-separation: 5px;
+$final-chunk-rule-length: 40px;
+
+$paragraph-sep: 16px;
+
+// Colours
+$main-foreground: black;
+$main-background: white;
+
+$narrative-monospaced-colour: forestgreen;
+
+$inline-warning-colour: red;
+
+$rubric-colour: crimson;
+
+$chunk-rule-colour: #cccccc;
+
+/**** Rules ****/
+body, .maui-transclude {
+  font-family: "Roboto", sans-serif;
+}
+
+pre, tt, code {
+  font-family: "Cousine", monospace;
+}
+
+body {
+  colour: $main-foreground;
+  background: $main-background;
+}
+
+tt, code {
+  color: $narrative-monospaced-colour;
+}
+
+.maui-inline-warnings {
+  color: $inline-warning-colour;
+}
+
+.maui-warnings tt {
+  color: inherit;
+}
+
+.maui-rubric {
+  color: $rubric-colour;
+}
+
+ul.maui-warnings {
+  padding-left: 0;
+  > li {
+    list-style: none;
+  }
+}
+
+.maui-chunk-body {
+  margin-left: $chunk-body-indent;
+  border-left: $chunk-rule-thickness solid $chunk-rule-colour;
+  padding-left: $chunk-rule-separation;
+}
+
+.maui-initial-chunk>.maui-chunk-body:before {
+  content: "";
+  display: block;
+  width: $chunk-body-indent + $chunk-rule-thickness;
+  border-top: solid $chunk-rule-thickness $chunk-rule-colour;
+  margin-left: -($chunk-body-indent + $chunk-rule-thickness +
+      $chunk-rule-separation);
+}
+
+.maui-final-chunk>.maui-chunk-body:after {
+  content: "";
+  display: block;
+  margin-left:
+      -($chunk-rule-thickness + $chunk-rule-separation);
+  width: $final-chunk-rule-length;
+  border-bottom:
+      solid $chunk-rule-thickness $chunk-rule-colour;
+}
+
+.maui-chunk-body, .maui-chunk>.maui-warnings {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.maui-chunk {
+  margin-top: $paragraph-sep;
+  margin-bottom: $paragraph-sep;
+}
+
+.maui-chunk-xref {
+  font-size: small;
+  font-style: italic;
+  margin-left:
+      $chunk-body-indent + $chunk-rule-thickness;
+}
+
+.maui-block {
+  margin-left: $chunk-body-indent + $chunk-rule-thickness +
+          $chunk-rule-separation;
+}
+
+/* Backwards compatibility with pre-HTML5 browsers */
+section {
+  display: block;
+}

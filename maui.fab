@@ -2650,7 +2650,7 @@ conventions.
   port.puts "<title>#{title.to_xml}</title>"
   if link_css.empty? then
     port.puts "<style type='text/css'>"
-    port.puts '<< .clearindent maui.scss |scss->css >>'
+    port.puts '<< .clearindent res/maui.scss |scss->css >>'
     port.puts "</style>"
   else
     link_css.each do |link|
@@ -3099,7 +3099,7 @@ going to make each entry into a local link, either in the
 Our built-in stylesheet has been written in SCSS.  Maui runs it
 through Sass to get plain CSS at tangling time.
 
-<< maui.scss >>:
+<< .file res/maui.scss >>:
   /**** Fonts ****/
   << SCSS [[@import]] clauses for Google fonts >>
 
@@ -3463,6 +3463,7 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
   README.html
   bin/maui
   lib/mau/fabricator.rb
+  res/maui.scss
   maui.fab
   maui.gemspec
 
