@@ -1947,16 +1947,18 @@ class << Fabricator
     return
   end
 
-  def weave_html_chunk_header element, cls, port, tag: 'div'
+  def weave_html_chunk_header element, cls, port,
+      tag: 'div',
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     port.print "<#{tag} class='%s'>" % cls
-    port.print "&#xAB;"
+    port.print chunk_name_delim.begin
     if element.root_type then
       port.print "<u>%s</u> " % element.root_type.to_xml
     end
     htmlify(
         parse_markup(element.name, Fabricator::MF::LINK),
         port)
-    port.print "&#xBB;:"
+    port.print chunk_name_delim.end + ":"
     port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
     return
