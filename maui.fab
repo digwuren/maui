@@ -3097,25 +3097,25 @@ going to make each entry into a local link, either in the
 
 * The built-in stylesheet.
 
-Our built-in stylesheet has been written in SCSS.  Maui runs it
-through Sass to get plain CSS at tangling time.
+Our built-in stylesheet has been written in Sass.  Maui runs it
+through the Sass translator to get plain CSS at tangling time.
 
 << .file res/maui.css >>:
-  << res/maui.scss |scss->css >>
+  << res/maui.sass |sass->css >>
 
 
-<< .file res/maui.scss >>:
-  /**** Fonts ****/
-  << SCSS [[@import]] clauses for Google fonts >>
+<< .file res/maui.sass >>:
+  /* * * *   Fonts   * * * */
+  << Sass [[@import]] clauses for Google fonts >>
 
   // Dimensions
-  << SCSS dimensions >>
+  << Sass dimensions >>
 
   // Colours
-  << SCSS colours >>
+  << Sass colours >>
 
-  /**** Rules ****/
-  << SCSS rules >>
+  /* * * *   Rules   * * * */
+  << Sass rules >>
 
 
 Maui's HTML-woven output uses two font families: a 'plain text'
@@ -3123,59 +3123,54 @@ one for most of the narrative and a 'monospaced' one for actual
 code.  We have chosen Roboto for the former and Cousine for the
 latter.
 
-<< SCSS [[@import]] clauses for Google fonts >>:
-  $fontsrc: "http://fonts.googleapis.com/css?family=";
-  $fontvariants: "400,400italic,700,700italic";
-  @import url("#{$fontsrc}Roboto:#{$fontvariants}");
-  @import url("#{$fontsrc}Cousine:#{$fontvariants}");
+<< Sass [[@import]] clauses for Google fonts >>:
+  $fontsrc: "http://fonts.googleapis.com/css?family="
+  $fontvariants: "400,400italic,700,700italic"
+  @import url("#{$fontsrc}Roboto:#{$fontvariants}")
+  @import url("#{$fontsrc}Cousine:#{$fontvariants}")
 
-<< SCSS rules >>:
-  body, .maui-transclude {
-    font-family: "Roboto", sans-serif;
-  }
+<< Sass rules >>:
+  body, .maui-transclude
+    font-family: "Roboto", sans-serif
 
-  pre, tt, code {
-    font-family: "Cousine", monospace;
-  }
+  pre, tt, code
+    font-family: "Cousine", monospace
 
 
 The main text for Maui's output will be black on white.
 
-<< SCSS colours >>:
-  $main-foreground: black;
-  $main-background: white;
+<< Sass colours >>:
+  $main-foreground: black
+  $main-background: white
 
-<< SCSS rules >>:
-  body {
-    colour: $main-foreground;
-    background: $main-background;
-  }
+<< Sass rules >>:
+  body
+    colour: $main-foreground
+    background: $main-background
 
 
 Furthermore, when monospaced text appears in narrative (as
 contrary to code chunks), we'll dye it green for extra
 highlighting.
 
-<< SCSS colours >>:
-  $narrative-monospaced-colour: forestgreen;
+<< Sass colours >>:
+  $narrative-monospaced-colour: forestgreen
 
-<< SCSS rules >>:
-  tt, code {
-    color: $narrative-monospaced-colour;
-  }
+<< Sass rules >>:
+  tt, code
+    color: $narrative-monospaced-colour
 
 
 Inline warnings we'll paint bright red for high visibility.
 (Note that the class' name is in plural --- a single HTML
 element can contain multiple warnings.)
 
-<< SCSS colours >>:
-  $inline-warning-colour: red;
+<< Sass colours >>:
+  $inline-warning-colour: red
 
-<< SCSS rules >>:
-  .maui-inline-warnings {
-    color: $inline-warning-colour;
-  }
+<< Sass rules >>:
+  .maui-inline-warnings
+    color: $inline-warning-colour
 
 
 The rules so far have a conflict.  What happens when a [[tt]]
@@ -3183,94 +3178,82 @@ element appears inside an inline warning?  Left alone, they
 would become green.  However, in this context, we'll want them
 red.
 
-<< SCSS rules >>:
-  .maui-warnings tt {
-    color: inherit;
-  }
+<< Sass rules >>:
+  .maui-warnings tt
+    color: inherit
 
 
 By medieval tradition, rubrics should be red.  We'll use a
 slightly darker shade and go with what CSS calls [[crimson]]
 instead of [[red]].
 
-<< SCSS colours >>:
-  $rubric-colour: crimson;
+<< Sass colours >>:
+  $rubric-colour: crimson
 
-<< SCSS rules >>:
-  .maui-rubric {
-    color: $rubric-colour;
-  }
+<< Sass rules >>:
+  .maui-rubric
+    color: $rubric-colour
 
 
 Maui outputs warnings in unordered lists, but we don't actually
 want bullets in front of them.
 
-<< SCSS rules >>:
-  ul.maui-warnings {
-    padding-left: 0;
-    > li {
-      list-style: none;
-    }
-  }
+<< Sass rules >>:
+  ul.maui-warnings
+    padding-left: 0
+    > li
+      list-style: none
 
 
 Let us now proceed to styling the code chunks themselves.
 First, the rules:
 
-<< SCSS colours >>:
-  $chunk-rule-colour: #cccccc;
+<< Sass colours >>:
+  $chunk-rule-colour: #cccccc
 
-<< SCSS dimensions >>:
-  $chunk-indent: 20px;
-  $chunk-rule: 2px;
-  $chunk-rule-sep: 5px;
-  $final-chunk-rule-length: 40px;
+<< Sass dimensions >>:
+  $chunk-indent: 20px
+  $chunk-rule: 2px
+  $chunk-rule-sep: 5px
+  $final-chunk-rule-length: 40px
 
-<< SCSS rules >>:
-  .maui-chunk-body {
-    margin-left: $chunk-indent;
-    border-left: $chunk-rule solid $chunk-rule-colour;
-    padding-left: $chunk-rule-sep;
-  }
+<< Sass rules >>:
+  .maui-chunk-body
+    margin-left: $chunk-indent
+    border-left: $chunk-rule solid $chunk-rule-colour
+    padding-left: $chunk-rule-sep
 
-  .maui-initial-chunk>.maui-chunk-body:before {
-    content: "";
-    display: block;
-    width: $chunk-indent + $chunk-rule;
-    border-top: solid $chunk-rule $chunk-rule-colour;
-    margin-left: -($chunk-indent + $chunk-rule +
-        $chunk-rule-sep);
-  }
+  .maui-initial-chunk>.maui-chunk-body:before
+    content: ""
+    display: block
+    width: $chunk-indent + $chunk-rule
+    border-top: solid $chunk-rule $chunk-rule-colour
+    margin-left: - $chunk-indent - $chunk-rule - $chunk-rule-sep
 
-  .maui-final-chunk>.maui-chunk-body:after {
-    content: "";
-    display: block;
-    margin-left:
-        -($chunk-rule + $chunk-rule-sep);
-    width: $final-chunk-rule-length;
-    border-bottom:
-        solid $chunk-rule $chunk-rule-colour;
-  }
+  .maui-final-chunk>.maui-chunk-body:after
+    content: ""
+    display: block
+    margin-left: - $chunk-rule - $chunk-rule-sep
+    width: $final-chunk-rule-length
+    border-bottom: solid $chunk-rule $chunk-rule-colour
 
 
 A chunk's body shall have zero vertical margins; its containing
 [[maui-chunk]] will take care of vertical separation.  This also
 applies to the block of warnings inside a chunk.
 
-<< SCSS dimensions >>:
-  $paragraph-sep: 16px;
+<< Sass dimensions >>:
+  $paragraph-sep: 16px
 
-<< SCSS rules >>:
+<< Sass rules >>:
 
-  .maui-chunk-body, .maui-chunk>.maui-warnings {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
+  .maui-chunk-body, .maui-chunk>.maui-warnings
+    margin-top: 0
+    margin-bottom: 0
 
-  .maui-chunk {
-    margin-top: $paragraph-sep;
-    margin-bottom: $paragraph-sep;
-  }
+  .maui-chunk
+    margin-top: $paragraph-sep
+    margin-bottom: $paragraph-sep
 
 
 The cross-references following (final) chunks are smaller and in
@@ -3278,30 +3261,26 @@ italic for reduced obtrusivity, and they align with the chunk's
 vertical rule but are deliberately slightly off from aligning
 with the code inside the chunk.
 
-  .maui-chunk-xref {
-    font-size: small;
-    font-style: italic;
-    margin-left:
-        $chunk-indent + $chunk-rule;
-  }
+  .maui-chunk-xref
+    font-size: small
+    font-style: italic
+    margin-left: $chunk-indent + $chunk-rule
 
 
 We'll apply the same left indentation to sample code blocks as
 to chunks, except without the running vertical rule.
 
-  .maui-block {
-    margin-left: $chunk-indent + $chunk-rule + $chunk-rule-sep;
-  }
+  .maui-block
+    margin-left: $chunk-indent + $chunk-rule + $chunk-rule-sep
 
 
 Finally, this rule tells pre-HTML5 browsers that [[section]] is
 [[div]]-like, not [[span]]-like:
 
-<< SCSS rules >>:
+<< Sass rules >>:
   /* Backwards compatibility with pre-HTML5 browsers */
-  section {
-    display: block;
-  }
+  section
+    display: block
 
 
 == The skeletal composition of the library
@@ -3470,7 +3449,7 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
   bin/maui
   lib/mau/fabricator.rb
   res/maui.css
-  res/maui.scss
+  res/maui.sass
   maui.fab
   maui.gemspec
 
