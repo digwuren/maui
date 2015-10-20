@@ -1797,7 +1797,8 @@ section {
       case element.type
       when :title then
         if !toc_generated then
-          weave_html_toc fabric.toc, port
+          weave_html_toc fabric.toc, port,
+              section_prefix: section_prefix
           toc_generated = true
         end
         port.print '<h%i' % (element.level + 1)
@@ -1811,7 +1812,8 @@ section {
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
-          weave_html_toc fabric.toc, port
+          weave_html_toc fabric.toc, port,
+              section_prefix: section_prefix
           toc_generated = true
         end
 
@@ -1928,7 +1930,8 @@ section {
     return
   end
 
-  def weave_html_toc toc, port
+  def weave_html_toc toc, port,
+      section_prefix: "§"
     if toc.length >= 2 then
       port.puts "<h2>Contents</h2>"
       port.puts
@@ -1960,7 +1963,7 @@ section {
           htmlify entry.content, port
           port.print "</a>"
         when :rubric then
-          port.print "\u00A7#{entry.section_number}. "
+          port.print "#{section_prefix}#{entry.section_number}. "
           port.print "<a href='#S.#{entry.section_number}'>"
           htmlify entry.content, port
           port.print "</a>"
