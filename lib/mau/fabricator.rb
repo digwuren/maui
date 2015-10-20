@@ -1553,7 +1553,9 @@ class << Fabricator
   # Given a chunk, prepare its transclusion summary as a list of
   # markup nodes.  Should only be used on chunks that are the
   # last in a chunk chain (i.e., that have [[final]] set).
-  def xref_chain element, fabric, dash: "-"
+  def xref_chain element, fabric,
+      dash: "-", # used to indicate ranges
+      section_prefix: "§"
     xref = markup
     if element.initial then
       xref.words "This chunk is "
@@ -1568,7 +1570,9 @@ class << Fabricator
           transcluders.map{|ref| markup.
               node(:mention_chunk, name: ref.name).
               space.
-              plain("(§%i)" % ref.section_number)
+              plain("(%s%i)" % [
+                section_prefix,
+                ref.section_number])
           })
     else
       if cbn_entry.root_type then
