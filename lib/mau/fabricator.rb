@@ -1327,6 +1327,7 @@ class << Fabricator
 
   def weave_ctxt fabric, port,
       width: 80,
+      section_prefix: "§",
       pseudographics: Fabricator::UNICODE_PSEUDOGRAPHICS
     wr = Fabricator::Text_Wrapper.new port,
         width: width,
@@ -1370,13 +1371,17 @@ class << Fabricator
         if rubricated then
           start_index += 1
           wr.styled :rubric do
-            wr.add_plain "§%i." % element.section_number
+            wr.add_plain "%s%i." % [
+              section_prefix,
+              element.section_number]
             wr.add_space
             wr.add_nodes element.elements.first.content
           end
         else
           wr.styled :section_number do
-            wr.add_plain "§%i." % element.section_number
+            wr.add_plain "%s%i." % [
+              section_prefix,
+              element.section_number]
           end
         end
 
@@ -1388,7 +1393,8 @@ class << Fabricator
           case starter.type
           when :paragraph, :divert, :chunk then
             wr.add_space
-            weave_ctxt_section_part starter, fabric, wr
+            weave_ctxt_section_part starter, fabric, wr,
+                section_prefix: section_prefix
             start_index += 1
           else
             wr.linebreak
@@ -1400,7 +1406,8 @@ class << Fabricator
         wr.linebreak
 
         element.elements[start_index .. -1].each do |child|
-          weave_ctxt_section_part child, fabric, wr
+          weave_ctxt_section_part child, fabric, wr,
+              section_prefix: section_prefix
           wr.linebreak
         end
 
