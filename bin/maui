@@ -8,11 +8,14 @@ $0 = 'maui' # for [[GetoptLong]] error reporting
 begin
   $cmdline = OpenStruct.new
   $cmdline.pseudographics = Fabricator::UNICODE_PSEUDOGRAPHICS
+  $cmdline.section_prefix = "§"
   $cmdline.output_width = 80
   $cmdline.chunk_size_limit = 24
   $cmdline.link_css = []
 
   GetoptLong.new(
+      ['--section-prefix', GetoptLong::REQUIRED_ARGUMENT],
+
       ['--output-width', GetoptLong::REQUIRED_ARGUMENT],
 
       ['--chunk-size-limit', GetoptLong::REQUIRED_ARGUMENT],
@@ -28,6 +31,9 @@ begin
       ['--version', GetoptLong::NO_ARGUMENT],
       ).each do |opt, arg|
     case opt
+    when '--section-prefix' then
+      $cmdline.section_prefix = arg
+
     when '--output-width' then
       unless arg =~ /\A\d+\Z/ then
         $stderr.puts "maui: --output-width requires a number"
@@ -60,6 +66,9 @@ begin
 
 Process the given Mau fabric, tangle its files and weave its
 narrative into both HTML and coloured text.
+
+--section-prefix=STRING
+    Use this string rather than § as the section prefix.
 
 --output-width=N
     Word-wrap the woven ctxt at this width.
@@ -136,6 +145,7 @@ end
         port.set_encoding 'utf-8'
         Fabricator.weave_html fabric, port,
             title: $cmdline.fabric_filename,
+            section_prefix: $cmdline.section_prefix,
             link_css: $cmdline.link_css
       end
       puts "Weaved #{filename}"
@@ -149,6 +159,7 @@ end
       open filename, 'w' do |port|
         Fabricator.weave_ctxt fabric, port,
             width: $cmdline.output_width,
+            section_prefix: $cmdline.section_prefix,
             pseudographics: $cmdline.pseudographics
       end
       puts "Weaved #{filename}"

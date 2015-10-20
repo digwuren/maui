@@ -1854,6 +1854,7 @@ This output mode is convenient for use in a modern (x)terminal.
   open filename, 'w' do |port|
     Fabricator.weave_ctxt fabric, port,
         width: $cmdline.output_width,
+        section_prefix: $cmdline.section_prefix,
         pseudographics: $cmdline.pseudographics
   end
   puts "Weaved #{filename}"
@@ -2612,6 +2613,7 @@ First, let's take care of the I/O.
     port.set_encoding 'utf-8'
     Fabricator.weave_html fabric, port,
         title: $cmdline.fabric_filename,
+        section_prefix: $cmdline.section_prefix,
         link_css: $cmdline.link_css
   end
   puts "Weaved #{filename}"
@@ -3488,6 +3490,21 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
       raise 'assertion failed'
     end
   end
+
+
+<< Option summary >>:
+  --section-prefix=STRING
+      Use this string rather than § as the section prefix.
+
+<< Option declarations >>:
+  ['--section-prefix', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.section_prefix = "§"
+
+<< Command line option handlers >>:
+  when '--section-prefix' then
+    $cmdline.section_prefix = arg
 
 
 << Option summary >>:
