@@ -1645,7 +1645,8 @@ class << Fabricator
     return
   end
 
-  def weave_ctxt_toc toc, wr
+  def weave_ctxt_toc toc, wr,
+      section_prefix: "§"
     if toc.length >= 2 then
       wr.styled :section_title do
         wr.add_plain 'Contents'
@@ -1665,7 +1666,9 @@ class << Fabricator
 
         when :rubric then
           wr.add_plain '  ' * rubric_level
-          wr.add_plain '§%i.' % entry.section_number
+          wr.add_plain '%s%i.' % [
+            section_prefix,
+            entry.section_number]
           wr.add_space
           wr.hang do
             wr.add_nodes entry.content
