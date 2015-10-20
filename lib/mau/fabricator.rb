@@ -1439,7 +1439,8 @@ class << Fabricator
     return
   end
 
-  def weave_ctxt_section_part element, fabric, wr
+  def weave_ctxt_section_part element, fabric, wr,
+      section_prefix: "§"
     case element.type
     when :paragraph then
       wr.add_nodes element.content
@@ -1484,7 +1485,8 @@ class << Fabricator
             inline: true
         if element.final then
           wr.styled :chunk_xref do
-            wr.add_nodes xref_chain(element, fabric)
+            wr.add_nodes xref_chain(element, fabric,
+                section_prefix: section_prefix)
           end
           wr.linebreak
         end
@@ -1863,7 +1865,8 @@ section {
   end
 
   def weave_html_section_part element, fabric, port,
-      link_processor: nil
+      link_processor: nil,
+      section_prefix: "§"
     case element.type
     when :paragraph then
       port.print "<p>"
@@ -1900,7 +1903,9 @@ section {
       if element.final then
         port.print "<div class='maui-chunk-xref'>"
         htmlify(
-            xref_chain(element, fabric, dash: "\u2013"),
+            xref_chain(element, fabric,
+                section_prefix: section_prefix,
+                dash: "\u2013"),
             port)
         port.puts "</div>"
       end
