@@ -1861,6 +1861,7 @@ section {
         port.puts
         element.elements[start_index .. -1].each do |child|
           weave_html_section_part child, fabric, port,
+              section_prefix: section_prefix,
               link_processor: link_processor
           port.puts
         end
