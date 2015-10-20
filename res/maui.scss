@@ -5,9 +5,9 @@ $fontvariants: "400,400italic,700,700italic";
 @import url("#{$fontsrc}Cousine:#{$fontvariants}");
 
 // Dimensions
-$chunk-body-indent: 20px;
-$chunk-rule-thickness: 2px;
-$chunk-rule-separation: 5px;
+$chunk-indent: 20px;
+$chunk-rule: 2px;
+$chunk-rule-sep: 5px;
 $final-chunk-rule-length: 40px;
 
 $paragraph-sep: 16px;
@@ -62,28 +62,28 @@ ul.maui-warnings {
 }
 
 .maui-chunk-body {
-  margin-left: $chunk-body-indent;
-  border-left: $chunk-rule-thickness solid $chunk-rule-colour;
-  padding-left: $chunk-rule-separation;
+  margin-left: $chunk-indent;
+  border-left: $chunk-rule solid $chunk-rule-colour;
+  padding-left: $chunk-rule-sep;
 }
 
 .maui-initial-chunk>.maui-chunk-body:before {
   content: "";
   display: block;
-  width: $chunk-body-indent + $chunk-rule-thickness;
-  border-top: solid $chunk-rule-thickness $chunk-rule-colour;
-  margin-left: -($chunk-body-indent + $chunk-rule-thickness +
-      $chunk-rule-separation);
+  width: $chunk-indent + $chunk-rule;
+  border-top: solid $chunk-rule $chunk-rule-colour;
+  margin-left: -($chunk-indent + $chunk-rule +
+      $chunk-rule-sep);
 }
 
 .maui-final-chunk>.maui-chunk-body:after {
   content: "";
   display: block;
   margin-left:
-      -($chunk-rule-thickness + $chunk-rule-separation);
+      -($chunk-rule + $chunk-rule-sep);
   width: $final-chunk-rule-length;
   border-bottom:
-      solid $chunk-rule-thickness $chunk-rule-colour;
+      solid $chunk-rule $chunk-rule-colour;
 }
 
 .maui-chunk-body, .maui-chunk>.maui-warnings {
@@ -100,12 +100,11 @@ ul.maui-warnings {
   font-size: small;
   font-style: italic;
   margin-left:
-      $chunk-body-indent + $chunk-rule-thickness;
+      $chunk-indent + $chunk-rule;
 }
 
 .maui-block {
-  margin-left: $chunk-body-indent + $chunk-rule-thickness +
-          $chunk-rule-separation;
+  margin-left: $chunk-indent + $chunk-rule + $chunk-rule-sep;
 }
 
 /* Backwards compatibility with pre-HTML5 browsers */
