@@ -983,8 +983,7 @@ module Fabricator
         html_warning_list @fabric.warnings
         @port.puts
       end
-      # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
-      Fabricator.weave_html_presentation self
+      html_presentation
       @port.puts '</body>'
       @port.puts '</html>'
       return
@@ -1007,6 +1006,80 @@ module Fabricator
         end
       end
       @port.puts '</head>'
+      return
+    end
+
+    def html_presentation
+      toc_generated = false
+      @fabric.presentation.each do |element|
+        case element.type
+        when :title then
+          if !toc_generated then
+            html_toc
+            toc_generated = true
+          end
+          @port.print '<h%i' % (element.level + 1)
+          @port.print " id='%s'" % "T.#{element.number}"
+          @port.print '>'
+          @port.print "#{element.number}. "
+          htmlify_markup element.content
+          @port.puts '</h%i>' % (element.level + 1)
+        when :section then
+          rubricated = element.elements[0].type == :rubric
+          # If we're encountering the first rubric/title, output
+          # the table of contents.
+          if rubricated and !toc_generated then
+            html_toc
+            toc_generated = true
+          end
+
+          start_index = 0
+          @port.puts "<section class='maui-section' id='%s'>" %
+              "S.#{element.section_number}"
+          @port.puts
+          @port.print "<p>"
+          @port.print "<b class='%s'>" %
+              (rubricated ? 'maui-rubric' : 'maui-section-number')
+          @port.print @symbolism.section_prefix
+          @port.print element.section_number
+          @port.print "."
+          if rubricated then
+            @port.print " "
+            htmlify_markup element.elements[start_index].content
+            start_index += 1
+          end
+          @port.print "</b>"
+          subelement = element.elements[start_index]
+          warnings = nil
+          case subelement && subelement.type
+            when :paragraph then
+              @port.print " "
+              htmlify_markup subelement.content
+              start_index += 1
+            when :divert then
+              @port.print " "
+              html_chunk_header subelement, 'maui-divert', tag: 'span'
+              warnings = subelement.warnings
+              start_index += 1
+          end
+          @port.puts "</p>"
+          if warnings then
+            html_warning_list warnings, inline: true
+          end
+          @port.puts
+          element.elements[start_index .. -1].each do |child|
+            html_section_part child
+            @port.puts
+          end
+          unless (element.warnings || []).empty? then
+            html_warning_list element.warnings, inline: true
+            @port.puts
+          end
+          @port.puts "</section>"
+        else raise 'data structure error'
+        end
+        @port.puts
+      end
       return
     end
 
@@ -2012,94 +2085,6 @@ class << Fabricator
         link_css: link_css,
         link_processor: link_processor
     weaving.html
-    return
-  end
-
-  # FIXME: [[weave_html_presentation]] must be in [[HTML_Weaving]], and [[weaving]] must be [[self]]
-  def weave_html_presentation weaving
-    fabric = weaving.fabric # FIXME: inline as [[@fabric]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
-    port = weaving.port # FIXME: inline as [[@port]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
-    symbolism = weaving.symbolism # FIXME: inline as [[@symbolism]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
-    link_processor = weaving.link_processor # FIXME: inline as [[@link_processor]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
-
-    toc_generated = false
-    fabric.presentation.each do |element|
-      case element.type
-      when :title then
-        if !toc_generated then
-          # FIXME: [[weaving.]] must be an implicit [[self.]] here
-          weaving.html_toc
-          toc_generated = true
-        end
-        port.print '<h%i' % (element.level + 1)
-        port.print " id='%s'" % "T.#{element.number}"
-        port.print '>'
-        port.print "#{element.number}. "
-        weaving.htmlify_markup element.content
-        port.puts '</h%i>' % (element.level + 1)
-      when :section then
-        rubricated = element.elements[0].type == :rubric
-        # If we're encountering the first rubric/title, output
-        # the table of contents.
-        if rubricated and !toc_generated then
-          # FIXME: [[weaving.]] must be an implicit [[self.]] here
-          weaving.html_toc
-          toc_generated = true
-        end
-
-        start_index = 0
-        port.puts "<section class='maui-section' id='%s'>" %
-            "S.#{element.section_number}"
-        port.puts
-        port.print "<p>"
-        port.print "<b class='%s'>" %
-            (rubricated ? 'maui-rubric' : 'maui-section-number')
-        port.print symbolism.section_prefix
-        port.print element.section_number
-        port.print "."
-        if rubricated then
-          port.print " "
-          # FIXME: [[weaving.]] must be an implicit [[self.]] here
-          weaving.htmlify_markup element.elements[start_index].content
-          start_index += 1
-        end
-        port.print "</b>"
-        subelement = element.elements[start_index]
-        warnings = nil
-        case subelement && subelement.type
-          when :paragraph then
-            port.print " "
-            # FIXME: [[weaving.]] must be an implicit [[self.]] here
-            weaving.htmlify_markup subelement.content
-            start_index += 1
-          when :divert then
-            port.print " "
-            # FIXME: [[weaving.]] must be an implicit [[self.]] here
-            weaving.html_chunk_header subelement, 'maui-divert',
-                tag: 'span'
-            warnings = subelement.warnings
-            start_index += 1
-        end
-        port.puts "</p>"
-        if warnings then
-          # FIXME: [[weaving.]] must be an implicit [[self.]] here
-          weaving.html_warning_list warnings, inline: true
-        end
-        port.puts
-        element.elements[start_index .. -1].each do |child|
-          # FIXME: [[weaving.]] must be an implicit [[self.]] here
-          weaving.html_section_part child
-          port.puts
-        end
-        unless (element.warnings || []).empty? then
-          weaving.html_warning_list element.warnings, inline: true
-          port.puts
-        end
-        port.puts "</section>"
-      else raise 'data structure error'
-      end
-      port.puts
-    end
     return
   end
 
