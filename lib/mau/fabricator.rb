@@ -1077,6 +1077,58 @@ module Fabricator
       return
     end
 
+    def html_toc
+      toc = @fabric.toc # FIXME: consider inlining
+      if toc.length >= 2 then
+        @port.puts "<h2>Contents</h2>"; @port.puts
+        last_level = 0
+        # What level should the rubrics in the current
+        # (sub(sub))chapter appear at?
+        rubric_level = 1
+        toc.each do |entry|
+          if entry.type == :rubric then
+            level = rubric_level
+          else
+            level = entry.level
+            rubric_level = entry.level + 1
+          end
+          if level > last_level then
+            raise 'assertion failed' \
+                unless level == last_level + 1
+            @port.print "\n<ul><li>"
+          elsif level == last_level then
+            @port.print "</li>\n<li>"
+          else
+            @port.print "</li></ul>" * (last_level - level) +
+                "\n<li>"
+          end
+          case entry.type
+          when :title then
+            @port.print "#{entry.number}. "
+            @port.print "<a href='#T.#{entry.number}'>"
+            # FIXME: use [[htmlify_markup]] directly
+            Fabricator.htmlify entry.content, @port,
+                symbolism: @symbolism
+            @port.print "</a>"
+          when :rubric then
+            @port.print "%s%i. " % [
+              @symbolism.section_prefix,
+              entry.section_number]
+            @port.print "<a href='#S.#{entry.section_number}'>"
+            # FIXME: use [[htmlify_markup]] directly
+            Fabricator.htmlify entry.content, @port,
+                symbolism: @symbolism
+            @port.print "</a>"
+          else
+            raise 'assertion failed'
+          end
+          last_level = level
+        end
+        @port.puts "</li></ul>" * last_level; @port.puts
+      end
+      return
+    end
+
     def htmlify_markup nodes
       nodes.each do |node|
         case node.type
@@ -1907,9 +1959,8 @@ class << Fabricator
       case element.type
       when :title then
         if !toc_generated then
-          # FIXME: [[weave_html_toc]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_toc fabric.toc, port,
-              symbolism: symbolism
+          # FIXME: [[weaving.]] must be an implicit [[self.]] here
+          weaving.html_toc
           toc_generated = true
         end
         port.print '<h%i' % (element.level + 1)
@@ -1923,9 +1974,8 @@ class << Fabricator
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
-          # FIXME: [[weave_html_toc]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_toc fabric.toc, port,
-              symbolism: symbolism
+          # FIXME: [[weaving.]] must be an implicit [[self.]] here
+          weaving.html_toc
           toc_generated = true
         end
 
@@ -1984,56 +2034,6 @@ class << Fabricator
       else raise 'data structure error'
       end
       port.puts
-    end
-    return
-  end
-
-  def weave_html_toc toc, port,
-      symbolism: default_symbolism
-    if toc.length >= 2 then
-      port.puts "<h2>Contents</h2>"; port.puts
-      last_level = 0
-      # What level should the rubrics in the current
-      # (sub(sub))chapter appear at?
-      rubric_level = 1
-      toc.each do |entry|
-        if entry.type == :rubric then
-          level = rubric_level
-        else
-          level = entry.level
-          rubric_level = entry.level + 1
-        end
-        if level > last_level then
-          raise 'assertion failed' \
-              unless level == last_level + 1
-          port.print "\n<ul><li>"
-        elsif level == last_level then
-          port.print "</li>\n<li>"
-        else
-          port.print "</li></ul>" * (last_level - level) +
-              "\n<li>"
-        end
-        case entry.type
-        when :title then
-          port.print "#{entry.number}. "
-          port.print "<a href='#T.#{entry.number}'>"
-          htmlify entry.content, port,
-              symbolism: symbolism
-          port.print "</a>"
-        when :rubric then
-          port.print "%s%i. " % [
-            symbolism.section_prefix,
-            entry.section_number]
-          port.print "<a href='#S.#{entry.section_number}'>"
-          htmlify entry.content, port,
-              symbolism: symbolism
-          port.print "</a>"
-        else
-          raise 'assertion failed'
-        end
-        last_level = level
-      end
-      port.puts "</li></ul>" * last_level; port.puts
     end
     return
   end
