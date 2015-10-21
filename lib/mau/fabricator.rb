@@ -1747,7 +1747,8 @@ class << Fabricator
       when :title then
         if !toc_generated then
           weave_html_toc fabric.toc, port,
-              section_prefix: section_prefix
+              section_prefix: section_prefix,
+              chunk_name_delim: chunk_name_delim
           toc_generated = true
         end
         port.print '<h%i' % (element.level + 1)
@@ -1762,7 +1763,8 @@ class << Fabricator
         # the table of contents.
         if rubricated and !toc_generated then
           weave_html_toc fabric.toc, port,
-              section_prefix: section_prefix
+              section_prefix: section_prefix,
+              chunk_name_delim: chunk_name_delim
           toc_generated = true
         end
 
@@ -1890,7 +1892,8 @@ class << Fabricator
   end
 
   def weave_html_toc toc, port,
-      section_prefix: "§"
+      section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     if toc.length >= 2 then
       port.puts "<h2>Contents</h2>"; port.puts
       last_level = 0
