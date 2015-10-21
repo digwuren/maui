@@ -1017,7 +1017,7 @@ module Fabricator
           @port.print " id='%s'" % "T.#{element.number}"
           @port.print '>'
           @port.print "#{element.number}. "
-          htmlify_markup element.content
+          htmlify element.content
           @port.puts '</h%i>' % (element.level + 1)
         when :section then
           rubricated = element.elements[0].type == :rubric
@@ -1040,7 +1040,7 @@ module Fabricator
           @port.print "."
           if rubricated then
             @port.print " "
-            htmlify_markup element.elements[start_index].content
+            htmlify element.elements[start_index].content
             start_index += 1
           end
           @port.print "</b>"
@@ -1049,7 +1049,7 @@ module Fabricator
           case subelement && subelement.type
             when :paragraph then
               @port.print " "
-              htmlify_markup subelement.content
+              htmlify subelement.content
               start_index += 1
             when :divert then
               @port.print " "
@@ -1082,7 +1082,7 @@ module Fabricator
       case element.type
       when :paragraph then
         @port.print "<p>"
-        htmlify_markup element.content
+        htmlify element.content
         @port.puts "</p>"
 
       when :list then
@@ -1108,7 +1108,7 @@ module Fabricator
         end
         if element.final then
           @port.print "<div class='maui-chunk-xref'>"
-          htmlify_markup(
+          htmlify(
               Fabricator.xref_chain(element, @fabric,
                   symbolism: @symbolism,
                   dash: "\u2013"))
@@ -1158,14 +1158,14 @@ module Fabricator
           when :title then
             @port.print "#{entry.number}. "
             @port.print "<a href='#T.#{entry.number}'>"
-            htmlify_markup entry.content
+            htmlify entry.content
             @port.print "</a>"
           when :rubric then
             @port.print @symbolism.section_prefix
             @port.print entry.section_number
             @port.print ". "
             @port.print "<a href='#S.#{entry.section_number}'>"
-            htmlify_markup entry.content
+            htmlify entry.content
             @port.print "</a>"
           else
             raise 'assertion failed'
@@ -1181,7 +1181,7 @@ module Fabricator
       @port.puts "<ul>"
       items.each do |item|
         @port.print "<li>"
-        htmlify_markup item.content
+        htmlify item.content
         if item.sublist then
           @port.puts
           html_list item.sublist.items
@@ -1202,7 +1202,7 @@ module Fabricator
       if element.root_type then
         @port.print "<u>%s</u> " % element.root_type.to_xml
       end
-      htmlify_markup(
+      htmlify(
           Fabricator.parse_markup(element.name, Fabricator::MF::LINK))
       @port.print @symbolism.chunk_name_delim.end + ":"
       @port.print "</#{tag}>"
@@ -1224,7 +1224,7 @@ module Fabricator
           if node.clearindent then
             @port.print ".clearindent "
           end
-          htmlify_markup(
+          htmlify(
               Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
           if node.vertical_separation then
             @port.print " " + node.vertical_separation.to_xml
@@ -1265,7 +1265,7 @@ module Fabricator
       return
     end
 
-    def htmlify_markup nodes
+    def htmlify nodes
       nodes.each do |node|
         case node.type
         when :plain then
@@ -1280,13 +1280,13 @@ module Fabricator
         when :monospace, :bold, :italic, :underscore then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
-          htmlify_markup node.content
+          htmlify node.content
           @port.print "</%s>" % html_tag
 
         when :mention_chunk then
           @port.print "<span class='maui-chunk-mention'>"
           @port.print @symbolism.chunk_name_delim.begin
-          htmlify_markup(
+          htmlify(
               Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
@@ -1303,7 +1303,7 @@ module Fabricator
             @port.print " class='#{classes.join(' ').to_xml}'"
           end
           @port.print ">"
-          htmlify_markup node.content
+          htmlify node.content
           @port.print "</a>"
         else
           raise 'invalid node type'
