@@ -1481,7 +1481,8 @@ class << Fabricator
                 wr.add_pseudographics :chunk_margin
               end
             when :use then
-              weave_ctxt_use node, wr
+              weave_ctxt_use node, wr,
+                  symbolism: symbolism
             else raise 'data structure error'
             end
           end
@@ -1550,9 +1551,10 @@ class << Fabricator
     return
   end
 
-  def weave_ctxt_use node, wr
+  def weave_ctxt_use node, wr,
+      symbolism: Fabricator.default_symbolism
     wr.styled :use do
-      wr.add_pseudographics :before_chunk_name
+      wr.add_plain symbolism.chunk_name_delim.begin
       if node.clearindent then
         wr.add_plain ".clearindent "
       end
@@ -1563,7 +1565,7 @@ class << Fabricator
       if node.postprocess then
         wr.add_plain " " + node.postprocess
       end
-      wr.add_pseudographics :after_chunk_name
+      wr.add_plain symbolism.chunk_name_delim.end
     end
     return
   end
