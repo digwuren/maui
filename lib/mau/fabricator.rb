@@ -1979,9 +1979,8 @@ class << Fabricator
   def weave_html_chunk_header element, cls, port,
       tag: 'div',
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.print "<#{tag} class='%s'>" % cls
-    port.print chunk_name_delim.begin
+    port.print symbolism.chunk_name_delim.begin
     if element.root_type then
       port.print "<u>%s</u> " % element.root_type.to_xml
     end
@@ -1989,7 +1988,7 @@ class << Fabricator
         parse_markup(element.name, Fabricator::MF::LINK),
         port,
         symbolism: symbolism)
-    port.print chunk_name_delim.end + ":"
+    port.print symbolism.chunk_name_delim.end + ":"
     port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
     return
