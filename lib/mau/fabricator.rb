@@ -1831,6 +1831,7 @@ class << Fabricator
     when :paragraph then
       port.print "<p>"
       htmlify element.content, port,
+          chunk_name_delim: chunk_name_delim,
           link_processor: link_processor
       port.puts "</p>"
 
@@ -1869,7 +1870,8 @@ class << Fabricator
             xref_chain(element, fabric,
                 section_prefix: section_prefix,
                 dash: "\u2013"),
-            port)
+            port,
+            chunk_name_delim: chunk_name_delim)
         port.puts "</div>"
       end
       port.puts "</div>"
