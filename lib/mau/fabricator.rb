@@ -819,7 +819,8 @@ module Fabricator
       return
     end
 
-    def add_node node
+    def add_node node,
+        symbolism: Fabricator.default_symbolism
       case node.type
       when :plain then
         add_plain node.data
@@ -832,11 +833,11 @@ module Fabricator
           add_nodes node.content
         end
       when :mention_chunk then
-        add_pseudographics :before_chunk_name
+        add_plain symbolism.chunk_name_delim.begin
         add_nodes(
             Fabricator.parse_markup(node.name,
                 Fabricator::MF::LINK))
-        add_pseudographics :after_chunk_name
+        add_plain symbolism.chunk_name_delim.end
       when :link then
         if node.implicit_face then
           styled :link do
@@ -863,9 +864,10 @@ module Fabricator
       return
     end
 
-    def add_nodes nodes
+    def add_nodes nodes,
+        symbolism: Fabricator.default_symbolism
       nodes.each do |node|
-        add_node node
+        add_node node, symbolism: symbolism
       end
       return
     end
