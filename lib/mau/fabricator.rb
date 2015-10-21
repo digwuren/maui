@@ -1730,7 +1730,7 @@ class << Fabricator
     end
     weave_html_presentation fabric, port,
         section_prefix: section_prefix,
-        chunk_name_delim: "\u00AB" .. "\u00BB"
+        chunk_name_delim: chunk_name_delim
     port.puts '</html>'
     port.puts '</body>'
     port.puts '</html>'
