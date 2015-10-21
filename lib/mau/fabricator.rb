@@ -1806,7 +1806,7 @@ class << Fabricator
         end
         wr.add_space
       end
-      wr.add_nodes parse_markup(element.name,
+      wr.add_nodes Fabricator.parse_markup(element.name,
               Fabricator::MF::LINK),
           symbolism: symbolism
       wr.add_plain symbolism.chunk_name_delim.end
@@ -1836,7 +1836,7 @@ class << Fabricator
       if node.clearindent then
         wr.add_plain ".clearindent "
       end
-      wr.add_nodes parse_markup(node.name,
+      wr.add_nodes Fabricator.parse_markup(node.name,
               Fabricator::MF::LINK),
           symbolism: symbolism
       if node.vertical_separation then
@@ -2075,7 +2075,8 @@ class << Fabricator
           port.puts
         end
         unless (element.warnings || []).empty? then
-          weave_html_warning_list element.warnings, port,
+          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_warning_list element.warnings, port,
               inline: true
           port.puts
         end
