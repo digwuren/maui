@@ -2076,9 +2076,10 @@ which in its regard, are just chunk headers.
 
 << Other methods >>:
 
-  def weave_ctxt_chunk_header element, wr
+  def weave_ctxt_chunk_header element, wr,
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     wr.styled :chunk_header do
-      wr.add_pseudographics :before_chunk_name
+      wr.add_plain chunk_name_delim.begin
       if element.root_type then
         wr.styled :root_type do
           wr.add_plain element.root_type
@@ -2087,7 +2088,7 @@ which in its regard, are just chunk headers.
       end
       wr.add_nodes(
           parse_markup(element.name, Fabricator::MF::LINK))
-      wr.add_pseudographics :after_chunk_name
+      wr.add_plain chunk_name_delim.end
       wr.add_plain ":"
     end
     wr.linebreak
