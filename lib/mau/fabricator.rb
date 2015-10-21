@@ -1459,10 +1459,8 @@ class << Fabricator
 
     when :divert, :chunk, :diverted_chunk then
       if [:divert, :chunk].include? element.type then
-        # FIXME: weave_ctxt_chunk_header must accept our symbolism
-        # as it is
         weave_ctxt_chunk_header element, wr,
-            chunk_name_delim: symbolism.chunk_name_delim
+            symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
@@ -1519,7 +1517,8 @@ class << Fabricator
   end
 
   def weave_ctxt_chunk_header element, wr,
-      chunk_name_delim: "\u00AB" .. "\u00BB"
+      symbolism: Fabricator.default_symbolism
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     wr.styled :chunk_header do
       wr.add_plain chunk_name_delim.begin
       if element.root_type then
