@@ -1821,6 +1821,7 @@ class << Fabricator
 
   def weave_html_section_part element, fabric, port,
       section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB",
       link_processor: nil
     case element.type
     when :paragraph then
@@ -1836,7 +1837,7 @@ class << Fabricator
     when :divert then
       weave_html_chunk_header element, 'maui-divert',
           port,
-          chunk_name_delim: "\u00AB" .. "\u00BB"
+          chunk_name_delim: chunk_name_delim
       port.puts
       weave_html_warning_list element.warnings, port,
           inline: true
@@ -1849,11 +1850,11 @@ class << Fabricator
       if element.type == :chunk then
         weave_html_chunk_header element, 'maui-chunk-header',
             port,
-            chunk_name_delim: "\u00AB" .. "\u00BB"
+            chunk_name_delim: chunk_name_delim
         port.puts
       end
       weave_html_chunk_body element, port,
-          chunk_name_delim: "\u00AB" .. "\u00BB"
+          chunk_name_delim: chunk_name_delim
       unless (element.warnings || []).empty? then
         weave_html_warning_list element.warnings, port,
             inline: true
