@@ -2703,6 +2703,7 @@ conventions.
     return
   end
 
+
   def html_head
     @port.puts '<head>'
     @port.puts "<meta http-equiv='Content-type' " +
@@ -2950,9 +2951,9 @@ into a local link, either in the [[#T.foo]] form for titles or
     htmlify_markup entry.content
     @port.print "</a>"
   when :rubric then
-    @port.print "%s%i. " % [
-      @symbolism.section_prefix,
-      entry.section_number]
+    @port.print @symbolism.section_prefix
+    @port.print entry.section_number
+    @port.print ". "
     @port.print "<a href='#S.#{entry.section_number}'>"
     htmlify_markup entry.content
     @port.print "</a>"
