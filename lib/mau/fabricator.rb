@@ -830,24 +830,24 @@ module Fabricator
         add_plain ' '
       when :monospace, :bold, :italic, :underscore then
         styled node.type do
-          add_nodes node.content
+          add_nodes node.content, symbolism: symbolism
         end
       when :mention_chunk then
         add_plain symbolism.chunk_name_delim.begin
-        add_nodes(
-            Fabricator.parse_markup(node.name,
-                Fabricator::MF::LINK))
+        add_nodes Fabricator.parse_markup(node.name,
+                Fabricator::MF::LINK),
+            symbolism: symbolism
         add_plain symbolism.chunk_name_delim.end
       when :link then
         if node.implicit_face then
           styled :link do
             add_plain '<'
-            add_nodes node.content
+            add_nodes node.content, symbolism: symbolism
             add_plain '>'
           end
         else
           add_plain '<'
-          add_nodes node.content
+          add_nodes node.content, symbolism: symbolism
           unless node.implicit_face then
             add_space ' '
             styled :link do
