@@ -1737,6 +1737,7 @@ class << Fabricator
 
   def weave_html_presentation fabric, port,
       section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB",
       link_processor: nil
     toc_generated = false
     fabric.presentation.each do |element|
@@ -1791,7 +1792,7 @@ class << Fabricator
             weave_html_chunk_header subelement, 'maui-divert',
                 port,
                 tag: 'span',
-                chunk_name_delim: "\u00AB" .. "\u00BB"
+                chunk_name_delim: chunk_name_delim
             warnings = subelement.warnings
             start_index += 1
         end
@@ -1803,6 +1804,7 @@ class << Fabricator
         element.elements[start_index .. -1].each do |child|
           weave_html_section_part child, fabric, port,
               section_prefix: section_prefix,
+              chunk_name_delim: chunk_name_delim,
               link_processor: link_processor
           port.puts
         end
