@@ -1765,7 +1765,7 @@ class << Fabricator
         port.print '>'
         port.print "#{element.number}. "
         htmlify element.content, port,
-            chunk_name_delim: chunk_name_delim
+            symbolism: symbolism
         port.puts '</h%i>' % (element.level + 1)
       when :section then
         rubricated = element.elements[0].type == :rubric
@@ -1788,7 +1788,7 @@ class << Fabricator
         if rubricated then
           port.print " "
           htmlify element.elements[start_index].content, port,
-              chunk_name_delim: chunk_name_delim,
+              symbolism: symbolism,
               link_processor: link_processor
           start_index += 1
         end
@@ -1799,7 +1799,7 @@ class << Fabricator
           when :paragraph then
             port.print " "
             htmlify subelement.content, port,
-                chunk_name_delim: chunk_name_delim,
+                symbolism: symbolism,
                 link_processor: link_processor
             start_index += 1
           when :divert then
@@ -1844,7 +1844,7 @@ class << Fabricator
     when :paragraph then
       port.print "<p>"
       htmlify element.content, port,
-          chunk_name_delim: chunk_name_delim,
+          symbolism: symbolism,
           link_processor: link_processor
       port.puts "</p>"
 
@@ -1885,7 +1885,7 @@ class << Fabricator
                 symbolism: symbolism,
                 dash: "\u2013"),
             port,
-            chunk_name_delim: chunk_name_delim)
+            symbolism: symbolism)
         port.puts "</div>"
       end
       port.puts "</div>"
@@ -1935,7 +1935,7 @@ class << Fabricator
           port.print "#{entry.number}. "
           port.print "<a href='#T.#{entry.number}'>"
           htmlify entry.content, port,
-              chunk_name_delim: chunk_name_delim
+              symbolism: symbolism
           port.print "</a>"
         when :rubric then
           port.print "%s%i. " % [
@@ -1943,7 +1943,7 @@ class << Fabricator
             entry.section_number]
           port.print "<a href='#S.#{entry.section_number}'>"
           htmlify entry.content, port,
-              chunk_name_delim: chunk_name_delim
+              symbolism: symbolism
           port.print "</a>"
         else
           raise 'assertion failed'
@@ -1963,7 +1963,7 @@ class << Fabricator
     items.each do |item|
       port.print "<li>"
       htmlify item.content, port,
-          chunk_name_delim: chunk_name_delim,
+          symbolism: symbolism,
           link_processor: link_processor
       if item.sublist then
         port.puts
@@ -1994,7 +1994,7 @@ class << Fabricator
     htmlify(
         parse_markup(element.name, Fabricator::MF::LINK),
         port,
-        chunk_name_delim: chunk_name_delim)
+        symbolism: symbolism)
     port.print chunk_name_delim.end + ":"
     port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
@@ -2020,7 +2020,7 @@ class << Fabricator
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
             port,
-            chunk_name_delim: chunk_name_delim)
+            symbolism: symbolism)
         if node.vertical_separation then
           port.print " " + node.vertical_separation.to_xml
         end
@@ -2061,8 +2061,9 @@ class << Fabricator
   end
 
   def htmlify nodes, port,
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: Fabricator.default_symbolism,
       link_processor: nil
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     nodes.each do |node|
       case node.type
       when :plain then
@@ -2078,7 +2079,7 @@ class << Fabricator
         html_tag = Fabricator::MARKUP2HTML[node.type]
         port.print "<%s>" % html_tag
         htmlify node.content, port,
-            chunk_name_delim: chunk_name_delim,
+            symbolism: symbolism,
             link_processor: link_processor
         port.print "</%s>" % html_tag
 
@@ -2088,7 +2089,7 @@ class << Fabricator
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
             port,
-            chunk_name_delim: chunk_name_delim,
+            symbolism: symbolism,
             link_processor: link_processor)
         port.print chunk_name_delim.end
         port.print "</span>"
@@ -2106,7 +2107,7 @@ class << Fabricator
         end
         port.print ">"
         htmlify node.content, port,
-            chunk_name_delim: chunk_name_delim,
+            symbolism: symbolism,
             link_processor: link_processor
         port.print "</a>"
       else

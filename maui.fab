@@ -2710,7 +2710,7 @@ conventions.
   port.print '>'
   port.print "#{element.number}. "
   htmlify element.content, port,
-      chunk_name_delim: chunk_name_delim
+      symbolism: symbolism
   port.puts '</h%i>' % (element.level + 1)
 
 << Weave the [[section]] (HTML) >>:
@@ -2747,7 +2747,7 @@ conventions.
     when :paragraph then
       port.print " "
       htmlify subelement.content, port,
-          chunk_name_delim: chunk_name_delim,
+          symbolism: symbolism,
           link_processor: link_processor
       start_index += 1
     when :divert then
@@ -2771,7 +2771,7 @@ conventions.
   if rubricated then
     port.print " "
     htmlify element.elements[start_index].content, port,
-        chunk_name_delim: chunk_name_delim,
+        symbolism: symbolism,
         link_processor: link_processor
     start_index += 1
   end
@@ -2798,7 +2798,7 @@ conventions.
   when :paragraph then
     port.print "<p>"
     htmlify element.content, port,
-        chunk_name_delim: chunk_name_delim,
+        symbolism: symbolism,
         link_processor: link_processor
     port.puts "</p>"
 
@@ -2842,7 +2842,7 @@ conventions.
               symbolism: symbolism,
               dash: "\u2013"),
           port,
-          chunk_name_delim: chunk_name_delim)
+          symbolism: symbolism)
       port.puts "</div>"
     end
     port.puts "</div>"
@@ -2907,7 +2907,7 @@ going to make each entry into a local link, either in the
     port.print "#{entry.number}. "
     port.print "<a href='#T.#{entry.number}'>"
     htmlify entry.content, port,
-        chunk_name_delim: chunk_name_delim
+        symbolism: symbolism
     port.print "</a>"
   when :rubric then
     port.print "%s%i. " % [
@@ -2915,7 +2915,7 @@ going to make each entry into a local link, either in the
       entry.section_number]
     port.print "<a href='#S.#{entry.section_number}'>"
     htmlify entry.content, port,
-        chunk_name_delim: chunk_name_delim
+        symbolism: symbolism
     port.print "</a>"
   else
     raise 'assertion failed'
@@ -2931,7 +2931,7 @@ going to make each entry into a local link, either in the
     items.each do |item|
       port.print "<li>"
       htmlify item.content, port,
-          chunk_name_delim: chunk_name_delim,
+          symbolism: symbolism,
           link_processor: link_processor
       if item.sublist then
         port.puts
@@ -2963,7 +2963,7 @@ going to make each entry into a local link, either in the
     htmlify(
         parse_markup(element.name, Fabricator::MF::LINK),
         port,
-        chunk_name_delim: chunk_name_delim)
+        symbolism: symbolism)
     port.print chunk_name_delim.end + ":"
     port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
@@ -2999,7 +2999,7 @@ going to make each entry into a local link, either in the
   htmlify(
       parse_markup(node.name, Fabricator::MF::LINK),
       port,
-      chunk_name_delim: chunk_name_delim)
+      symbolism: symbolism)
   if node.vertical_separation then
     port.print " " + node.vertical_separation.to_xml
   end
@@ -3057,8 +3057,9 @@ going to make each entry into a local link, either in the
 
 << Other methods >>:
   def htmlify nodes, port,
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: Fabricator.default_symbolism,
       link_processor: nil
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     nodes.each do |node|
       case node.type
       << [[case]] clauses of [[htmlify]] >>
@@ -3088,7 +3089,7 @@ going to make each entry into a local link, either in the
     html_tag = Fabricator::MARKUP2HTML[node.type]
     port.print "<%s>" % html_tag
     htmlify node.content, port,
-        chunk_name_delim: chunk_name_delim,
+        symbolism: symbolism,
         link_processor: link_processor
     port.print "</%s>" % html_tag
 
@@ -3099,7 +3100,7 @@ going to make each entry into a local link, either in the
     htmlify(
         parse_markup(node.name, Fabricator::MF::LINK),
         port,
-        chunk_name_delim: chunk_name_delim,
+        symbolism: symbolism,
         link_processor: link_processor)
     port.print chunk_name_delim.end
     port.print "</span>"
@@ -3118,7 +3119,7 @@ going to make each entry into a local link, either in the
     end
     port.print ">"
     htmlify node.content, port,
-        chunk_name_delim: chunk_name_delim,
+        symbolism: symbolism,
         link_processor: link_processor
     port.print "</a>"
 
