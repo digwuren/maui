@@ -1106,18 +1106,14 @@ module Fabricator
           when :title then
             @port.print "#{entry.number}. "
             @port.print "<a href='#T.#{entry.number}'>"
-            # FIXME: use [[htmlify_markup]] directly
-            Fabricator.htmlify entry.content, @port,
-                symbolism: @symbolism
+            htmlify_markup entry.content
             @port.print "</a>"
           when :rubric then
             @port.print "%s%i. " % [
               @symbolism.section_prefix,
               entry.section_number]
             @port.print "<a href='#S.#{entry.section_number}'>"
-            # FIXME: use [[htmlify_markup]] directly
-            Fabricator.htmlify entry.content, @port,
-                symbolism: @symbolism
+            htmlify_markup entry.content
             @port.print "</a>"
           else
             raise 'assertion failed'
