@@ -1452,7 +1452,6 @@ class << Fabricator
 
   def weave_ctxt_section_part element, fabric, wr,
       symbolism: Fabricator.default_symbolism
-    section_prefix = symbolism.section_prefix # FIXME: inline
     chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     when :paragraph then
@@ -1499,8 +1498,9 @@ class << Fabricator
             inline: true
         if element.final then
           wr.styled :chunk_xref do
+            # FIXME: xref_chain must accept our symbolism as it is
             wr.add_nodes xref_chain(element, fabric,
-                section_prefix: section_prefix)
+                section_prefix: symbolism.section_prefix)
           end
           wr.linebreak
         end
