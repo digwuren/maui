@@ -1011,6 +1011,78 @@ module Fabricator
       return
     end
 
+    def html_section_part element
+      case element.type
+      when :paragraph then
+        @port.print "<p>"
+        # FIXME: use [[htmlify_markup]] directly
+        Fabricator.htmlify element.content, @port,
+            symbolism: @symbolism,
+            link_processor: @link_processor
+        @port.puts "</p>"
+
+      when :list then
+        # FIXME: [[weave_html_list]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_list element.items, @port,
+            symbolism: @symbolism,
+            link_processor: @link_processor
+
+      when :divert then
+        # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_chunk_header element, 'maui-divert',
+            @port,
+            symbolism: @symbolism
+        @port.puts
+        # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_warning_list element.warnings, @port,
+            inline: true
+
+      when :chunk, :diverted_chunk then
+        @port.print "<div class='maui-chunk"
+        @port.print " maui-initial-chunk" if element.initial
+        @port.print " maui-final-chunk" if element.final
+        @port.print "'>"
+        if element.type == :chunk then
+          # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_chunk_header element, 'maui-chunk-header',
+              @port,
+              symbolism: @symbolism
+          @port.puts
+        end
+        # FIXME: [[weave_html_chunk_body]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_chunk_body element, @port,
+            symbolism: @symbolism
+        unless (element.warnings || []).empty? then
+          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_warning_list element.warnings, @port,
+              inline: true
+        end
+        if element.final then
+          @port.print "<div class='maui-chunk-xref'>"
+          # FIXME: use [[htmlify_markup]] directly
+          Fabricator.htmlify(
+              Fabricator.xref_chain(element, @fabric,
+                  symbolism: @symbolism,
+                  dash: "\u2013"),
+              @port,
+              symbolism: @symbolism)
+          @port.puts "</div>"
+        end
+        @port.puts "</div>"
+
+      when :block then
+        @port.print "<pre class='maui-block'>"
+        element.lines.each_with_index do |line, i|
+          @port.puts unless i.zero?
+          @port.print line.to_xml
+        end
+        @port.puts "</pre>"
+      else
+        raise 'data structure error'
+      end
+      return
+    end
+
     def htmlify_markup nodes
       nodes.each do |node|
         case node.type
@@ -1905,10 +1977,8 @@ class << Fabricator
         end
         port.puts
         element.elements[start_index .. -1].each do |child|
-          # FIXME: [[weave_html_section_part]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_section_part child, fabric, port,
-              symbolism: symbolism,
-              link_processor: link_processor
+          # FIXME: [[weaving.]] must be an implicit [[self.]] here
+          weaving.html_section_part child
           port.puts
         end
         unless (element.warnings || []).empty? then
@@ -1920,74 +1990,6 @@ class << Fabricator
       else raise 'data structure error'
       end
       port.puts
-    end
-    return
-  end
-
-  def weave_html_section_part element, fabric, port,
-      symbolism: default_symbolism,
-      link_processor: nil
-    case element.type
-    when :paragraph then
-      port.print "<p>"
-      htmlify element.content, port,
-          symbolism: symbolism,
-          link_processor: link_processor
-      port.puts "</p>"
-
-    when :list then
-      weave_html_list element.items, port,
-          symbolism: symbolism,
-          link_processor: link_processor
-
-    when :divert then
-      # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-      Fabricator.weave_html_chunk_header element, 'maui-divert',
-          port,
-          symbolism: symbolism
-      port.puts
-      weave_html_warning_list element.warnings, port,
-          inline: true
-
-    when :chunk, :diverted_chunk then
-      port.print "<div class='maui-chunk"
-      port.print " maui-initial-chunk" if element.initial
-      port.print " maui-final-chunk" if element.final
-      port.print "'>"
-      if element.type == :chunk then
-        # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_chunk_header element, 'maui-chunk-header',
-            port,
-            symbolism: symbolism
-        port.puts
-      end
-      weave_html_chunk_body element, port,
-          symbolism: symbolism
-      unless (element.warnings || []).empty? then
-        weave_html_warning_list element.warnings, port,
-            inline: true
-      end
-      if element.final then
-        port.print "<div class='maui-chunk-xref'>"
-        htmlify(
-            xref_chain(element, fabric,
-                symbolism: symbolism,
-                dash: "\u2013"),
-            port,
-            symbolism: symbolism)
-        port.puts "</div>"
-      end
-      port.puts "</div>"
-
-    when :block then
-      port.print "<pre class='maui-block'>"
-      element.lines.each_with_index do |line, i|
-        port.puts unless i.zero?
-        port.print line.to_xml
-      end
-      port.puts "</pre>"
-    else
-      raise 'data structure error'
     end
     return
   end
