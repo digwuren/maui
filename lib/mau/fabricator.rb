@@ -1700,8 +1700,7 @@ class << Fabricator
 
   def weave_html fabric, port,
       title: nil,
-      section_prefix: "§",
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: Fabricator.default_symbolism,
       link_css: []
     title ||= "(Untitled)"
     port.puts '<!doctype html>'
@@ -1732,8 +1731,8 @@ class << Fabricator
       port.puts
     end
     weave_html_presentation fabric, port,
-        section_prefix: section_prefix,
-        chunk_name_delim: chunk_name_delim
+        section_prefix: symbolism.section_prefix,
+        chunk_name_delim: symbolism.chunk_name_delim
     port.puts '</html>'
     port.puts '</body>'
     port.puts '</html>'

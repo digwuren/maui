@@ -143,9 +143,11 @@ end
     generator: proc do |filename|
       open filename, 'w' do |port|
         port.set_encoding 'utf-8'
+        symbolism = Fabricator.default_symbolism
+        symbolism.section_prefix = $cmdline.section_prefix
         Fabricator.weave_html fabric, port,
             title: $cmdline.fabric_filename,
-            section_prefix: $cmdline.section_prefix,
+            symbolism: symbolism,
             link_css: $cmdline.link_css
       end
       puts "Weaved #{filename}"
