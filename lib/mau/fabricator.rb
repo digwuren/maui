@@ -914,8 +914,6 @@ module Fabricator
 
   UNICODE_PSEUDOGRAPHICS = OpenStruct.new(
     bullet: [0x2022].pack('U*'),
-    before_chunk_name: [0x00AB].pack('U*'),
-    after_chunk_name: [0x00BB].pack('U*'),
     initial_chunk_margin: [0x2500, 0x2510].pack('U*'),
     chunk_margin: [0x0020, 0x2502].pack('U*'),
     block_margin: "  ",
@@ -925,8 +923,6 @@ module Fabricator
 
   ASCII_PSEUDOGRAPHICS = OpenStruct.new(
     bullet: "-",
-    before_chunk_name: "<<",
-    after_chunk_name: ">>",
     initial_chunk_margin: "+ ",
     chunk_margin: "| ",
     block_margin: "  ",
