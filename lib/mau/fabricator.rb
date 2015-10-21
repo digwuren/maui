@@ -1746,7 +1746,7 @@ class << Fabricator
   end
 
   def weave_html_presentation fabric, port,
-      symbolism: symbolism,
+      symbolism: Fabricator.default_symbolism,
       link_processor: nil
     toc_generated = false
     fabric.presentation.each do |element|
