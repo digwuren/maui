@@ -1829,7 +1829,7 @@ class << Fabricator
     return
   end
 
-  # FIXME: [[weave_html_presentation]] must be in [[HTML_Weaving]]
+  # FIXME: [[weave_html_presentation]] must be in [[HTML_Weaving]], and [[weaving]] must be [[self]]
   def weave_html_presentation weaving
     fabric = weaving.fabric # FIXME: inline as [[@fabric]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
     port = weaving.port # FIXME: inline as [[@port]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
@@ -1850,9 +1850,7 @@ class << Fabricator
         port.print " id='%s'" % "T.#{element.number}"
         port.print '>'
         port.print "#{element.number}. "
-        # FIXME: [[htmlify]] must be in [[HTML_Weaving]]
-        Fabricator.htmlify element.content, port,
-            symbolism: symbolism
+        weaving.htmlify_markup element.content
         port.puts '</h%i>' % (element.level + 1)
       when :section then
         rubricated = element.elements[0].type == :rubric
