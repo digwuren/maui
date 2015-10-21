@@ -1755,7 +1755,8 @@ class << Fabricator
         port.print " id='%s'" % "T.#{element.number}"
         port.print '>'
         port.print "#{element.number}. "
-        htmlify element.content, port
+        htmlify element.content, port,
+            chunk_name_delim: chunk_name_delim
         port.puts '</h%i>' % (element.level + 1)
       when :section then
         rubricated = element.elements[0].type == :rubric
@@ -1779,6 +1780,7 @@ class << Fabricator
         if rubricated then
           port.print " "
           htmlify element.elements[start_index].content, port,
+              chunk_name_delim: chunk_name_delim,
               link_processor: link_processor
           start_index += 1
         end
@@ -1789,6 +1791,7 @@ class << Fabricator
           when :paragraph then
             port.print " "
             htmlify subelement.content, port,
+                chunk_name_delim: chunk_name_delim,
                 link_processor: link_processor
             start_index += 1
           when :divert then
