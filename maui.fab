@@ -2084,18 +2084,18 @@ which in its regard, are just chunk headers.
 
   def weave_ctxt_chunk_header element, wr,
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     wr.styled :chunk_header do
-      wr.add_plain chunk_name_delim.begin
+      wr.add_plain symbolism.chunk_name_delim.begin
       if element.root_type then
         wr.styled :root_type do
           wr.add_plain element.root_type
         end
         wr.add_space
       end
-      wr.add_nodes(
-          parse_markup(element.name, Fabricator::MF::LINK))
-      wr.add_plain chunk_name_delim.end
+      wr.add_nodes parse_markup(element.name,
+              Fabricator::MF::LINK),
+          symbolism: symbolism
+      wr.add_plain symbolism.chunk_name_delim.end
       wr.add_plain ":"
     end
     wr.linebreak
