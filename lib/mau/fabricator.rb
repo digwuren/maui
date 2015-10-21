@@ -1032,12 +1032,8 @@ module Fabricator
         when :mention_chunk then
           @port.print "<span class='maui-chunk-mention'>"
           @port.print @symbolism.chunk_name_delim.begin
-          # FIXME: use [[htmlify_markup]] directly
-          Fabricator.htmlify(
-              Fabricator.parse_markup(node.name, Fabricator::MF::LINK),
-              @port,
-              symbolism: @symbolism,
-              link_processor: @link_processor)
+          htmlify_markup(
+              Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
 
