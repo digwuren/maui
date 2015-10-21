@@ -1852,7 +1852,8 @@ class << Fabricator
             chunk_name_delim: "\u00AB" .. "\u00BB"
         port.puts
       end
-      weave_html_chunk_body element, port
+      weave_html_chunk_body element, port,
+          chunk_name_delim: "\u00AB" .. "\u00BB"
       unless (element.warnings || []).empty? then
         weave_html_warning_list element.warnings, port,
             inline: true
