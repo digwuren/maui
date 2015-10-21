@@ -1857,7 +1857,8 @@ class << Fabricator
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
-          weave_html_toc fabric.toc, port,
+          # FIXME: [[weave_html_toc]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_toc fabric.toc, port,
               symbolism: symbolism
           toc_generated = true
         end
@@ -1874,9 +1875,8 @@ class << Fabricator
           element.section_number]
         if rubricated then
           port.print " "
-          htmlify element.elements[start_index].content, port,
-              symbolism: symbolism,
-              link_processor: link_processor
+          # FIXME: [[weaving.]] must be an implicit [[self.]] here
+          weaving.htmlify_markup element.elements[start_index].content
           start_index += 1
         end
         port.print "</b>"
@@ -1885,13 +1885,13 @@ class << Fabricator
         case subelement && subelement.type
           when :paragraph then
             port.print " "
-            htmlify subelement.content, port,
-                symbolism: symbolism,
-                link_processor: link_processor
+            # FIXME: [[weaving.]] must be an implicit [[self.]] here
+            weaving.htmlify_markup subelement.content
             start_index += 1
           when :divert then
             port.print " "
-            weave_html_chunk_header subelement, 'maui-divert',
+            # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
+            Fabricator.weave_html_chunk_header subelement, 'maui-divert',
                 port,
                 tag: 'span',
                 symbolism: symbolism
@@ -1900,11 +1900,13 @@ class << Fabricator
         end
         port.puts "</p>"
         if warnings then
-          weave_html_warning_list warnings, port, inline: true
+          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_warning_list warnings, port, inline: true
         end
         port.puts
         element.elements[start_index .. -1].each do |child|
-          weave_html_section_part child, fabric, port,
+          # FIXME: [[weave_html_section_part]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_section_part child, fabric, port,
               symbolism: symbolism,
               link_processor: link_processor
           port.puts
