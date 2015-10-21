@@ -2055,7 +2055,6 @@ class << Fabricator
   def htmlify nodes, port,
       symbolism: Fabricator.default_symbolism,
       link_processor: nil
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     nodes.each do |node|
       case node.type
       when :plain then
@@ -2077,13 +2076,13 @@ class << Fabricator
 
       when :mention_chunk then
         port.print "<span class='maui-chunk-mention'>"
-        port.print chunk_name_delim.begin
+        port.print symbolism.chunk_name_delim.begin
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
             port,
             symbolism: symbolism,
             link_processor: link_processor)
-        port.print chunk_name_delim.end
+        port.print symbolism.chunk_name_delim.end
         port.print "</span>"
 
       when :link then
