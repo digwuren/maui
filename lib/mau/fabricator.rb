@@ -950,11 +950,6 @@ module Fabricator
   )
 
   class HTML_Weaving
-    attr_reader :fabric # FIXME: mustn't be public
-    attr_reader :port # FIXME: mustn't be public
-    attr_reader :symbolism # FIXME: mustn't be public
-    attr_reader :link_processor # FIXME: mustn't be public
-
     def initialize fabric, port,
         title: nil,
         symbolism: Fabricator.default_symbolism,
@@ -2085,17 +2080,6 @@ class << Fabricator
         link_css: link_css,
         link_processor: link_processor
     weaving.html
-    return
-  end
-
-  # FIXME: this temporary method must be deleted once all the callers use [[htmlify_markup]] instead
-  def htmlify nodes, port,
-      symbolism: default_symbolism,
-      link_processor: nil
-    weaving = Fabricator::HTML_Weaving.new nil, port,
-        symbolism: symbolism,
-        link_processor: link_processor
-    weaving.htmlify_markup nodes
     return
   end
 
