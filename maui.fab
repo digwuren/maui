@@ -2805,8 +2805,8 @@ conventions.
   end
   port.puts "</p>"
   if warnings then
-    # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-    Fabricator.weave_html_warning_list warnings, port, inline: true
+    # FIXME: [[weaving.]] must be an implicit [[self.]] here
+    weaving.html_warning_list warnings, inline: true
   end
 
 << Weave section's number and rubric (HTML) >>:
@@ -2850,9 +2850,7 @@ conventions.
   when :divert then
     html_chunk_header element, 'maui-divert'
     @port.puts
-    # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-    Fabricator.weave_html_warning_list element.warnings, @port,
-        inline: true
+    html_warning_list element.warnings, inline: true
 
 
   when :chunk, :diverted_chunk then
@@ -2866,9 +2864,7 @@ conventions.
     end
     html_chunk_body element
     unless (element.warnings || []).empty? then
-      # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-      Fabricator.weave_html_warning_list element.warnings, @port,
-          inline: true
+      html_warning_list element.warnings, inline: true
     end
     if element.final then
       @port.print "<div class='maui-chunk-xref'>"
@@ -2963,9 +2959,7 @@ into a local link, either in the [[#T.foo]] form for titles or
       end
       unless (item.warnings || []).empty? then
         @port.puts
-        # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_warning_list item.warnings, @port,
-            inline: true
+        html_warning_list item.warnings, inline: true
       end
       @port.puts "</li>"
     end
@@ -3030,9 +3024,7 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 << Weave the section's top-level warnings, if any (HTML) >>:
   unless (element.warnings || []).empty? then
-    # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-    Fabricator.weave_html_warning_list element.warnings, port,
-        inline: true
+    weaving.html_warning_list element.warnings, inline: true
     port.puts
   end
 
@@ -3040,32 +3032,31 @@ into a local link, either in the [[#T.foo]] form for titles or
   unless @fabric.warnings.empty? then
     @port.puts "<h2>Warnings</h2>"
     @port.puts
-    # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
-    Fabricator.weave_html_warning_list @fabric.warnings, @port
+    html_warning_list @fabric.warnings
     @port.puts
   end
 
-<< Other methods >>:
-  def weave_html_warning_list list, port, inline: false
+<< in [[HTML_Weaving]] >>:
+  def html_warning_list list, inline: false
     if list and !list.empty? then
-      port.print "<ul class='maui-warnings"
-      port.print " maui-inline-warnings" if inline
-      port.puts "'>"
+      @port.print "<ul class='maui-warnings"
+      @port.print " maui-inline-warnings" if inline
+      @port.puts "'>"
       list.each do |warning|
-        port.print "<li"
-        port.print " id='W.#{warning.number}'" if inline
-        port.print ">"
-        port.print "!!! " if inline
+        @port.print "<li"
+        @port.print " id='W.#{warning.number}'" if inline
+        @port.print ">"
+        @port.print "!!! " if inline
         if !inline and warning.inline then
-          port.print "<a href='#W.%i'>" % warning.number
+          @port.print "<a href='#W.%i'>" % warning.number
         end
-        port.print "<tt>%s</tt>" %
-            format_location(warning.loc).to_xml
-        port.print ": " + warning.message
-        port.print "</a>" if !inline and warning.inline
-        port.puts "</li>"
+        @port.print "<tt>%s</tt>" %
+            Fabricator.format_location(warning.loc).to_xml
+        @port.print ": " + warning.message
+        @port.print "</a>" if !inline and warning.inline
+        @port.puts "</li>"
       end
-      port.puts "</ul>"
+      @port.puts "</ul>"
     end
     return
   end

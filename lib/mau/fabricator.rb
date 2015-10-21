@@ -980,8 +980,7 @@ module Fabricator
       unless @fabric.warnings.empty? then
         @port.puts "<h2>Warnings</h2>"
         @port.puts
-        # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
-        Fabricator.weave_html_warning_list @fabric.warnings, @port
+        html_warning_list @fabric.warnings
         @port.puts
       end
       # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
@@ -1024,9 +1023,7 @@ module Fabricator
       when :divert then
         html_chunk_header element, 'maui-divert'
         @port.puts
-        # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_warning_list element.warnings, @port,
-            inline: true
+        html_warning_list element.warnings, inline: true
 
       when :chunk, :diverted_chunk then
         @port.print "<div class='maui-chunk"
@@ -1039,9 +1036,7 @@ module Fabricator
         end
         html_chunk_body element
         unless (element.warnings || []).empty? then
-          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_warning_list element.warnings, @port,
-              inline: true
+          html_warning_list element.warnings, inline: true
         end
         if element.final then
           @port.print "<div class='maui-chunk-xref'>"
@@ -1125,9 +1120,7 @@ module Fabricator
         end
         unless (item.warnings || []).empty? then
           @port.puts
-          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_warning_list item.warnings, @port,
-              inline: true
+          html_warning_list item.warnings, inline: true
         end
         @port.puts "</li>"
       end
@@ -1177,6 +1170,30 @@ module Fabricator
         end
       end
       @port.puts "</pre>"
+      return
+    end
+
+    def html_warning_list list, inline: false
+      if list and !list.empty? then
+        @port.print "<ul class='maui-warnings"
+        @port.print " maui-inline-warnings" if inline
+        @port.puts "'>"
+        list.each do |warning|
+          @port.print "<li"
+          @port.print " id='W.#{warning.number}'" if inline
+          @port.print ">"
+          @port.print "!!! " if inline
+          if !inline and warning.inline then
+            @port.print "<a href='#W.%i'>" % warning.number
+          end
+          @port.print "<tt>%s</tt>" %
+              Fabricator.format_location(warning.loc).to_xml
+          @port.print ": " + warning.message
+          @port.print "</a>" if !inline and warning.inline
+          @port.puts "</li>"
+        end
+        @port.puts "</ul>"
+      end
       return
     end
 
@@ -2065,8 +2082,8 @@ class << Fabricator
         end
         port.puts "</p>"
         if warnings then
-          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_warning_list warnings, port, inline: true
+          # FIXME: [[weaving.]] must be an implicit [[self.]] here
+          weaving.html_warning_list warnings, inline: true
         end
         port.puts
         element.elements[start_index .. -1].each do |child|
@@ -2075,39 +2092,13 @@ class << Fabricator
           port.puts
         end
         unless (element.warnings || []).empty? then
-          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_warning_list element.warnings, port,
-              inline: true
+          weaving.html_warning_list element.warnings, inline: true
           port.puts
         end
         port.puts "</section>"
       else raise 'data structure error'
       end
       port.puts
-    end
-    return
-  end
-
-  def weave_html_warning_list list, port, inline: false
-    if list and !list.empty? then
-      port.print "<ul class='maui-warnings"
-      port.print " maui-inline-warnings" if inline
-      port.puts "'>"
-      list.each do |warning|
-        port.print "<li"
-        port.print " id='W.#{warning.number}'" if inline
-        port.print ">"
-        port.print "!!! " if inline
-        if !inline and warning.inline then
-          port.print "<a href='#W.%i'>" % warning.number
-        end
-        port.print "<tt>%s</tt>" %
-            format_location(warning.loc).to_xml
-        port.print ": " + warning.message
-        port.print "</a>" if !inline and warning.inline
-        port.puts "</li>"
-      end
-      port.puts "</ul>"
     end
     return
   end
