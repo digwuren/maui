@@ -8,13 +8,15 @@ $0 = 'maui' # for [[GetoptLong]] error reporting
 begin
   $cmdline = OpenStruct.new
   $cmdline.pseudographics = Fabricator::UNICODE_PSEUDOGRAPHICS
-  $cmdline.section_prefix = "§"
+  $cmdline.symbolism = OpenStruct.new(section_prefix: "§")
   $cmdline.output_width = 80
   $cmdline.chunk_size_limit = 24
   $cmdline.link_css = []
 
   GetoptLong.new(
       ['--section-prefix', GetoptLong::REQUIRED_ARGUMENT],
+
+      ['--chunk-name-delim', GetoptLong::REQUIRED_ARGUMENT],
 
       ['--output-width', GetoptLong::REQUIRED_ARGUMENT],
 
@@ -32,7 +34,15 @@ begin
       ).each do |opt, arg|
     case opt
     when '--section-prefix' then
-      $cmdline.section_prefix = arg
+      $cmdline.symbolism.section_prefix = arg
+
+    when '--chunk-name-delim' then
+      before, after = arg.split ',', 2
+      unless after then
+        $stderr.puts "maui: --chunk-name-delim requires two strings"
+        exit 1
+      end
+      $cmdline.symbolism.chunk_name_delim = before .. after
 
     when '--output-width' then
       unless arg =~ /\A\d+\Z/ then
@@ -69,6 +79,9 @@ narrative into both HTML and coloured text.
 
 --section-prefix=STRING
     Use this string rather than § as the section prefix.
+
+--chunk-name-delim=BEFORE,AFTER
+    Use these strings around chunks' names.
 
 --output-width=N
     Word-wrap the woven ctxt at this width.
@@ -144,8 +157,9 @@ end
       open filename, 'w' do |port|
         port.set_encoding 'utf-8'
 
-        symbolism = Fabricator.default_symbolism
-        symbolism.section_prefix = $cmdline.section_prefix
+        symbolism = $cmdline.symbolism.dup
+        symbolism.chunk_name_delim ||=
+            Fabricator.default_symbolism.chunk_name_delim
 
         Fabricator.weave_html fabric, port,
             title: $cmdline.fabric_filename,
@@ -161,8 +175,13 @@ end
     description: 'ctxt weaving',
     generator: proc do |filename|
       open filename, 'w' do |port|
-        symbolism = Fabricator.default_symbolism
-        symbolism.section_prefix = $cmdline.section_prefix
+        symbolism = $cmdline.symbolism.dup
+        symbolism.chunk_name_delim ||=
+            if $cmdline.pseudographics == Fabricator::ASCII_PSEUDOGRAPHICS then
+              "<<" .. ">>"
+            else
+              Fabricator.default_symbolism.chunk_name_delim
+            end
 
         Fabricator.weave_ctxt fabric, port,
             width: $cmdline.output_width,

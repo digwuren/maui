@@ -32,7 +32,7 @@ module Fabricator
            peek_line(1) =~ /^\s+/) do
         # If the line ahead is not indented but we passed the
         # test, then [[get_line]] will return [[""]] and [[$&]]
-        # is the __following__ line's indentation.
+        # is the _following_ line's indentation.
         indent = $&.length if indent.nil? or $&.length < indent
         lines.push get_line
       end
@@ -1130,14 +1130,13 @@ module Fabricator
     end
 
     def html_toc
-      toc = @fabric.toc # FIXME: consider inlining
-      if toc.length >= 2 then
+      if @fabric.toc.length >= 2 then
         @port.puts "<h2>Contents</h2>"; @port.puts
         last_level = 0
         # What level should the rubrics in the current
         # (sub(sub))chapter appear at?
         rubric_level = 1
-        toc.each do |entry|
+        @fabric.toc.each do |entry|
           if entry.type == :rubric then
             level = rubric_level
           else

@@ -100,7 +100,7 @@ blocks.
          peek_line(1) =~ /^\s+/) do
       # If the line ahead is not indented but we passed the
       # test, then [[get_line]] will return [[""]] and [[$&]]
-      # is the __following__ line's indentation.
+      # is the _following_ line's indentation.
       indent = $&.length if indent.nil? or $&.length < indent
       lines.push get_line
     end
@@ -1852,8 +1852,13 @@ This output mode is convenient for use in a modern (x)terminal.
 
 << Weave [[fabric]] (ctxt) >>:
   open filename, 'w' do |port|
-    symbolism = Fabricator.default_symbolism
-    symbolism.section_prefix = $cmdline.section_prefix
+    symbolism = $cmdline.symbolism.dup
+    symbolism.chunk_name_delim ||= 
+        if $cmdline.pseudographics == Fabricator::ASCII_PSEUDOGRAPHICS then
+          "<<" .. ">>"
+        else
+          Fabricator.default_symbolism.chunk_name_delim
+        end
 
     Fabricator.weave_ctxt fabric, port,
         width: $cmdline.output_width,
@@ -2625,8 +2630,9 @@ First, let's take care of the I/O.
   open filename, 'w' do |port|
     port.set_encoding 'utf-8'
 
-    symbolism = Fabricator.default_symbolism
-    symbolism.section_prefix = $cmdline.section_prefix
+    symbolism = $cmdline.symbolism.dup
+    symbolism.chunk_name_delim ||=
+        Fabricator.default_symbolism.chunk_name_delim
 
     Fabricator.weave_html fabric, port,
         title: $cmdline.fabric_filename,
@@ -2873,14 +2879,13 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 << in [[HTML_Weaving]] >>:
   def html_toc
-    toc = @fabric.toc # FIXME: consider inlining
-    if toc.length >= 2 then
+    if @fabric.toc.length >= 2 then
       @port.puts "<h2>Contents</h2>"; @port.puts
       last_level = 0
       # What level should the rubrics in the current
       # (sub(sub))chapter appear at?
       rubric_level = 1
-      toc.each do |entry|
+      @fabric.toc.each do |entry|
         if entry.type == :rubric then
           level = rubric_level
         else
@@ -3531,6 +3536,10 @@ symbols.  Here are the defaults.
   end
 
 
+<< Initialise [[$cmdline]] >>:
+  $cmdline.symbolism = OpenStruct.new(section_prefix: "§")
+
+
 << Option summary >>:
   --section-prefix=STRING
       Use this string rather than § as the section prefix.
@@ -3538,12 +3547,26 @@ symbols.  Here are the defaults.
 << Option declarations >>:
   ['--section-prefix', GetoptLong::REQUIRED_ARGUMENT],
 
-<< Initialise [[$cmdline]] >>:
-  $cmdline.section_prefix = "§"
-
 << Command line option handlers >>:
   when '--section-prefix' then
-    $cmdline.section_prefix = arg
+    $cmdline.symbolism.section_prefix = arg
+
+
+<< Option summary >>:
+  --chunk-name-delim=BEFORE,AFTER
+      Use these strings around chunks' names.
+
+<< Option declarations >>:
+  ['--chunk-name-delim', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Command line option handlers >>:
+  when '--chunk-name-delim' then
+    before, after = arg.split ',', 2
+    unless after then
+      $stderr.puts "maui: --chunk-name-delim requires two strings"
+      exit 1
+    end
+    $cmdline.symbolism.chunk_name_delim = before .. after
 
 
 << Option summary >>:
