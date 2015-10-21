@@ -1497,9 +1497,8 @@ class << Fabricator
             inline: true
         if element.final then
           wr.styled :chunk_xref do
-            # FIXME: xref_chain must accept our symbolism as it is
             wr.add_nodes xref_chain(element, fabric,
-                    section_prefix: symbolism.section_prefix),
+                    symbolism: symbolism),
                 symbolism: symbolism
           end
           wr.linebreak
@@ -1577,7 +1576,8 @@ class << Fabricator
   # last in a chunk chain (i.e., that have [[final]] set).
   def xref_chain element, fabric,
       dash: "-", # used to indicate ranges
-      section_prefix: "§"
+      symbolism: Fabricator.default_symbolism
+    section_prefix = symbolism.section_prefix # FIXME: inline
     xref = markup
     if element.initial then
       xref.words "This chunk is "
@@ -1882,7 +1882,7 @@ class << Fabricator
         port.print "<div class='maui-chunk-xref'>"
         htmlify(
             xref_chain(element, fabric,
-                section_prefix: section_prefix,
+                symbolism: symbolism,
                 dash: "\u2013"),
             port,
             chunk_name_delim: chunk_name_delim)
