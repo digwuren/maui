@@ -1015,10 +1015,7 @@ module Fabricator
       case element.type
       when :paragraph then
         @port.print "<p>"
-        # FIXME: use [[htmlify_markup]] directly
-        Fabricator.htmlify element.content, @port,
-            symbolism: @symbolism,
-            link_processor: @link_processor
+        htmlify_markup element.content
         @port.puts "</p>"
 
       when :list then
