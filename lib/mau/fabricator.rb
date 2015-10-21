@@ -949,6 +949,58 @@ module Fabricator
     link: "\e[38;5;32m",
   )
 
+  class HTML_Weaving
+    def initialize fabric, port,
+        title: nil,
+        symbolism: Fabricator.default_symbolism,
+        link_css: []
+      super()
+      @fabric = fabric
+      @port = port
+      @title = title || "(Untitled)"
+      @symbolism = symbolism
+      @link_css = link_css
+      return()
+    end
+
+    def html
+      @port.puts '<!doctype html>'
+      @port.puts '<html>'
+      @port.puts '<head>'
+      @port.puts "<meta http-equiv='Content-type' " +
+          "content='text/html; charset=utf-8' />"
+      @port.puts "<title>#{@title.to_xml}</title>"
+      if @link_css.empty? then
+        @port.puts "<style type='text/css'>"
+        @port.write File.read(
+            File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
+        @port.puts "</style>"
+      else
+        @link_css.each do |link|
+          @port.puts ("<link rel='stylesheet' type='text/css' " +
+              "href='%s' />") % link.to_xml
+        end
+      end
+      @port.puts '</head>'
+      @port.puts '<body>'
+      @port.puts
+      @port.puts "<h1>#{@title.to_xml}</h1>"
+      unless @fabric.warnings.empty? then
+        @port.puts "<h2>Warnings</h2>"
+        @port.puts
+        # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
+        Fabricator.weave_html_warning_list @fabric.warnings, @port
+        @port.puts
+      end
+      # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
+      Fabricator.weave_html_presentation @fabric, @port,
+          symbolism: @symbolism
+      @port.puts '</body>'
+      @port.puts '</html>'
+      return
+    end
+  end
+
   MARKUP2HTML = {
     :monospace => 'code',
     :bold => 'b',
@@ -1709,39 +1761,11 @@ class << Fabricator
       title: nil,
       symbolism: default_symbolism,
       link_css: []
-    title ||= "(Untitled)"
-    port.puts '<!doctype html>'
-    port.puts '<html>'
-    port.puts '<head>'
-    port.puts "<meta http-equiv='Content-type' " +
-        "content='text/html; charset=utf-8' />"
-    port.puts "<title>#{title.to_xml}</title>"
-    if link_css.empty? then
-      port.puts "<style type='text/css'>"
-      port.write File.read(
-          File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
-      port.puts "</style>"
-    else
-      link_css.each do |link|
-        port.puts ("<link rel='stylesheet' type='text/css' " +
-            "href='%s' />") % link.to_xml
-      end
-    end
-    port.puts '</head>'
-    port.puts '<body>'
-    port.puts
-    port.puts "<h1>#{title.to_xml}</h1>"
-    unless fabric.warnings.empty? then
-      port.puts "<h2>Warnings</h2>"
-      port.puts
-      weave_html_warning_list fabric.warnings, port
-      port.puts
-    end
-    weave_html_presentation fabric, port,
-        symbolism: symbolism
-    port.puts '</html>'
-    port.puts '</body>'
-    port.puts '</html>'
+    weaving = Fabricator::HTML_Weaving.new fabric, port,
+        title: title,
+        symbolism: symbolism,
+        link_css: link_css
+    weaving.html
     return
   end
 

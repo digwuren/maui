@@ -2636,47 +2636,81 @@ First, let's take care of the I/O.
   puts "Weaved #{filename}"
 
 
-The next issue is the basic HTML structure.  We'll follow HTML 5
-conventions.
+We'll keep the global parameters of an HTML weaving process in
+an instance of [[HTML_Weaving]].
+
+<< in [[Fabricator]] >>:
+  class HTML_Weaving
+    def initialize fabric, port,
+        title: nil,
+        symbolism: Fabricator.default_symbolism,
+        link_css: []
+      super()
+      @fabric = fabric
+      @port = port
+      @title = title || "(Untitled)"
+      @symbolism = symbolism
+      @link_css = link_css
+      return()
+    end
+
+    << in [[HTML_Weaving]] >>
+  end
+
+
+The process is shepherded by [[weave_html]].
 
 << Other methods >>:
   def weave_html fabric, port,
       title: nil,
       symbolism: default_symbolism,
       link_css: []
-    title ||= "(Untitled)"
-    port.puts '<!doctype html>'
-    port.puts '<html>'
+    weaving = Fabricator::HTML_Weaving.new fabric, port,
+        title: title,
+        symbolism: symbolism,
+        link_css: link_css
+    weaving.html
+    return
+  end
+
+
+The next issue is the basic HTML structure.  We'll follow HTML 5
+conventions.
+
+<< in [[HTML_Weaving]] >>:
+  def html
+    @port.puts '<!doctype html>'
+    @port.puts '<html>'
     << Generate woven HTML's [[head]] >>
-    port.puts '<body>'
-    port.puts
-    port.puts "<h1>#{title.to_xml}</h1>"
+    @port.puts '<body>'
+    @port.puts
+    @port.puts "<h1>#{@title.to_xml}</h1>"
     << Weave fabric's warnings (HTML) >>
-    weave_html_presentation fabric, port,
-        symbolism: symbolism
-    port.puts '</html>'
-    port.puts '</body>'
-    port.puts '</html>'
+    # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
+    Fabricator.weave_html_presentation @fabric, @port,
+        symbolism: @symbolism
+    @port.puts '</body>'
+    @port.puts '</html>'
     return
   end
 
 << Generate woven HTML's [[head]] >>:
-  port.puts '<head>'
-  port.puts "<meta http-equiv='Content-type' " +
+  @port.puts '<head>'
+  @port.puts "<meta http-equiv='Content-type' " +
       "content='text/html; charset=utf-8' />"
-  port.puts "<title>#{title.to_xml}</title>"
-  if link_css.empty? then
-    port.puts "<style type='text/css'>"
-    port.write File.read(
+  @port.puts "<title>#{@title.to_xml}</title>"
+  if @link_css.empty? then
+    @port.puts "<style type='text/css'>"
+    @port.write File.read(
         File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
-    port.puts "</style>"
+    @port.puts "</style>"
   else
-    link_css.each do |link|
-      port.puts ("<link rel='stylesheet' type='text/css' " +
+    @link_css.each do |link|
+      @port.puts ("<link rel='stylesheet' type='text/css' " +
           "href='%s' />") % link.to_xml
     end
   end
-  port.puts '</head>'
+  @port.puts '</head>'
 
 << Other methods >>:
   def weave_html_presentation fabric, port,
@@ -3012,11 +3046,12 @@ going to make each entry into a local link, either in the
   end
 
 << Weave fabric's warnings (HTML) >>:
-  unless fabric.warnings.empty? then
-    port.puts "<h2>Warnings</h2>"
-    port.puts
-    weave_html_warning_list fabric.warnings, port
-    port.puts
+  unless @fabric.warnings.empty? then
+    @port.puts "<h2>Warnings</h2>"
+    @port.puts
+    # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
+    Fabricator.weave_html_warning_list @fabric.warnings, @port
+    @port.puts
   end
 
 << Other methods >>:
