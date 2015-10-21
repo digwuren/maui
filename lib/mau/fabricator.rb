@@ -1748,8 +1748,6 @@ class << Fabricator
   def weave_html_presentation fabric, port,
       symbolism: symbolism,
       link_processor: nil
-    section_prefix = symbolism.section_prefix # FIXME: inline
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
@@ -1783,7 +1781,9 @@ class << Fabricator
         port.print "<p>"
         port.print "<b class='%s'>" %
             (rubricated ? 'maui-rubric' : 'maui-section-number')
-        port.print "#{section_prefix}#{element.section_number}."
+        port.print "%s%s." % [
+          symbolism.section_prefix,
+          element.section_number]
         if rubricated then
           port.print " "
           htmlify element.elements[start_index].content, port,
