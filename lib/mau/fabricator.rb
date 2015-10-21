@@ -1026,10 +1026,7 @@ module Fabricator
         when :monospace, :bold, :italic, :underscore then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
-          # FIXME: use [[htmlify_markup]] directly
-          Fabricator.htmlify node.content, @port,
-              symbolism: @symbolism,
-              link_processor: @link_processor
+          htmlify_markup node.content
           @port.print "</%s>" % html_tag
 
         when :mention_chunk then
