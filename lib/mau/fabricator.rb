@@ -1789,7 +1789,9 @@ class << Fabricator
           when :divert then
             port.print " "
             weave_html_chunk_header subelement, 'maui-divert',
-                port, tag: 'span'
+                port,
+                tag: 'span',
+                chunk_name_delim: "\u00AB" .. "\u00BB"
             warnings = subelement.warnings
             start_index += 1
         end
@@ -1833,7 +1835,8 @@ class << Fabricator
 
     when :divert then
       weave_html_chunk_header element, 'maui-divert',
-          port
+          port,
+          chunk_name_delim: "\u00AB" .. "\u00BB"
       port.puts
       weave_html_warning_list element.warnings, port,
           inline: true
@@ -1845,7 +1848,8 @@ class << Fabricator
       port.print "'>"
       if element.type == :chunk then
         weave_html_chunk_header element, 'maui-chunk-header',
-            port
+            port,
+            chunk_name_delim: "\u00AB" .. "\u00BB"
         port.puts
       end
       weave_html_chunk_body element, port
