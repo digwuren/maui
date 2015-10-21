@@ -953,13 +953,15 @@ module Fabricator
     def initialize fabric, port,
         title: nil,
         symbolism: Fabricator.default_symbolism,
-        link_css: []
+        link_css: [],
+        link_processor: nil
       super()
       @fabric = fabric
       @port = port
       @title = title || "(Untitled)"
       @symbolism = symbolism
       @link_css = link_css
+      @link_processor = link_processor
       return()
     end
 
@@ -1765,11 +1767,13 @@ class << Fabricator
   def weave_html fabric, port,
       title: nil,
       symbolism: default_symbolism,
-      link_css: []
+      link_css: [],
+      link_processor: nil
     weaving = Fabricator::HTML_Weaving.new fabric, port,
         title: title,
         symbolism: symbolism,
-        link_css: link_css
+        link_css: link_css,
+        link_processor: link_processor
     weaving.html
     return
   end

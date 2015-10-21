@@ -2644,13 +2644,15 @@ an instance of [[HTML_Weaving]].
     def initialize fabric, port,
         title: nil,
         symbolism: Fabricator.default_symbolism,
-        link_css: []
+        link_css: [],
+        link_processor: nil
       super()
       @fabric = fabric
       @port = port
       @title = title || "(Untitled)"
       @symbolism = symbolism
       @link_css = link_css
+      @link_processor = link_processor
       return()
     end
 
@@ -2664,11 +2666,13 @@ The process is shepherded by [[weave_html]].
   def weave_html fabric, port,
       title: nil,
       symbolism: default_symbolism,
-      link_css: []
+      link_css: [],
+      link_processor: nil
     weaving = Fabricator::HTML_Weaving.new fabric, port,
         title: title,
         symbolism: symbolism,
-        link_css: link_css
+        link_css: link_css,
+        link_processor: link_processor
     weaving.html
     return
   end
