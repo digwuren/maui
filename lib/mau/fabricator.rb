@@ -1056,13 +1056,10 @@ module Fabricator
         end
         if element.final then
           @port.print "<div class='maui-chunk-xref'>"
-          # FIXME: use [[htmlify_markup]] directly
-          Fabricator.htmlify(
+          htmlify_markup(
               Fabricator.xref_chain(element, @fabric,
                   symbolism: @symbolism,
-                  dash: "\u2013"),
-              @port,
-              symbolism: @symbolism)
+                  dash: "\u2013"))
           @port.puts "</div>"
         end
         @port.puts "</div>"
