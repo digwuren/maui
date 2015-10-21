@@ -1953,7 +1953,6 @@ class << Fabricator
   def weave_html_list items, port,
       symbolism: Fabricator.default_symbolism,
       link_processor: nil
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.puts "<ul>"
     items.each do |item|
       port.print "<li>"
