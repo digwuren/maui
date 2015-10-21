@@ -1556,7 +1556,9 @@ class << Fabricator
       if node.clearindent then
         wr.add_plain ".clearindent "
       end
-      wr.add_nodes parse_markup(node.name, Fabricator::MF::LINK)
+      wr.add_nodes parse_markup(node.name,
+              Fabricator::MF::LINK),
+          symbolism: symbolism
       if node.vertical_separation then
         wr.add_plain " " + node.vertical_separation
       end
