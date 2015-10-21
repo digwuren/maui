@@ -1037,9 +1037,7 @@ module Fabricator
           html_chunk_header element, 'maui-chunk-header'
           @port.puts
         end
-        # FIXME: [[weave_html_chunk_body]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_chunk_body element, @port,
-            symbolism: @symbolism
+        html_chunk_body element
         unless (element.warnings || []).empty? then
           # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
           Fabricator.weave_html_warning_list element.warnings, @port,
@@ -1148,6 +1146,37 @@ module Fabricator
       @port.print @symbolism.chunk_name_delim.end + ":"
       @port.print "</#{tag}>"
       # Note that we won't output a trailing linebreak here.
+      return
+    end
+
+    def html_chunk_body element
+      @port.print "<pre class='maui-chunk-body'>"
+      element.content.each do |node|
+        case node.type
+        when :verbatim then
+          @port.print node.data.to_xml
+        when :newline then
+          @port.puts
+        when :use then
+          @port.print "<span class='maui-transclude'>"
+          @port.print @symbolism.chunk_name_delim.begin
+          if node.clearindent then
+            @port.print ".clearindent "
+          end
+          htmlify_markup(
+              Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
+          if node.vertical_separation then
+            @port.print " " + node.vertical_separation.to_xml
+          end
+          if node.postprocess then
+            @port.print " " + node.postprocess.to_xml
+          end
+          @port.print @symbolism.chunk_name_delim.end
+          @port.print "</span>"
+        else raise 'data structure error'
+        end
+      end
+      @port.puts "</pre>"
       return
     end
 
@@ -2055,40 +2084,6 @@ class << Fabricator
       end
       port.puts
     end
-    return
-  end
-
-  def weave_html_chunk_body element, port,
-      symbolism: default_symbolism
-    port.print "<pre class='maui-chunk-body'>"
-    element.content.each do |node|
-      case node.type
-      when :verbatim then
-        port.print node.data.to_xml
-      when :newline then
-        port.puts
-      when :use then
-        port.print "<span class='maui-transclude'>"
-        port.print symbolism.chunk_name_delim.begin
-        if node.clearindent then
-          port.print ".clearindent "
-        end
-        htmlify(
-            parse_markup(node.name, Fabricator::MF::LINK),
-            port,
-            symbolism: symbolism)
-        if node.vertical_separation then
-          port.print " " + node.vertical_separation.to_xml
-        end
-        if node.postprocess then
-          port.print " " + node.postprocess.to_xml
-        end
-        port.print symbolism.chunk_name_delim.end
-        port.print "</span>"
-      else raise 'data structure error'
-      end
-    end
-    port.puts "</pre>"
     return
   end
 
