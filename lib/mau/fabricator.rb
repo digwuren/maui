@@ -1354,7 +1354,7 @@ class << Fabricator
           wr.add_plain "#{element.number}."
           wr.add_space
           wr.hang do
-            wr.add_nodes element.content
+            wr.add_nodes element.content, symbolism: symbolism
           end
         end
         wr.linebreak
@@ -1377,7 +1377,8 @@ class << Fabricator
               symbolism.section_prefix,
               element.section_number]
             wr.add_space
-            wr.add_nodes element.elements.first.content
+            wr.add_nodes element.elements.first.content,
+                symbolism: symbolism
           end
         else
           wr.styled :section_number do
