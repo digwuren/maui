@@ -2015,7 +2015,8 @@ plain ones.
 
 << Other methods >>:
   def weave_ctxt_section_part element, fabric, wr,
-      section_prefix: "§"
+      section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     case element.type
     << [[weave_ctxt_section_part]] rules >>
     else
@@ -2034,7 +2035,8 @@ plain ones.
 
   when :divert, :chunk, :diverted_chunk then
     if [:divert, :chunk].include? element.type then
-      weave_ctxt_chunk_header element, wr
+      weave_ctxt_chunk_header element, wr,
+          chunk_name_delim: chunk_name_delim
       weave_ctxt_warning_list element.warnings, wr,
           inline: true
     end

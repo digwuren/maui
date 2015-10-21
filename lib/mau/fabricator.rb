@@ -1451,7 +1451,8 @@ class << Fabricator
   end
 
   def weave_ctxt_section_part element, fabric, wr,
-      section_prefix: "§"
+      section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     case element.type
     when :paragraph then
       wr.add_nodes element.content
@@ -1459,7 +1460,8 @@ class << Fabricator
 
     when :divert, :chunk, :diverted_chunk then
       if [:divert, :chunk].include? element.type then
-        weave_ctxt_chunk_header element, wr
+        weave_ctxt_chunk_header element, wr,
+            chunk_name_delim: chunk_name_delim
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
