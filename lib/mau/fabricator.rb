@@ -1994,7 +1994,8 @@ class << Fabricator
         end
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
-            port)
+            port,
+            chunk_name_delim: chunk_name_delim)
         if node.vertical_separation then
           port.print " " + node.vertical_separation.to_xml
         end
