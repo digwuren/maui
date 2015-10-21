@@ -1019,10 +1019,7 @@ module Fabricator
         @port.puts "</p>"
 
       when :list then
-        # FIXME: [[weave_html_list]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_list element.items, @port,
-            symbolism: @symbolism,
-            link_processor: @link_processor
+        html_list element.items
 
       when :divert then
         # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
@@ -1122,6 +1119,27 @@ module Fabricator
         end
         @port.puts "</li></ul>" * last_level; @port.puts
       end
+      return
+    end
+
+    def html_list items
+      @port.puts "<ul>"
+      items.each do |item|
+        @port.print "<li>"
+        htmlify_markup item.content
+        if item.sublist then
+          @port.puts
+          html_list item.sublist.items
+        end
+        unless (item.warnings || []).empty? then
+          @port.puts
+          # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_warning_list item.warnings, @port,
+              inline: true
+        end
+        @port.puts "</li>"
+      end
+      @port.puts "</ul>"
       return
     end
 
@@ -2031,32 +2049,6 @@ class << Fabricator
       end
       port.puts
     end
-    return
-  end
-
-  def weave_html_list items, port,
-      symbolism: default_symbolism,
-      link_processor: nil
-    port.puts "<ul>"
-    items.each do |item|
-      port.print "<li>"
-      htmlify item.content, port,
-          symbolism: symbolism,
-          link_processor: link_processor
-      if item.sublist then
-        port.puts
-        weave_html_list item.sublist.items, port,
-            symbolism: symbolism,
-            link_processor: link_processor
-      end
-      unless (item.warnings || []).empty? then
-        port.puts
-        weave_html_warning_list item.warnings, port,
-            inline: true
-      end
-      port.puts "</li>"
-    end
-    port.puts "</ul>"
     return
   end
 

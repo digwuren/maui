@@ -2845,10 +2845,7 @@ conventions.
 
 
   when :list then
-    # FIXME: [[weave_html_list]] must be in [[HTML_Weaving]]
-    Fabricator.weave_html_list element.items, @port,
-        symbolism: @symbolism,
-        link_processor: @link_processor
+    html_list element.items
 
 
   when :divert then
@@ -2963,34 +2960,30 @@ into a local link, either in the [[#T.foo]] form for titles or
     raise 'assertion failed'
   end
 
-<< Other methods >>:
-
-  def weave_html_list items, port,
-      symbolism: default_symbolism,
-      link_processor: nil
-    port.puts "<ul>"
+<< in [[HTML_Weaving]] >>:
+  def html_list items
+    @port.puts "<ul>"
     items.each do |item|
-      port.print "<li>"
-      htmlify item.content, port,
-          symbolism: symbolism,
-          link_processor: link_processor
+      @port.print "<li>"
+      htmlify_markup item.content
       if item.sublist then
-        port.puts
-        weave_html_list item.sublist.items, port,
-            symbolism: symbolism,
-            link_processor: link_processor
+        @port.puts
+        html_list item.sublist.items
       end
       unless (item.warnings || []).empty? then
-        port.puts
-        weave_html_warning_list item.warnings, port,
+        @port.puts
+        # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_warning_list item.warnings, @port,
             inline: true
       end
-      port.puts "</li>"
+      @port.puts "</li>"
     end
-    port.puts "</ul>"
+    @port.puts "</ul>"
     return
   end
 
+
+<< Other methods >>:
 
   def weave_html_chunk_header element, cls, port,
       tag: 'div',
