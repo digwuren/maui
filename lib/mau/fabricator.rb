@@ -1022,10 +1022,7 @@ module Fabricator
         html_list element.items
 
       when :divert then
-        # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-        Fabricator.weave_html_chunk_header element, 'maui-divert',
-            @port,
-            symbolism: @symbolism
+        html_chunk_header element, 'maui-divert'
         @port.puts
         # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
         Fabricator.weave_html_warning_list element.warnings, @port,
@@ -1037,10 +1034,7 @@ module Fabricator
         @port.print " maui-final-chunk" if element.final
         @port.print "'>"
         if element.type == :chunk then
-          # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-          Fabricator.weave_html_chunk_header element, 'maui-chunk-header',
-              @port,
-              symbolism: @symbolism
+          html_chunk_header element, 'maui-chunk-header'
           @port.puts
         end
         # FIXME: [[weave_html_chunk_body]] must be in [[HTML_Weaving]]
@@ -1140,6 +1134,20 @@ module Fabricator
         @port.puts "</li>"
       end
       @port.puts "</ul>"
+      return
+    end
+
+    def html_chunk_header element, cls, tag: 'div'
+      @port.print "<#{tag} class='%s'>" % cls.to_xml
+      @port.print @symbolism.chunk_name_delim.begin
+      if element.root_type then
+        @port.print "<u>%s</u> " % element.root_type.to_xml
+      end
+      htmlify_markup(
+          Fabricator.parse_markup(element.name, Fabricator::MF::LINK))
+      @port.print @symbolism.chunk_name_delim.end + ":"
+      @port.print "</#{tag}>"
+      # Note that we won't output a trailing linebreak here.
       return
     end
 
@@ -2020,11 +2028,9 @@ class << Fabricator
             start_index += 1
           when :divert then
             port.print " "
-            # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-            Fabricator.weave_html_chunk_header subelement, 'maui-divert',
-                port,
-                tag: 'span',
-                symbolism: symbolism
+            # FIXME: [[weaving.]] must be an implicit [[self.]] here
+            weaving.html_chunk_header subelement, 'maui-divert',
+                tag: 'span'
             warnings = subelement.warnings
             start_index += 1
         end
@@ -2049,24 +2055,6 @@ class << Fabricator
       end
       port.puts
     end
-    return
-  end
-
-  def weave_html_chunk_header element, cls, port,
-      tag: 'div',
-      symbolism: default_symbolism
-    port.print "<#{tag} class='%s'>" % cls
-    port.print symbolism.chunk_name_delim.begin
-    if element.root_type then
-      port.print "<u>%s</u> " % element.root_type.to_xml
-    end
-    htmlify(
-        parse_markup(element.name, Fabricator::MF::LINK),
-        port,
-        symbolism: symbolism)
-    port.print symbolism.chunk_name_delim.end + ":"
-    port.print "</#{tag}>"
-    # Note that we won't output a trailing linebreak here.
     return
   end
 

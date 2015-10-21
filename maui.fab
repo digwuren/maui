@@ -2797,11 +2797,9 @@ conventions.
       start_index += 1
     when :divert then
       port.print " "
-      # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-      Fabricator.weave_html_chunk_header subelement, 'maui-divert',
-          port,
-          tag: 'span',
-          symbolism: symbolism
+      # FIXME: [[weaving.]] must be an implicit [[self.]] here
+      weaving.html_chunk_header subelement, 'maui-divert',
+          tag: 'span'
       warnings = subelement.warnings
       start_index += 1
   end
@@ -2850,10 +2848,7 @@ conventions.
 
 
   when :divert then
-    # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-    Fabricator.weave_html_chunk_header element, 'maui-divert',
-        @port,
-        symbolism: @symbolism
+    html_chunk_header element, 'maui-divert'
     @port.puts
     # FIXME: [[weave_html_warning_list]] must be in [[HTML_Weaving]]
     Fabricator.weave_html_warning_list element.warnings, @port,
@@ -2866,10 +2861,7 @@ conventions.
     @port.print " maui-final-chunk" if element.final
     @port.print "'>"
     if element.type == :chunk then
-      # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
-      Fabricator.weave_html_chunk_header element, 'maui-chunk-header',
-          @port,
-          symbolism: @symbolism
+      html_chunk_header element, 'maui-chunk-header'
       @port.puts
     end
     # FIXME: [[weave_html_chunk_body]] must be in [[HTML_Weaving]]
@@ -2984,26 +2976,24 @@ into a local link, either in the [[#T.foo]] form for titles or
   end
 
 
-<< Other methods >>:
+<< in [[HTML_Weaving]] >>:
 
-  def weave_html_chunk_header element, cls, port,
-      tag: 'div',
-      symbolism: default_symbolism
-    port.print "<#{tag} class='%s'>" % cls
-    port.print symbolism.chunk_name_delim.begin
+  def html_chunk_header element, cls, tag: 'div'
+    @port.print "<#{tag} class='%s'>" % cls.to_xml
+    @port.print @symbolism.chunk_name_delim.begin
     if element.root_type then
-      port.print "<u>%s</u> " % element.root_type.to_xml
+      @port.print "<u>%s</u> " % element.root_type.to_xml
     end
-    htmlify(
-        parse_markup(element.name, Fabricator::MF::LINK),
-        port,
-        symbolism: symbolism)
-    port.print symbolism.chunk_name_delim.end + ":"
-    port.print "</#{tag}>"
+    htmlify_markup(
+        Fabricator.parse_markup(element.name, Fabricator::MF::LINK))
+    @port.print @symbolism.chunk_name_delim.end + ":"
+    @port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
     return
   end
 
+
+<< Other methods >>:
 
   def weave_html_chunk_body element, port,
       symbolism: default_symbolism
