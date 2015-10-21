@@ -1873,7 +1873,7 @@ class << Fabricator
         port.puts
       end
       weave_html_chunk_body element, port,
-          chunk_name_delim: chunk_name_delim
+          symbolism: symbolism
       unless (element.warnings || []).empty? then
         weave_html_warning_list element.warnings, port,
             inline: true
@@ -2002,7 +2002,8 @@ class << Fabricator
   end
 
   def weave_html_chunk_body element, port,
-      chunk_name_delim: "\u00AB" .. "\u00BB"
+      symbolism: Fabricator.default_symbolism
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
