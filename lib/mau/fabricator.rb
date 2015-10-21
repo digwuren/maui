@@ -2106,4 +2106,11 @@ class << Fabricator
     end
     return
   end
+
+  def default_symbolism
+    return OpenStruct.new(
+        section_prefix: "§",
+        # Two endpoints are stored in a [[Range]].
+        chunk_name_delim: "\u00AB" .. "\u00BB")
+  end
 end

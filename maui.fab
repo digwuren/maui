@@ -3323,6 +3323,22 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
     display: block
 
 
+=== Symbolism
+
+Several of the symbols Maui uses in its weaved representation of
+fabrics are customisable.  To that end, many weaving subroutines
+accept, and pass on, [[OpenStruct]] instances with the preferred
+symbols.  Here are the defaults.
+
+<< Other methods >>:
+  def default_symbolism
+    return OpenStruct.new(
+        section_prefix: "§",
+        # Two endpoints are stored in a [[Range]].
+        chunk_name_delim: "\u00AB" .. "\u00BB")
+  end
+
+
 == The skeletal composition of the library
 
 << .file lib/mau/fabricator.rb >>:
