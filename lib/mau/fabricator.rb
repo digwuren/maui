@@ -1506,7 +1506,8 @@ class << Fabricator
       end
 
     when :list then
-      weave_ctxt_list element.items, wr
+      weave_ctxt_list element.items, wr,
+          symbolism: symbolism
 
     when :block then
       weave_ctxt_block element, wr
@@ -1636,7 +1637,8 @@ class << Fabricator
     return result
   end
 
-  def weave_ctxt_list items, wr
+  def weave_ctxt_list items, wr,
+      symbolism: Fabricator.default_symbolism
     items.each do |item|
       wr.add_pseudographics :bullet
       wr.add_plain " "
@@ -1653,7 +1655,8 @@ class << Fabricator
       if item.sublist then
         wr.add_plain "  "
         wr.hang do
-          weave_ctxt_list item.sublist.items, wr
+          weave_ctxt_list item.sublist.items, wr,
+              symbolism: symbolism
         end
       end
     end
