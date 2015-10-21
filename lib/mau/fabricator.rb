@@ -1850,7 +1850,7 @@ class << Fabricator
 
     when :list then
       weave_html_list element.items, port,
-          chunk_name_delim: chunk_name_delim,
+          symbolism: symbolism,
           link_processor: link_processor
 
     when :divert then
@@ -1956,8 +1956,9 @@ class << Fabricator
   end
 
   def weave_html_list items, port,
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: Fabricator.default_symbolism,
       link_processor: nil
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.puts "<ul>"
     items.each do |item|
       port.print "<li>"
@@ -1967,7 +1968,7 @@ class << Fabricator
       if item.sublist then
         port.puts
         weave_html_list item.sublist.items, port,
-            chunk_name_delim: chunk_name_delim,
+            symbolism: symbolism,
             link_processor: link_processor
       end
       unless (item.warnings || []).empty? then
