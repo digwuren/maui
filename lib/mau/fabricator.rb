@@ -1577,7 +1577,6 @@ class << Fabricator
   def xref_chain element, fabric,
       dash: "-", # used to indicate ranges
       symbolism: Fabricator.default_symbolism
-    section_prefix = symbolism.section_prefix # FIXME: inline
     xref = markup
     if element.initial then
       xref.words "This chunk is "
@@ -1593,7 +1592,7 @@ class << Fabricator
               node(:mention_chunk, name: ref.name).
               space.
               plain("(%s%i)" % [
-                section_prefix,
+                symbolism.section_prefix,
                 ref.section_number])
           })
     else
