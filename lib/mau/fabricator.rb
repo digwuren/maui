@@ -2031,7 +2031,9 @@ class << Fabricator
     return
   end
 
-  def htmlify nodes, port, link_processor: nil
+  def htmlify nodes, port,
+      chunk_name_delim: "\u00AB" .. "\u00BB",
+      link_processor: nil
     nodes.each do |node|
       case node.type
       when :plain then
@@ -2051,12 +2053,14 @@ class << Fabricator
         port.print "</%s>" % html_tag
 
       when :mention_chunk then
-        port.print "<span class='maui-chunk-mention'>\u00AB"
+        port.print "<span class='maui-chunk-mention'>"
+        port.print chunk_name_delim.begin
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
             port,
             link_processor: link_processor)
-        port.print "\u00BB</span>"
+        port.print chunk_name_delim.end
+        port.print "</span>"
 
       when :link then
         target = node.target

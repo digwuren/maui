@@ -3020,7 +3020,9 @@ going to make each entry into a local link, either in the
 * Conversion of a horizontal markup tree to HTML.
 
 << Other methods >>:
-  def htmlify nodes, port, link_processor: nil
+  def htmlify nodes, port,
+      chunk_name_delim: "\u00AB" .. "\u00BB",
+      link_processor: nil
     nodes.each do |node|
       case node.type
       << [[case]] clauses of [[htmlify]] >>
@@ -3055,12 +3057,14 @@ going to make each entry into a local link, either in the
 
 
   when :mention_chunk then
-    port.print "<span class='maui-chunk-mention'>\u00AB"
+    port.print "<span class='maui-chunk-mention'>"
+    port.print chunk_name_delim.begin
     htmlify(
         parse_markup(node.name, Fabricator::MF::LINK),
         port,
         link_processor: link_processor)
-    port.print "\u00BB</span>"
+    port.print chunk_name_delim.end
+    port.print "</span>"
 
 
   when :link then
