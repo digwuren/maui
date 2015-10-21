@@ -1855,7 +1855,7 @@ This output mode is convenient for use in a modern (x)terminal.
     symbolism = $cmdline.symbolism.dup
     symbolism.chunk_name_delim ||= 
         if $cmdline.pseudographics == Fabricator::ASCII_PSEUDOGRAPHICS then
-          "<<" .. ">>"
+          "<\<" .. ">>"
         else
           Fabricator.default_symbolism.chunk_name_delim
         end
