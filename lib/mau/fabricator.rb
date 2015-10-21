@@ -1950,6 +1950,7 @@ class << Fabricator
     items.each do |item|
       port.print "<li>"
       htmlify item.content, port,
+          chunk_name_delim: chunk_name_delim,
           link_processor: link_processor
       if item.sublist then
         port.puts
