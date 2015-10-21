@@ -1739,8 +1739,7 @@ class << Fabricator
       port.puts
     end
     weave_html_presentation fabric, port,
-        section_prefix: symbolism.section_prefix,
-        chunk_name_delim: symbolism.chunk_name_delim
+        symbolism: symbolism
     port.puts '</html>'
     port.puts '</body>'
     port.puts '</html>'
@@ -1748,9 +1747,10 @@ class << Fabricator
   end
 
   def weave_html_presentation fabric, port,
-      section_prefix: "§",
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: symbolism,
       link_processor: nil
+    section_prefix = symbolism.section_prefix # FIXME: inline
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
