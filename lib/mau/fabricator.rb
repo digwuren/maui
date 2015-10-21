@@ -1820,8 +1820,7 @@ class << Fabricator
         port.puts
         element.elements[start_index .. -1].each do |child|
           weave_html_section_part child, fabric, port,
-              section_prefix: section_prefix,
-              chunk_name_delim: chunk_name_delim,
+              symbolism: symbolism,
               link_processor: link_processor
           port.puts
         end
@@ -1839,9 +1838,10 @@ class << Fabricator
   end
 
   def weave_html_section_part element, fabric, port,
-      section_prefix: "§",
-      chunk_name_delim: "\u00AB" .. "\u00BB",
+      symbolism: Fabricator.default_symbolism,
       link_processor: nil
+    section_prefix = symbolism.section_prefix # FIXME: inline
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     when :paragraph then
       port.print "<p>"
