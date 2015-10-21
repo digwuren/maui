@@ -1452,7 +1452,6 @@ class << Fabricator
 
   def weave_ctxt_section_part element, fabric, wr,
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     when :paragraph then
       wr.add_nodes element.content
@@ -1460,8 +1459,10 @@ class << Fabricator
 
     when :divert, :chunk, :diverted_chunk then
       if [:divert, :chunk].include? element.type then
+        # FIXME: weave_ctxt_chunk_header must accept our symbolism
+        # as it is
         weave_ctxt_chunk_header element, wr,
-            chunk_name_delim: chunk_name_delim
+            chunk_name_delim: symbolism.chunk_name_delim
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end

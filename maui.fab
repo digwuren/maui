@@ -2019,7 +2019,6 @@ plain ones.
 << Other methods >>:
   def weave_ctxt_section_part element, fabric, wr,
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     << [[weave_ctxt_section_part]] rules >>
     else
@@ -2038,8 +2037,10 @@ plain ones.
 
   when :divert, :chunk, :diverted_chunk then
     if [:divert, :chunk].include? element.type then
+      # FIXME: weave_ctxt_chunk_header must accept our symbolism
+      # as it is
       weave_ctxt_chunk_header element, wr,
-          chunk_name_delim: chunk_name_delim
+          chunk_name_delim: symbolism.chunk_name_delim
       weave_ctxt_warning_list element.warnings, wr,
           inline: true
     end
