@@ -1902,8 +1902,6 @@ class << Fabricator
 
   def weave_html_toc toc, port,
       symbolism: Fabricator.default_symbolism
-    section_prefix = symbolism.section_prefix # FIXME: inline
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     if toc.length >= 2 then
       port.puts "<h2>Contents</h2>"; port.puts
       last_level = 0
@@ -1936,7 +1934,7 @@ class << Fabricator
           port.print "</a>"
         when :rubric then
           port.print "%s%i. " % [
-            section_prefix,
+            symbolism.section_prefix,
             entry.section_number]
           port.print "<a href='#S.#{entry.section_number}'>"
           htmlify entry.content, port,
