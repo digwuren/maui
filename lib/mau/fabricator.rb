@@ -1921,14 +1921,16 @@ class << Fabricator
         when :title then
           port.print "#{entry.number}. "
           port.print "<a href='#T.#{entry.number}'>"
-          htmlify entry.content, port
+          htmlify entry.content, port,
+              chunk_name_delim: chunk_name_delim
           port.print "</a>"
         when :rubric then
           port.print "%s%i. " % [
             section_prefix,
             entry.section_number]
           port.print "<a href='#S.#{entry.section_number}'>"
-          htmlify entry.content, port
+          htmlify entry.content, port,
+              chunk_name_delim: chunk_name_delim
           port.print "</a>"
         else
           raise 'assertion failed'
