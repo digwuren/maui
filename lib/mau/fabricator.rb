@@ -1049,10 +1049,7 @@ module Fabricator
             @port.print " class='#{classes.join(' ').to_xml}'"
           end
           @port.print ">"
-          # FIXME: use [[htmlify_markup]] directly
-          Fabricator.htmlify node.content, @port,
-              symbolism: @symbolism,
-              link_processor: @link_processor
+          htmlify_markup node.content
           @port.print "</a>"
         else
           raise 'invalid node type'
