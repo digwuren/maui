@@ -143,8 +143,10 @@ end
     generator: proc do |filename|
       open filename, 'w' do |port|
         port.set_encoding 'utf-8'
+
         symbolism = Fabricator.default_symbolism
         symbolism.section_prefix = $cmdline.section_prefix
+
         Fabricator.weave_html fabric, port,
             title: $cmdline.fabric_filename,
             symbolism: symbolism,
@@ -159,9 +161,12 @@ end
     description: 'ctxt weaving',
     generator: proc do |filename|
       open filename, 'w' do |port|
+        symbolism = Fabricator.default_symbolism
+        symbolism.section_prefix = $cmdline.section_prefix
+
         Fabricator.weave_ctxt fabric, port,
             width: $cmdline.output_width,
-            section_prefix: $cmdline.section_prefix,
+            symbolism: symbolism,
             pseudographics: $cmdline.pseudographics
       end
       puts "Weaved #{filename}"

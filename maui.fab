@@ -1852,9 +1852,12 @@ This output mode is convenient for use in a modern (x)terminal.
 
 << Weave [[fabric]] (ctxt) >>:
   open filename, 'w' do |port|
+    symbolism = Fabricator.default_symbolism
+    symbolism.section_prefix = $cmdline.section_prefix
+
     Fabricator.weave_ctxt fabric, port,
         width: $cmdline.output_width,
-        section_prefix: $cmdline.section_prefix,
+        symbolism: symbolism,
         pseudographics: $cmdline.pseudographics
   end
   puts "Weaved #{filename}"
@@ -1862,7 +1865,7 @@ This output mode is convenient for use in a modern (x)terminal.
 << Other methods >>:
   def weave_ctxt fabric, port,
       width: 80,
-      section_prefix: "§",
+      symbolism: Fabricator.default_symbolism,
       pseudographics: Fabricator::UNICODE_PSEUDOGRAPHICS
     wr = Fabricator::Text_Wrapper.new port,
         width: width,
@@ -1938,8 +1941,9 @@ to an empty list.
   # If we're encountering the first rubric/title, output
   # the table of contents.
   if rubricated and !toc_generated then
+    # FIXME: weave_ctxt_toc must accept our symbolism as it is
     weave_ctxt_toc fabric.toc, wr,
-        section_prefix: section_prefix
+        section_prefix: symbolism.section_prefix
     toc_generated = true
   end
 
@@ -1976,8 +1980,10 @@ plain ones.
     case starter.type
     when :paragraph, :divert, :chunk then
       wr.add_space
+      # FIXME: weave_ctxt_section_part must accept our symbolism
+      # as it is
       weave_ctxt_section_part starter, fabric, wr,
-          section_prefix: section_prefix
+          section_prefix: symbolism.section_prefix
       start_index += 1
     else
       wr.linebreak
@@ -1993,7 +1999,7 @@ plain ones.
     start_index += 1
     wr.styled :rubric do
       wr.add_plain "%s%i." % [
-        section_prefix,
+        symbolism.section_prefix,
         element.section_number]
       wr.add_space
       wr.add_nodes element.elements.first.content
@@ -2001,15 +2007,17 @@ plain ones.
   else
     wr.styled :section_number do
       wr.add_plain "%s%i." % [
-        section_prefix,
+        symbolism.section_prefix,
         element.section_number]
     end
   end
 
 << Weave the section's body from [[start_index]] on (ctxt) >>:
   element.elements[start_index .. -1].each do |child|
+    # FIXME: weave_ctxt_section_part must accept our symbolism
+    # as it is
     weave_ctxt_section_part child, fabric, wr,
-        section_prefix: section_prefix
+        section_prefix: symbolism.section_prefix
     wr.linebreak
   end
 
@@ -2254,8 +2262,9 @@ joiners interspersed.
 
 << Weave the [[title]] node (ctxt) >>:
   if !toc_generated then
+    # FIXME: weave_ctxt_toc must accept our symbolism as it is
     weave_ctxt_toc fabric.toc, wr,
-        section_prefix: section_prefix
+        section_prefix: symbolism.section_prefix
     toc_generated = true
   end
   wr.styled :section_title do
@@ -2614,8 +2623,10 @@ First, let's take care of the I/O.
 << Weave [[fabric]] (HTML) >>:
   open filename, 'w' do |port|
     port.set_encoding 'utf-8'
+
     symbolism = Fabricator.default_symbolism
     symbolism.section_prefix = $cmdline.section_prefix
+
     Fabricator.weave_html fabric, port,
         title: $cmdline.fabric_filename,
         symbolism: symbolism,
