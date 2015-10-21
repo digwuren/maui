@@ -1397,10 +1397,8 @@ class << Fabricator
           case starter.type
           when :paragraph, :divert, :chunk then
             wr.add_space
-            # FIXME: weave_ctxt_section_part must accept our symbolism
-            # as it is
             weave_ctxt_section_part starter, fabric, wr,
-                section_prefix: symbolism.section_prefix
+                symbolism: symbolism
             start_index += 1
           else
             wr.linebreak
@@ -1412,10 +1410,8 @@ class << Fabricator
         wr.linebreak
 
         element.elements[start_index .. -1].each do |child|
-          # FIXME: weave_ctxt_section_part must accept our symbolism
-          # as it is
           weave_ctxt_section_part child, fabric, wr,
-              section_prefix: symbolism.section_prefix
+              symbolism: symbolism
           wr.linebreak
         end
 
@@ -1455,8 +1451,9 @@ class << Fabricator
   end
 
   def weave_ctxt_section_part element, fabric, wr,
-      section_prefix: "§",
-      chunk_name_delim: "\u00AB" .. "\u00BB"
+      symbolism: Fabricator.default_symbolism
+    section_prefix = symbolism.section_prefix # FIXME: inline
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     when :paragraph then
       wr.add_nodes element.content

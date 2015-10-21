@@ -1979,10 +1979,8 @@ plain ones.
     case starter.type
     when :paragraph, :divert, :chunk then
       wr.add_space
-      # FIXME: weave_ctxt_section_part must accept our symbolism
-      # as it is
       weave_ctxt_section_part starter, fabric, wr,
-          section_prefix: symbolism.section_prefix
+          symbolism: symbolism
       start_index += 1
     else
       wr.linebreak
@@ -2013,17 +2011,16 @@ plain ones.
 
 << Weave the section's body from [[start_index]] on (ctxt) >>:
   element.elements[start_index .. -1].each do |child|
-    # FIXME: weave_ctxt_section_part must accept our symbolism
-    # as it is
     weave_ctxt_section_part child, fabric, wr,
-        section_prefix: symbolism.section_prefix
+        symbolism: symbolism
     wr.linebreak
   end
 
 << Other methods >>:
   def weave_ctxt_section_part element, fabric, wr,
-      section_prefix: "§",
-      chunk_name_delim: "\u00AB" .. "\u00BB"
+      symbolism: Fabricator.default_symbolism
+    section_prefix = symbolism.section_prefix # FIXME: inline
+    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     case element.type
     << [[weave_ctxt_section_part]] rules >>
     else
