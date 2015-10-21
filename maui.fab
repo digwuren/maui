@@ -3101,12 +3101,22 @@ going to make each entry into a local link, either in the
 * Conversion of a horizontal markup tree to HTML.
 
 << Other methods >>:
+  # FIXME: this temporary method must be deleted once all the callers use [[htmlify_markup]] instead
   def htmlify nodes, port,
       symbolism: default_symbolism,
       link_processor: nil
+    weaving = Fabricator::HTML_Weaving.new nil, port,
+        symbolism: symbolism,
+        link_processor: link_processor
+    weaving.htmlify_markup nodes
+    return
+  end
+
+<< in [[HTML_Weaving]] >>:
+  def htmlify_markup nodes
     nodes.each do |node|
       case node.type
-      << [[case]] clauses of [[htmlify]] >>
+      << [[case]] clauses of [[htmlify_markup]] >>
       else
         raise 'invalid node type'
       end
@@ -3115,57 +3125,60 @@ going to make each entry into a local link, either in the
   end
 
 
-<< [[case]] clauses of [[htmlify]] >>:
+<< [[case]] clauses of [[htmlify_markup]] >>:
 
   when :plain then
-    port.print node.data.to_xml
+    @port.print node.data.to_xml
 
 
   when :space then
-    port.print((node.data || ' ').to_xml)
+    @port.print((node.data || ' ').to_xml)
 
 
   when :nbsp then
-    port.print '&nbsp;'
+    @port.print '&nbsp;'
 
 
   when :monospace, :bold, :italic, :underscore then
     html_tag = Fabricator::MARKUP2HTML[node.type]
-    port.print "<%s>" % html_tag
-    htmlify node.content, port,
-        symbolism: symbolism,
-        link_processor: link_processor
-    port.print "</%s>" % html_tag
+    @port.print "<%s>" % html_tag
+    # FIXME: use [[htmlify_markup]] directly
+    Fabricator.htmlify node.content, @port,
+        symbolism: @symbolism,
+        link_processor: @link_processor
+    @port.print "</%s>" % html_tag
 
 
   when :mention_chunk then
-    port.print "<span class='maui-chunk-mention'>"
-    port.print symbolism.chunk_name_delim.begin
-    htmlify(
-        parse_markup(node.name, Fabricator::MF::LINK),
-        port,
-        symbolism: symbolism,
-        link_processor: link_processor)
-    port.print symbolism.chunk_name_delim.end
-    port.print "</span>"
+    @port.print "<span class='maui-chunk-mention'>"
+    @port.print @symbolism.chunk_name_delim.begin
+    # FIXME: use [[htmlify_markup]] directly
+    Fabricator.htmlify(
+        Fabricator.parse_markup(node.name, Fabricator::MF::LINK),
+        @port,
+        symbolism: @symbolism,
+        link_processor: @link_processor)
+    @port.print @symbolism.chunk_name_delim.end
+    @port.print "</span>"
 
 
   when :link then
     target = node.target
-    if link_processor then
-      target, *classes = link_processor.call target
+    if @link_processor then
+      target, *classes = @link_processor.call target
     else
       classes = []
     end
-    port.print "<a href='#{target.to_xml}'"
+    @port.print "<a href='#{target.to_xml}'"
     unless classes.empty? then
-      port.print " class='#{classes.join(' ').to_xml}'"
+      @port.print " class='#{classes.join(' ').to_xml}'"
     end
-    port.print ">"
-    htmlify node.content, port,
-        symbolism: symbolism,
-        link_processor: link_processor
-    port.print "</a>"
+    @port.print ">"
+    # FIXME: use [[htmlify_markup]] directly
+    Fabricator.htmlify node.content, @port,
+        symbolism: @symbolism,
+        link_processor: @link_processor
+    @port.print "</a>"
 
 
 << in [[Fabricator]] >>:
