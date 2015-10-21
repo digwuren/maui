@@ -820,7 +820,7 @@ module Fabricator
     end
 
     def add_node node,
-        symbolism: Fabricator.default_symbolism
+        symbolism: default_symbolism
       case node.type
       when :plain then
         add_plain node.data
@@ -865,7 +865,7 @@ module Fabricator
     end
 
     def add_nodes nodes,
-        symbolism: Fabricator.default_symbolism
+        symbolism: default_symbolism
       nodes.each do |node|
         add_node node, symbolism: symbolism
       end
@@ -1327,7 +1327,7 @@ class << Fabricator
 
   def weave_ctxt fabric, port,
       width: 80,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       pseudographics: Fabricator::UNICODE_PSEUDOGRAPHICS
     wr = Fabricator::Text_Wrapper.new port,
         width: width,
@@ -1450,7 +1450,7 @@ class << Fabricator
   end
 
   def weave_ctxt_section_part element, fabric, wr,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     case element.type
     when :paragraph then
       wr.add_nodes element.content, symbolism: symbolism
@@ -1518,7 +1518,7 @@ class << Fabricator
   end
 
   def weave_ctxt_chunk_header element, wr,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     wr.styled :chunk_header do
       wr.add_plain symbolism.chunk_name_delim.begin
       if element.root_type then
@@ -1551,7 +1551,7 @@ class << Fabricator
   end
 
   def weave_ctxt_use node, wr,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     wr.styled :use do
       wr.add_plain symbolism.chunk_name_delim.begin
       if node.clearindent then
@@ -1576,7 +1576,7 @@ class << Fabricator
   # last in a chunk chain (i.e., that have [[final]] set).
   def xref_chain element, fabric,
       dash: "-", # used to indicate ranges
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     xref = markup
     if element.initial then
       xref.words "This chunk is "
@@ -1641,7 +1641,7 @@ class << Fabricator
   end
 
   def weave_ctxt_list items, wr,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     items.each do |item|
       wr.add_pseudographics :bullet
       wr.add_plain " "
@@ -1667,7 +1667,7 @@ class << Fabricator
   end
 
   def weave_ctxt_toc toc, wr,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     if toc.length >= 2 then
       wr.styled :section_title do
         wr.add_plain 'Contents'
@@ -1707,7 +1707,7 @@ class << Fabricator
 
   def weave_html fabric, port,
       title: nil,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       link_css: []
     title ||= "(Untitled)"
     port.puts '<!doctype html>'
@@ -1746,7 +1746,7 @@ class << Fabricator
   end
 
   def weave_html_presentation fabric, port,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       link_processor: nil
     toc_generated = false
     fabric.presentation.each do |element|
@@ -1835,7 +1835,7 @@ class << Fabricator
   end
 
   def weave_html_section_part element, fabric, port,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       link_processor: nil
     case element.type
     when :paragraph then
@@ -1901,7 +1901,7 @@ class << Fabricator
   end
 
   def weave_html_toc toc, port,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     if toc.length >= 2 then
       port.puts "<h2>Contents</h2>"; port.puts
       last_level = 0
@@ -1951,7 +1951,7 @@ class << Fabricator
   end
 
   def weave_html_list items, port,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       link_processor: nil
     port.puts "<ul>"
     items.each do |item|
@@ -1978,7 +1978,7 @@ class << Fabricator
 
   def weave_html_chunk_header element, cls, port,
       tag: 'div',
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     port.print "<#{tag} class='%s'>" % cls
     port.print symbolism.chunk_name_delim.begin
     if element.root_type then
@@ -1995,7 +1995,7 @@ class << Fabricator
   end
 
   def weave_html_chunk_body element, port,
-      symbolism: Fabricator.default_symbolism
+      symbolism: default_symbolism
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
@@ -2053,7 +2053,7 @@ class << Fabricator
   end
 
   def htmlify nodes, port,
-      symbolism: Fabricator.default_symbolism,
+      symbolism: default_symbolism,
       link_processor: nil
     nodes.each do |node|
       case node.type
