@@ -1348,9 +1348,8 @@ class << Fabricator
       case element.type
       when :title then
         if !toc_generated then
-          # FIXME: weave_ctxt_toc must accept our symbolism as it is
           weave_ctxt_toc fabric.toc, wr,
-              section_prefix: symbolism.section_prefix
+              symbolism: symbolism
           toc_generated = true
         end
         wr.styled :section_title do
@@ -1367,9 +1366,8 @@ class << Fabricator
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
-          # FIXME: weave_ctxt_toc must accept our symbolism as it is
           weave_ctxt_toc fabric.toc, wr,
-              section_prefix: symbolism.section_prefix
+              symbolism: symbolism
           toc_generated = true
         end
 
@@ -1666,7 +1664,7 @@ class << Fabricator
   end
 
   def weave_ctxt_toc toc, wr,
-      section_prefix: "§"
+      symbolism: Fabricator.default_symbolism
     if toc.length >= 2 then
       wr.styled :section_title do
         wr.add_plain 'Contents'
@@ -1687,7 +1685,7 @@ class << Fabricator
         when :rubric then
           wr.add_plain '  ' * rubric_level
           wr.add_plain '%s%i.' % [
-            section_prefix,
+            symbolism.section_prefix,
             entry.section_number]
           wr.add_space
           wr.hang do
