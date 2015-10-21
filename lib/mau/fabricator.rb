@@ -1682,7 +1682,7 @@ class << Fabricator
           wr.add_plain entry.number + '.'
           wr.add_space
           wr.hang do
-            wr.add_nodes entry.content
+            wr.add_nodes entry.content, symbolism: symbolism
           end
 
         when :rubric then
@@ -1692,7 +1692,7 @@ class << Fabricator
             entry.section_number]
           wr.add_space
           wr.hang do
-            wr.add_nodes entry.content
+            wr.add_nodes entry.content, symbolism: symbolism
           end
 
         else

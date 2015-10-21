@@ -2333,7 +2333,7 @@ joiners interspersed.
     wr.add_plain entry.number + '.'
     wr.add_space
     wr.hang do
-      wr.add_nodes entry.content
+      wr.add_nodes entry.content, symbolism: symbolism
     end
 
   when :rubric then
@@ -2343,7 +2343,7 @@ joiners interspersed.
       entry.section_number]
     wr.add_space
     wr.hang do
-      wr.add_nodes entry.content
+      wr.add_nodes entry.content, symbolism: symbolism
     end
 
   else
