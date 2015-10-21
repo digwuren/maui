@@ -966,6 +966,26 @@ module Fabricator
     def html
       @port.puts '<!doctype html>'
       @port.puts '<html>'
+      html_head
+      @port.puts '<body>'
+      @port.puts
+      @port.puts "<h1>#{@title.to_xml}</h1>"
+      unless @fabric.warnings.empty? then
+        @port.puts "<h2>Warnings</h2>"
+        @port.puts
+        # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
+        Fabricator.weave_html_warning_list @fabric.warnings, @port
+        @port.puts
+      end
+      # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
+      Fabricator.weave_html_presentation @fabric, @port,
+          symbolism: @symbolism
+      @port.puts '</body>'
+      @port.puts '</html>'
+      return
+    end
+
+    def html_head
       @port.puts '<head>'
       @port.puts "<meta http-equiv='Content-type' " +
           "content='text/html; charset=utf-8' />"
@@ -982,21 +1002,6 @@ module Fabricator
         end
       end
       @port.puts '</head>'
-      @port.puts '<body>'
-      @port.puts
-      @port.puts "<h1>#{@title.to_xml}</h1>"
-      unless @fabric.warnings.empty? then
-        @port.puts "<h2>Warnings</h2>"
-        @port.puts
-        # FIXME: weave_html_warning_list must be in [[HTML_Weaving]]
-        Fabricator.weave_html_warning_list @fabric.warnings, @port
-        @port.puts
-      end
-      # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
-      Fabricator.weave_html_presentation @fabric, @port,
-          symbolism: @symbolism
-      @port.puts '</body>'
-      @port.puts '</html>'
       return
     end
   end

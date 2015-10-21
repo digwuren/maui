@@ -2678,10 +2678,11 @@ The next issue is the basic HTML structure.  We'll follow HTML 5
 conventions.
 
 << in [[HTML_Weaving]] >>:
+
   def html
     @port.puts '<!doctype html>'
     @port.puts '<html>'
-    << Generate woven HTML's [[head]] >>
+    html_head
     @port.puts '<body>'
     @port.puts
     @port.puts "<h1>#{@title.to_xml}</h1>"
@@ -2694,23 +2695,26 @@ conventions.
     return
   end
 
-<< Generate woven HTML's [[head]] >>:
-  @port.puts '<head>'
-  @port.puts "<meta http-equiv='Content-type' " +
-      "content='text/html; charset=utf-8' />"
-  @port.puts "<title>#{@title.to_xml}</title>"
-  if @link_css.empty? then
-    @port.puts "<style type='text/css'>"
-    @port.write File.read(
-        File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
-    @port.puts "</style>"
-  else
-    @link_css.each do |link|
-      @port.puts ("<link rel='stylesheet' type='text/css' " +
-          "href='%s' />") % link.to_xml
+  def html_head
+    @port.puts '<head>'
+    @port.puts "<meta http-equiv='Content-type' " +
+        "content='text/html; charset=utf-8' />"
+    @port.puts "<title>#{@title.to_xml}</title>"
+    if @link_css.empty? then
+      @port.puts "<style type='text/css'>"
+      @port.write File.read(
+          File.join(Fabricator::RESOURCE_DIR, 'maui.css'))
+      @port.puts "</style>"
+    else
+      @link_css.each do |link|
+        @port.puts ("<link rel='stylesheet' type='text/css' " +
+            "href='%s' />") % link.to_xml
+      end
     end
+    @port.puts '</head>'
+    return
   end
-  @port.puts '</head>'
+
 
 << Other methods >>:
   def weave_html_presentation fabric, port,
