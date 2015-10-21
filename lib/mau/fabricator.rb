@@ -1643,7 +1643,7 @@ class << Fabricator
       wr.add_pseudographics :bullet
       wr.add_plain " "
       wr.hang do
-        wr.add_nodes item.content
+        wr.add_nodes item.content, symbolism: symbolism
       end
       wr.linebreak
       unless (item.warnings || []).empty? then
