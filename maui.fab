@@ -2966,7 +2966,6 @@ going to make each entry into a local link, either in the
 
   def weave_html_chunk_body element, port,
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
@@ -2985,7 +2984,7 @@ going to make each entry into a local link, either in the
 
 << Weave the [[use]] node (HTML) >>:
   port.print "<span class='maui-transclude'>"
-  port.print chunk_name_delim.begin
+  port.print symbolism.chunk_name_delim.begin
   if node.clearindent then
     port.print ".clearindent "
   end
@@ -2999,7 +2998,7 @@ going to make each entry into a local link, either in the
   if node.postprocess then
     port.print " " + node.postprocess.to_xml
   end
-  port.print chunk_name_delim.end
+  port.print symbolism.chunk_name_delim.end
   port.print "</span>"
 
 

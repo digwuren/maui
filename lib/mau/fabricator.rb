@@ -1996,7 +1996,6 @@ class << Fabricator
 
   def weave_html_chunk_body element, port,
       symbolism: Fabricator.default_symbolism
-    chunk_name_delim = symbolism.chunk_name_delim # FIXME: inline
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
@@ -2006,7 +2005,7 @@ class << Fabricator
         port.puts
       when :use then
         port.print "<span class='maui-transclude'>"
-        port.print chunk_name_delim.begin
+        port.print symbolism.chunk_name_delim.begin
         if node.clearindent then
           port.print ".clearindent "
         end
@@ -2020,7 +2019,7 @@ class << Fabricator
         if node.postprocess then
           port.print " " + node.postprocess.to_xml
         end
-        port.print chunk_name_delim.end
+        port.print symbolism.chunk_name_delim.end
         port.print "</span>"
       else raise 'data structure error'
       end
