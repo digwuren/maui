@@ -1870,9 +1870,9 @@ class << Fabricator
         port.print "<p>"
         port.print "<b class='%s'>" %
             (rubricated ? 'maui-rubric' : 'maui-section-number')
-        port.print "%s%s." % [
-          symbolism.section_prefix,
-          element.section_number]
+        port.print symbolism.section_prefix
+        port.print element.section_number
+        port.print "."
         if rubricated then
           port.print " "
           # FIXME: [[weaving.]] must be an implicit [[self.]] here
@@ -1941,7 +1941,8 @@ class << Fabricator
           link_processor: link_processor
 
     when :divert then
-      weave_html_chunk_header element, 'maui-divert',
+      # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
+      Fabricator.weave_html_chunk_header element, 'maui-divert',
           port,
           symbolism: symbolism
       port.puts
@@ -1954,7 +1955,8 @@ class << Fabricator
       port.print " maui-final-chunk" if element.final
       port.print "'>"
       if element.type == :chunk then
-        weave_html_chunk_header element, 'maui-chunk-header',
+        # FIXME: [[weave_html_chunk_header]] must be in [[HTML_Weaving]]
+        Fabricator.weave_html_chunk_header element, 'maui-chunk-header',
             port,
             symbolism: symbolism
         port.puts
