@@ -1698,6 +1698,7 @@ class << Fabricator
   def weave_html fabric, port,
       title: nil,
       section_prefix: "§",
+      chunk_name_delim: "\u00AB" .. "\u00BB",
       link_css: []
     title ||= "(Untitled)"
     port.puts '<!doctype html>'
@@ -1728,7 +1729,8 @@ class << Fabricator
       port.puts
     end
     weave_html_presentation fabric, port,
-        section_prefix: section_prefix
+        section_prefix: section_prefix,
+        chunk_name_delim: "\u00AB" .. "\u00BB"
     port.puts '</html>'
     port.puts '</body>'
     port.puts '</html>'
