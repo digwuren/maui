@@ -1452,7 +1452,7 @@ class << Fabricator
       symbolism: Fabricator.default_symbolism
     case element.type
     when :paragraph then
-      wr.add_nodes element.content
+      wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
     when :divert, :chunk, :diverted_chunk then
@@ -1498,7 +1498,8 @@ class << Fabricator
           wr.styled :chunk_xref do
             # FIXME: xref_chain must accept our symbolism as it is
             wr.add_nodes xref_chain(element, fabric,
-                section_prefix: symbolism.section_prefix)
+                    section_prefix: symbolism.section_prefix),
+                symbolism: symbolism
           end
           wr.linebreak
         end

@@ -2031,7 +2031,7 @@ plain ones.
 << [[weave_ctxt_section_part]] rules >>:
 
   when :paragraph then
-    wr.add_nodes element.content
+    wr.add_nodes element.content, symbolism: symbolism
     wr.linebreak
 
 
@@ -2051,7 +2051,8 @@ plain ones.
         wr.styled :chunk_xref do
           # FIXME: xref_chain must accept our symbolism as it is
           wr.add_nodes xref_chain(element, fabric,
-              section_prefix: symbolism.section_prefix)
+                  section_prefix: symbolism.section_prefix),
+              symbolism: symbolism
         end
         wr.linebreak
       end
