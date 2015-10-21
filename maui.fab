@@ -2931,7 +2931,8 @@ going to make each entry into a local link, either in the
   end
 
 
-  def weave_html_chunk_body element, port
+  def weave_html_chunk_body element, port,
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
@@ -2950,7 +2951,7 @@ going to make each entry into a local link, either in the
 
 << Weave the [[use]] node (HTML) >>:
   port.print "<span class='maui-transclude'>"
-  port.print "&#xAB;"
+  port.print chunk_name_delim.begin
   if node.clearindent then
     port.print ".clearindent "
   end
@@ -2963,7 +2964,7 @@ going to make each entry into a local link, either in the
   if node.postprocess then
     port.print " " + node.postprocess.to_xml
   end
-  port.print "&#xBB;"
+  port.print chunk_name_delim.end
   port.print "</span>"
 
 

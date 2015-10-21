@@ -1968,7 +1968,8 @@ class << Fabricator
     return
   end
 
-  def weave_html_chunk_body element, port
+  def weave_html_chunk_body element, port,
+      chunk_name_delim: "\u00AB" .. "\u00BB"
     port.print "<pre class='maui-chunk-body'>"
     element.content.each do |node|
       case node.type
@@ -1978,7 +1979,7 @@ class << Fabricator
         port.puts
       when :use then
         port.print "<span class='maui-transclude'>"
-        port.print "&#xAB;"
+        port.print chunk_name_delim.begin
         if node.clearindent then
           port.print ".clearindent "
         end
@@ -1991,7 +1992,7 @@ class << Fabricator
         if node.postprocess then
           port.print " " + node.postprocess.to_xml
         end
-        port.print "&#xBB;"
+        port.print chunk_name_delim.end
         port.print "</span>"
       else raise 'data structure error'
       end
