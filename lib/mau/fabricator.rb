@@ -950,6 +950,11 @@ module Fabricator
   )
 
   class HTML_Weaving
+    attr_reader :fabric # FIXME: mustn't be public
+    attr_reader :port # FIXME: mustn't be public
+    attr_reader :symbolism # FIXME: mustn't be public
+    attr_reader :link_processor # FIXME: mustn't be public
+
     def initialize fabric, port,
         title: nil,
         symbolism: Fabricator.default_symbolism,
@@ -980,8 +985,7 @@ module Fabricator
         @port.puts
       end
       # FIXME: weave_html_presentation must be in [[HTML_Weaving]]
-      Fabricator.weave_html_presentation @fabric, @port,
-          symbolism: @symbolism
+      Fabricator.weave_html_presentation self
       @port.puts '</body>'
       @port.puts '</html>'
       return
@@ -1778,15 +1782,20 @@ class << Fabricator
     return
   end
 
-  def weave_html_presentation fabric, port,
-      symbolism: default_symbolism,
-      link_processor: nil
+  # FIXME: [[weave_html_presentation]] must be in [[HTML_Weaving]]
+  def weave_html_presentation weaving
+    fabric = weaving.fabric # FIXME: inline as [[@fabric]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
+    port = weaving.port # FIXME: inline as [[@port]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
+    symbolism = weaving.symbolism # FIXME: inline as [[@symbolism]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
+    link_processor = weaving.link_processor # FIXME: inline as [[@link_processor]] once [[weave_html_presentation]] will be in [[HTML_Weaving]]
+
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
       when :title then
         if !toc_generated then
-          weave_html_toc fabric.toc, port,
+          # FIXME: [[weave_html_toc]] must be in [[HTML_Weaving]]
+          Fabricator.weave_html_toc fabric.toc, port,
               symbolism: symbolism
           toc_generated = true
         end
@@ -1794,7 +1803,8 @@ class << Fabricator
         port.print " id='%s'" % "T.#{element.number}"
         port.print '>'
         port.print "#{element.number}. "
-        htmlify element.content, port,
+        # FIXME: [[htmlify]] must be in [[HTML_Weaving]]
+        Fabricator.htmlify element.content, port,
             symbolism: symbolism
         port.puts '</h%i>' % (element.level + 1)
       when :section then
