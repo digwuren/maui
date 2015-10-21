@@ -2066,6 +2066,7 @@ class << Fabricator
         html_tag = Fabricator::MARKUP2HTML[node.type]
         port.print "<%s>" % html_tag
         htmlify node.content, port,
+            chunk_name_delim: chunk_name_delim,
             link_processor: link_processor
         port.print "</%s>" % html_tag
 
@@ -2075,6 +2076,7 @@ class << Fabricator
         htmlify(
             parse_markup(node.name, Fabricator::MF::LINK),
             port,
+            chunk_name_delim: chunk_name_delim,
             link_processor: link_processor)
         port.print chunk_name_delim.end
         port.print "</span>"
@@ -2092,6 +2094,7 @@ class << Fabricator
         end
         port.print ">"
         htmlify node.content, port,
+            chunk_name_delim: chunk_name_delim,
             link_processor: link_processor
         port.print "</a>"
       else
