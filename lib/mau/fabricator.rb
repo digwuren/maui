@@ -1969,7 +1969,8 @@ class << Fabricator
     end
     htmlify(
         parse_markup(element.name, Fabricator::MF::LINK),
-        port)
+        port,
+        chunk_name_delim: chunk_name_delim)
     port.print chunk_name_delim.end + ":"
     port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
