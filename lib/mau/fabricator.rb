@@ -111,7 +111,7 @@ module Fabricator
 
     attr_reader :output
 
-    def initialize
+    def initialize first_section: 1
       super()
       @output = OpenStruct.new(
         warnings: [],
@@ -126,7 +126,7 @@ module Fabricator
         roots: [], # list of canonical names
       )
       @cursec = nil # The current section if started
-      @section_number_origin = 1
+      @first_section_number = first_section
       @section_count = 0 # The number of last section
       @title_counters = [0]
       @curdivert = nil # The current diversion if active
@@ -190,7 +190,7 @@ module Fabricator
         if @cursec.nil? then
           @cursec = OpenStruct.new(
             type: :section,
-            section_number: @section_number_origin +
+            section_number: @first_section_number +
                 @section_count,
             elements: [])
             @section_count += 1
