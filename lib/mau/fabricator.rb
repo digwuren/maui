@@ -126,6 +126,7 @@ module Fabricator
         roots: [], # list of canonical names
       )
       @cursec = nil # The current section if started
+      @section_number_origin = 1
       @section_count = 0 # The number of last section
       @title_counters = [0]
       @curdivert = nil # The current diversion if active
@@ -189,8 +190,10 @@ module Fabricator
         if @cursec.nil? then
           @cursec = OpenStruct.new(
             type: :section,
-            section_number: (@section_count += 1),
+            section_number: @section_number_origin +
+                @section_count,
             elements: [])
+            @section_count += 1
           @output.presentation.push @cursec
         end
         if element.type == :rubric then
@@ -1201,8 +1204,8 @@ module Fabricator
       if element.root_type then
         @port.print "<u>%s</u> " % element.root_type.to_xml
       end
-      htmlify(
-          Fabricator.parse_markup(element.name, Fabricator::MF::LINK))
+      htmlify Fabricator.parse_markup(element.name,
+          Fabricator::MF::LINK)
       @port.print @symbolism.chunk_name_delim.end + ":"
       @port.print "</#{tag}>"
       # Note that we won't output a trailing linebreak here.
@@ -1285,8 +1288,8 @@ module Fabricator
         when :mention_chunk then
           @port.print "<span class='maui-chunk-mention'>"
           @port.print @symbolism.chunk_name_delim.begin
-          htmlify(
-              Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
+          htmlify Fabricator.parse_markup(node.name,
+              Fabricator::MF::LINK)
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
 

@@ -39,7 +39,8 @@ begin
     when '--chunk-name-delim' then
       before, after = arg.split ',', 2
       unless after then
-        $stderr.puts "maui: --chunk-name-delim requires two strings"
+        $stderr.puts "maui: " +
+            "--chunk-name-delim requires two strings"
         exit 1
       end
       $cmdline.symbolism.chunk_name_delim = before .. after
@@ -177,7 +178,8 @@ end
       open filename, 'w' do |port|
         symbolism = $cmdline.symbolism.dup
         symbolism.chunk_name_delim ||=
-            if $cmdline.pseudographics == Fabricator::ASCII_PSEUDOGRAPHICS then
+            if $cmdline.pseudographics ==
+                Fabricator::ASCII_PSEUDOGRAPHICS then
               "<\<" .. ">>"
             else
               Fabricator.default_symbolism.chunk_name_delim

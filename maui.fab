@@ -389,6 +389,7 @@ them next:
     super()
     << Initialise [[Integrator@output]] >>
     @cursec = nil # The current section if started
+    @section_number_origin = 1
     @section_count = 0 # The number of last section
     @title_counters = [0]
     @curdivert = nil # The current diversion if active
@@ -530,8 +531,10 @@ section break.
   if @cursec.nil? then
     @cursec = OpenStruct.new(
       type: :section,
-      section_number: (@section_count += 1),
+      section_number: @section_number_origin +
+          @section_count,
       elements: [])
+      @section_count += 1
     @output.presentation.push @cursec
   end
 
@@ -1854,7 +1857,8 @@ This output mode is convenient for use in a modern (x)terminal.
   open filename, 'w' do |port|
     symbolism = $cmdline.symbolism.dup
     symbolism.chunk_name_delim ||= 
-        if $cmdline.pseudographics == Fabricator::ASCII_PSEUDOGRAPHICS then
+        if $cmdline.pseudographics ==
+            Fabricator::ASCII_PSEUDOGRAPHICS then
           "<\<" .. ">>"
         else
           Fabricator.default_symbolism.chunk_name_delim
@@ -2960,8 +2964,8 @@ into a local link, either in the [[#T.foo]] form for titles or
     if element.root_type then
       @port.print "<u>%s</u> " % element.root_type.to_xml
     end
-    htmlify(
-        Fabricator.parse_markup(element.name, Fabricator::MF::LINK))
+    htmlify Fabricator.parse_markup(element.name,
+        Fabricator::MF::LINK)
     @port.print @symbolism.chunk_name_delim.end + ":"
     @port.print "</#{tag}>"
     # Note that we won't output a trailing linebreak here.
@@ -3085,8 +3089,8 @@ into a local link, either in the [[#T.foo]] form for titles or
   when :mention_chunk then
     @port.print "<span class='maui-chunk-mention'>"
     @port.print @symbolism.chunk_name_delim.begin
-    htmlify(
-        Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
+    htmlify Fabricator.parse_markup(node.name,
+        Fabricator::MF::LINK)
     @port.print @symbolism.chunk_name_delim.end
     @port.print "</span>"
 
@@ -3563,7 +3567,8 @@ symbols.  Here are the defaults.
   when '--chunk-name-delim' then
     before, after = arg.split ',', 2
     unless after then
-      $stderr.puts "maui: --chunk-name-delim requires two strings"
+      $stderr.puts "maui: " +
+          "--chunk-name-delim requires two strings"
       exit 1
     end
     $cmdline.symbolism.chunk_name_delim = before .. after
