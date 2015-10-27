@@ -375,6 +375,11 @@ construct.
         #   headers: list of :chunk/:divert records,
         # }
     roots: [], # list of canonical names
+    index: {},
+        # keyword => {
+        #   canonical_representation: markup list,
+        #   sections => [number/range, ...],
+        # }
   )
 
 

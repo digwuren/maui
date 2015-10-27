@@ -124,6 +124,11 @@ module Fabricator
             #   headers: list of :chunk/:divert records,
             # }
         roots: [], # list of canonical names
+        index: {},
+            # keyword => {
+            #   canonical_representation: markup list,
+            #   sections => [number/range, ...],
+            # }
       )
       @cursec = nil # The current section if started
       @first_section_number = first_section
