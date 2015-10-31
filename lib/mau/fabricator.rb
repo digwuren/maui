@@ -368,8 +368,9 @@ module Fabricator
 
             # Now, let's hook the chunk up to the index.
             # FIXME: canonicalise the name first
-            identifier = "<< " + element.name +
-              " >>"
+            identifier = "<< " +
+                Fabricator.canonicalise_chunk_name(element.name) +
+                " >>"
             index_record = @output.index[identifier] ||=
                 OpenStruct.new(
                     sort_key: identifier.downcase.sub(
@@ -1004,6 +1005,9 @@ module Fabricator
         @port.puts
       end
       html_presentation
+      unless @fabric.index.empty? then
+        html_index
+      end
       @port.puts '</body>'
       @port.puts '</html>'
       return
@@ -1156,7 +1160,7 @@ module Fabricator
 
     def html_toc
       if @fabric.toc.length >= 2 then
-        @port.puts "<h2>Contents</h2>"; @port.puts
+        @port.puts "<h2>Contents</h2>"
         last_level = 0
         # What level should the rubrics in the current
         # (sub(sub))chapter appear at?
@@ -1286,6 +1290,33 @@ module Fabricator
         end
         @port.puts "</ul>"
       end
+      return
+    end
+
+    def html_index
+      @port.puts "<h2>Index</h2>"
+      @port.puts
+      @port.puts "<nav id='index'>"
+      @port.puts "<ul>"
+      index = @fabric.index
+      index.keys.sort do |a, b|
+        index[a].sort_key <=> index[b].sort_key
+      end.each do |keyword|
+        record = index[keyword]
+        @port.print "<li>"
+        htmlify record.canonical_representation
+        @port.print " "
+        record.sections.each_with_index do |secno, i|
+          @port.print ',' unless i.zero?
+          @port.print ' '
+          @port.print "<a href='#S.#{secno}'>"
+          @port.print secno
+          @port.print "</a>"
+        end
+        @port.puts "</li>"
+      end
+      @port.puts "</ul>"
+      @port.puts "</nav>"
       return
     end
 
@@ -1814,6 +1845,21 @@ class << Fabricator
       wr.styled :section_title do
         wr.add_plain 'Index'
       end
+      wr.linebreak; wr.linebreak
+      index = fabric.index
+      index.keys.sort do |a, b|
+        index[a].sort_key <=> index[b].sort_key
+      end.each do |keyword|
+        record = index[keyword]
+        wr.add_nodes record.canonical_representation
+        record.sections.each_with_index do |secno, i|
+          wr.add_plain ',' unless i.zero?
+          wr.add_space
+          wr.add_plain secno.to_s
+        end
+        wr.linebreak
+      end
+
       wr.linebreak; wr.linebreak
       index = fabric.index
       index.keys.sort do |a, b|
