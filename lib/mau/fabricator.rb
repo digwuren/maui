@@ -126,6 +126,7 @@ module Fabricator
         roots: [], # list of canonical names
         index: {},
             # keyword => {
+            #   sort_key => string,
             #   canonical_representation: markup list,
             #   sections => [number/range, ...],
             # }
@@ -364,6 +365,22 @@ module Fabricator
             if element.root_type == '.script' then
               cbn_record.root_type = element.root_type
             end
+
+            # Now, let's hook the chunk up to the index.
+            # FIXME: canonicalise the name first
+            identifier = "<< " + element.name +
+              " >>"
+            index_record = @output.index[identifier] ||=
+                OpenStruct.new(
+                    sort_key: identifier.downcase.sub(
+                        /^([^[:alnum:]]+)(.*)$/) {$2 + ", " + $1},
+                    canonical_representation: [OpenStruct.new(
+                        type: :mention_chunk,
+                        name: element.name,
+                    )],
+                    sections: [],
+                )
+            index_record.sections.push @cursec.section_number
           end
           @list_stack = nil
         end
@@ -828,7 +845,7 @@ module Fabricator
     end
 
     def add_node node,
-        symbolism: default_symbolism
+        symbolism: Fabricator.default_symbolism
       case node.type
       when :plain then
         add_plain node.data
@@ -873,7 +890,7 @@ module Fabricator
     end
 
     def add_nodes nodes,
-        symbolism: default_symbolism
+        symbolism: Fabricator.default_symbolism
       nodes.each do |node|
         add_node node, symbolism: symbolism
       end
@@ -1791,6 +1808,25 @@ class << Fabricator
           wr.linebreak
         end
       else raise 'data structure error'
+      end
+    end
+    unless fabric.index.empty? then
+      wr.styled :section_title do
+        wr.add_plain 'Index'
+      end
+      wr.linebreak; wr.linebreak
+      index = fabric.index
+      index.keys.sort do |a, b|
+        index[a].sort_key <=> index[b].sort_key
+      end.each do |keyword|
+        record = index[keyword]
+        wr.add_nodes record.canonical_representation
+        record.sections.each_with_index do |secno, i|
+          wr.add_plain ',' unless i.zero?
+          wr.add_space
+          wr.add_plain secno.to_s
+        end
+        wr.linebreak
       end
     end
     return
