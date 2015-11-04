@@ -129,11 +129,10 @@ module Fabricator
         warnings: [],
 
         index: {},
-            # keyword => {
-            #   sort_key => string,
+            # keyword => OpenStruct
+            #   sort_key: string,
             #   canonical_representation: markup list,
-            #   sections => [number/range, ...],
-            # }
+            #   refs: [[number, reftype], ...],
       )
       @cursec = nil # The current section if started
       @first_section_number = first_section
@@ -309,7 +308,7 @@ module Fabricator
                   end
                   if !name.empty? then
                     node.name =
-                        Fabricator.canonicalise_chunk_name(name)
+                        Fabricator.canonicalise(name)
                   else
                     # not a proper reference, after all
                     node = nil
@@ -373,7 +372,7 @@ module Fabricator
             # Now, let's hook the chunk up to the index.
             # FIXME: canonicalise the name first
             identifier = "<< " +
-                Fabricator.canonicalise_chunk_name(element.name) +
+                Fabricator.canonicalise(element.name) +
                 " >>"
             index_record = @output.index[identifier] ||=
                 OpenStruct.new(
@@ -383,9 +382,10 @@ module Fabricator
                         type: :mention_chunk,
                         name: element.name,
                     )],
-                    sections: [],
+                    refs: [],
                 )
-            index_record.sections.push @cursec.section_number
+            index_record.refs.push [
+                @cursec.section_number, :definition]
           end
           @list_stack = nil
         end
@@ -1310,7 +1310,7 @@ module Fabricator
         @port.print "<li>"
         htmlify record.canonical_representation
         @port.print " "
-        record.sections.each_with_index do |secno, i|
+        record.refs.each_with_index do |secno, i|
           @port.print ',' unless i.zero?
           @port.print ' '
           @port.print "<a href='#S.#{secno}'>"
@@ -1421,7 +1421,7 @@ class << Fabricator
     end
   end
 
-  def canonicalise_chunk_name raw_name
+  def canonicalise raw_name
     name = ''
     raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
         each_with_index do |part, i|
@@ -1670,7 +1670,7 @@ class << Fabricator
           (?: (?<root-type> \.file|\.script)\s+ )?
           (?<raw-name> [^\s].*?)
           \s*>>:$/x then
-        name = canonicalise_chunk_name $~['raw-name']
+        name = canonicalise $~['raw-name']
         vp.get_line
         element = OpenStruct.new(
           type: :divert,
@@ -1856,22 +1856,7 @@ class << Fabricator
       end.each do |keyword|
         record = index[keyword]
         wr.add_nodes record.canonical_representation
-        record.sections.each_with_index do |secno, i|
-          wr.add_plain ',' unless i.zero?
-          wr.add_space
-          wr.add_plain secno.to_s
-        end
-        wr.linebreak
-      end
-
-      wr.linebreak; wr.linebreak
-      index = fabric.index
-      index.keys.sort do |a, b|
-        index[a].sort_key <=> index[b].sort_key
-      end.each do |keyword|
-        record = index[keyword]
-        wr.add_nodes record.canonical_representation
-        record.sections.each_with_index do |secno, i|
+        record.refs.each_with_index do |secno, i|
           wr.add_plain ',' unless i.zero?
           wr.add_space
           wr.add_plain secno.to_s

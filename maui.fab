@@ -136,7 +136,7 @@ it's followed by an indented block, it's a chunk.
       (?: (?<root-type> \.file|\.script)\s+ )?
       (?<raw-name> [^\s].*?)
       \s*>>:$/x then
-    name = canonicalise_chunk_name $~['raw-name']
+    name = canonicalise $~['raw-name']
     vp.get_line
     element = OpenStruct.new(
       type: :divert,
@@ -392,7 +392,7 @@ hierarchical structure by their [[level]] fields.
 In order to simplify /tangling/ of the files defined in the
 fabric, we'll collect all their chunks into the integrator's
 output structure under the key of [[chunks_by_name]].  (See also
-[[canonicalise_chunk_name]].)
+[[canonicalise]].)
 
   chunks_by_name: {},
       # canonical_name => OpenStruct
@@ -419,14 +419,13 @@ integrator's output structure.
 
 
 Last but not least, we'll collect /index entries/, and arrange
-them for easy retrieval.
+them for easy retrieval.  For now, we've got just one reference type -- [[:definition]].
 
   index: {},
-      # keyword => {
-      #   sort_key => string,
+      # keyword => OpenStruct
+      #   sort_key: string,
       #   canonical_representation: markup list,
-      #   sections => [number/range, ...],
-      # }
+      #   refs: [[number, reftype], ...],
 
 
 The integrator has a number of other internal variables which
@@ -733,7 +732,7 @@ capturing regex.
   << Extract affixes from [[name]] into [[node]] >>
   if !name.empty? then
     node.name =
-        Fabricator.canonicalise_chunk_name(name)
+        Fabricator.canonicalise(name)
   else
     # not a proper reference, after all
     node = nil
@@ -779,7 +778,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     # Now, let's hook the chunk up to the index.
     # FIXME: canonicalise the name first
     identifier = "<< " +
-        Fabricator.canonicalise_chunk_name(element.name) +
+        Fabricator.canonicalise(element.name) +
         " >>"
     index_record = @output.index[identifier] ||=
         OpenStruct.new(
@@ -789,9 +788,10 @@ We'll keep separate track of chunk bodies ([[chunk]] or
                 type: :mention_chunk,
                 name: element.name,
             )],
-            sections: [],
+            refs: [],
         )
-    index_record.sections.push @cursec.section_number
+    index_record.refs.push [
+        @cursec.section_number, :definition]
   end
 
 << Root?  Check the filename for sanity >>:
@@ -986,7 +986,7 @@ This amounts to compressing all whitespace that is not marked as
 monospaced by double brackets.
 
 << Other methods >>:
-  def canonicalise_chunk_name raw_name
+  def canonicalise raw_name
     name = ''
     raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
         each_with_index do |part, i|
@@ -2445,7 +2445,7 @@ joiners interspersed.
   end.each do |keyword|
     record = index[keyword]
     wr.add_nodes record.canonical_representation
-    record.sections.each_with_index do |secno, i|
+    record.refs.each_with_index do |secno, i|
       wr.add_plain ',' unless i.zero?
       wr.add_space
       wr.add_plain secno.to_s
@@ -3162,7 +3162,7 @@ into a local link, either in the [[#T.foo]] form for titles or
       @port.print "<li>"
       htmlify record.canonical_representation
       @port.print " "
-      record.sections.each_with_index do |secno, i|
+      record.refs.each_with_index do |secno, i|
         @port.print ',' unless i.zero?
         @port.print ' '
         @port.print "<a href='#S.#{secno}'>"
@@ -3175,23 +3175,6 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.puts "</nav>"
     return
   end
-
-<< Weave index (ctxt) >>:
-  wr.linebreak; wr.linebreak
-  index = fabric.index
-  index.keys.sort do |a, b|
-    index[a].sort_key <=> index[b].sort_key
-  end.each do |keyword|
-    record = index[keyword]
-    wr.add_nodes record.canonical_representation
-    record.sections.each_with_index do |secno, i|
-      wr.add_plain ',' unless i.zero?
-      wr.add_space
-      wr.add_plain secno.to_s
-    end
-    wr.linebreak
-  end
-
 
 * Conversion of a horizontal markup tree to HTML.
 
