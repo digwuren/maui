@@ -1068,7 +1068,8 @@ module Fabricator
           @port.puts
           @port.print "<p>"
           @port.print "<b class='%s'>" %
-              (rubricated ? 'maui-rubric' : 'maui-section-number')
+              (rubricated ? 'maui-rubric' :
+                  'maui-section-number')
           @port.print @symbolism.section_prefix
           @port.print element.section_number
           @port.print "."
@@ -1087,7 +1088,8 @@ module Fabricator
               start_index += 1
             when :divert then
               @port.print " "
-              html_chunk_header subelement, 'maui-divert', tag: 'span'
+              html_chunk_header subelement, 'maui-divert',
+                  tag: 'span'
               warnings = subelement.warnings
               start_index += 1
           end
