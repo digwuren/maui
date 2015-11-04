@@ -369,8 +369,6 @@ module Fabricator
               cbn_record.root_type = element.root_type
             end
 
-            # Now, let's hook the chunk up to the index.
-            # FIXME: canonicalise the name first
             identifier = "<< " +
                 Fabricator.canonicalise(element.name) +
                 " >>"
