@@ -369,27 +369,30 @@ module Fabricator
               cbn_record.root_type = element.root_type
             end
 
-            identifier = "<< " +
-                Fabricator.canonicalise(element.name) +
-                " >>"
-            index_record = @output.index[identifier] ||=
-                OpenStruct.new(
-                    sort_key: identifier.downcase.sub(
-                        /^([^[:alnum:]]+)(.*)$/) {
-                        $2 + ", " + $1},
-                    canonical_representation: [OpenStruct.new(
-                        type: :mention_chunk,
-                        name: element.name,
-                    )],
-                    refs: [],
-                )
-            index_record.refs.push [
+            chunk_index_record(element.name).refs.push [
                 @cursec.section_number, :definition]
           end
           @list_stack = nil
         end
       end
       return
+    end
+
+    def chunk_index_record name
+      identifier = "<< " +
+          Fabricator.canonicalise(name) +
+          " >>"
+      return @output.index[identifier] ||=
+          OpenStruct.new(
+              sort_key: identifier.downcase.sub(
+                  /^([^[:alnum:]]+)(.*)$/) {
+                  $2 + ", " + $1},
+              canonical_representation: [OpenStruct.new(
+                  type: :mention_chunk,
+                  name: name,
+              )],
+              refs: [],
+          )
     end
 
     def force_section_break

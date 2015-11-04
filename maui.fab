@@ -776,7 +776,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 
     << Update [[cbn_record.root_type]] from [[element]] >>
 
-    << Create index record >>
+    << Create index entry >>
   end
 
 << Root?  Check the filename for sanity >>:
@@ -813,23 +813,28 @@ We'll keep separate track of chunk bodies ([[chunk]] or
   end
 
 
-<< Create index record >>:
-  identifier = "<< " +
-      Fabricator.canonicalise(element.name) +
-      " >>"
-  index_record = @output.index[identifier] ||=
-      OpenStruct.new(
-          sort_key: identifier.downcase.sub(
-              /^([^[:alnum:]]+)(.*)$/) {
-              $2 + ", " + $1},
-          canonical_representation: [OpenStruct.new(
-              type: :mention_chunk,
-              name: element.name,
-          )],
-          refs: [],
-      )
-  index_record.refs.push [
+<< Create index entry >>:
+  chunk_index_record(element.name).refs.push [
       @cursec.section_number, :definition]
+
+
+<< in [[Integrator]] >>:
+  def chunk_index_record name
+    identifier = "<< " +
+        Fabricator.canonicalise(name) +
+        " >>"
+    return @output.index[identifier] ||=
+        OpenStruct.new(
+            sort_key: identifier.downcase.sub(
+                /^([^[:alnum:]]+)(.*)$/) {
+                $2 + ", " + $1},
+            canonical_representation: [OpenStruct.new(
+                type: :mention_chunk,
+                name: name,
+            )],
+            refs: [],
+        )
+  end
 
 
 This concludes the main integration decision tree.
