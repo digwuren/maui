@@ -365,23 +365,68 @@ construct.
 
 << Initialise [[Integrator@output]] >>:
   @output = OpenStruct.new(
-    warnings: [],
-    presentation: [], # list of titles and sections
-    toc: [],
-    chunks_by_name: {},
-        # canonical_name => {
-        #   root_type: String,
-        #   chunks: list of :chunk/:diverted_chunk records,
-        #   headers: list of :chunk/:divert records,
-        # }
-    roots: [], # list of canonical names
-    index: {},
-        # keyword => {
-        #   sort_key => string,
-        #   canonical_representation: markup list,
-        #   sections => [number/range, ...],
-        # }
+    << Fields of [[Integrator@output]] >>
   )
+
+
+<< Fields of [[Integrator@output]] >>:
+
+The /content/ of the fabric will be stored in the integrator
+output under the key of [[presentation]].  In its immediate
+form, it's a Ruby [[Array]] containing the [[title]] and
+[[section]] nodes, in order; both of these kinds can contain
+further, lower-level, structure.
+
+  presentation: [], # list of titles and sections
+
+
+In order to simplify generating the table of content of the
+fabric, we'll furthermore gather the [[title]] and [[rubric]]
+nodes into the integrator's output under the key of [[toc]].
+It's a flat list; however, [[title]] nodes will define a
+hierarchical structure by their [[level]] fields.
+
+  toc: [], # list of titles and rubrics.
+
+
+In order to simplify /tangling/ of the files defined in the
+fabric, we'll collect all their chunks into the integrator's
+output structure under the key of [[chunks_by_name]].  (See also
+[[canonicalise_chunk_name]].)
+
+  chunks_by_name: {},
+      # canonical_name => OpenStruct
+      #   root_type: String,
+      #   chunks: list of :chunk/:diverted_chunk records,
+      #   headers: list of :chunk/:divert records,
+
+
+Also, we'll collect the (canonicalised) names of the root
+chunks.
+
+  roots: [], # list of canonical names
+
+
+Mau is a wiki engine, so in accordance with long-standing
+custom, Maui strives to recover -- of course, not always very
+well -- from almost all kinds of errors that it may detect
+during processing a fabric object.  In order to help a human
+diagnose and resolve such errors, it generates a /warning/ each
+time it detects one, and we'll collect them into the
+integrator's output structure.
+
+  warnings: [],
+
+
+Last but not least, we'll collect /index entries/, and arrange
+them for easy retrieval.
+
+  index: {},
+      # keyword => {
+      #   sort_key => string,
+      #   canonical_representation: markup list,
+      #   sections => [number/range, ...],
+      # }
 
 
 The integrator has a number of other internal variables which

@@ -114,16 +114,20 @@ module Fabricator
     def initialize first_section: 1
       super()
       @output = OpenStruct.new(
-        warnings: [],
         presentation: [], # list of titles and sections
-        toc: [],
+
+        toc: [], # list of titles and rubrics.
+
         chunks_by_name: {},
-            # canonical_name => {
+            # canonical_name => OpenStruct
             #   root_type: String,
             #   chunks: list of :chunk/:diverted_chunk records,
             #   headers: list of :chunk/:divert records,
-            # }
+
         roots: [], # list of canonical names
+
+        warnings: [],
+
         index: {},
             # keyword => {
             #   sort_key => string,
