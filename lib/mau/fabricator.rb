@@ -1030,8 +1030,8 @@ module Fabricator
         @port.puts "</style>"
       else
         @link_css.each do |link|
-          @port.puts ("<link rel='stylesheet' type='text/css' " +
-              "href='%s' />") % link.to_xml
+          @port.puts ("<link rel='stylesheet' " +
+              "type='text/css' href='%s' />") % link.to_xml
         end
       end
       @port.puts '</head>'
