@@ -377,7 +377,8 @@ module Fabricator
             index_record = @output.index[identifier] ||=
                 OpenStruct.new(
                     sort_key: identifier.downcase.sub(
-                        /^([^[:alnum:]]+)(.*)$/) {$2 + ", " + $1},
+                        /^([^[:alnum:]]+)(.*)$/) {
+                        $2 + ", " + $1},
                     canonical_representation: [OpenStruct.new(
                         type: :mention_chunk,
                         name: element.name,
@@ -1310,12 +1311,15 @@ module Fabricator
         @port.print "<li>"
         htmlify record.canonical_representation
         @port.print " "
-        record.refs.each_with_index do |secno, i|
+        record.refs.each_with_index do |(secno, reftype), i|
           @port.print ',' unless i.zero?
           @port.print ' '
+          @port.print "<span class='maui-index-#{reftype}'>"
           @port.print "<a href='#S.#{secno}'>"
+          @port.print @symbolism.section_prefix
           @port.print secno
           @port.print "</a>"
+          @port.print "</span>"
         end
         @port.puts "</li>"
       end
@@ -1856,10 +1860,17 @@ class << Fabricator
       end.each do |keyword|
         record = index[keyword]
         wr.add_nodes record.canonical_representation
-        record.refs.each_with_index do |secno, i|
+        record.refs.each_with_index do |(secno, reftype), i|
           wr.add_plain ',' unless i.zero?
           wr.add_space
-          wr.add_plain secno.to_s
+          case reftype
+          when :definition then
+            wr.styled :underscore do
+              wr.add_plain symbolism.section_prefix + secno.to_s
+            end
+          else
+            raise 'assertion failed'
+          end
         end
         wr.linebreak
       end
