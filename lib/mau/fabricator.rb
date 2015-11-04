@@ -1260,7 +1260,8 @@ module Fabricator
             @port.print ".clearindent "
           end
           htmlify(
-              Fabricator.parse_markup(node.name, Fabricator::MF::LINK))
+              Fabricator.parse_markup(node.name,
+                  Fabricator::MF::LINK))
           if node.vertical_separation then
             @port.print " " + node.vertical_separation.to_xml
           end
