@@ -258,9 +258,9 @@ module Fabricator
           # new element to the innermost list in progress.
           @list_stack.last.items.push element
         elsif element.type == :index_anchor then
-          # Integrating an index anchor only involves adding an entry
-          # to the index; it does not appear among the ordinary
-          # elements of a section.
+          # Integrating an index anchor only involves adding an
+          # entry to the index; it does not appear among the
+          # ordinary elements of a section.
           freeform_index_record(element.name).refs.push [
               @cursec.section_number, :manual]
         else

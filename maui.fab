@@ -52,6 +52,8 @@ whether that is the case by the [[in_list]] flag.
   integrator.check_chunk_sizes(chunk_size_limit)
 
 
+. "more than two consecutive blank lines"
+
 << Pass and count blank lines >>:
   vertical_separation = 0
   while vp.peek_line == '' do
@@ -266,6 +268,8 @@ For this check, we iterate over chunk headers, so as not to
 generate excessive warnings when the fault lies in a [[divert]].
 (And also, to make sure to generate a warning regarding this if
 a faulty [[divert]] is not actually ever used.)
+
+. "inconsistent root type"
 
 << in [[Integrator]] >>:
   def check_root_type_consistency
@@ -485,6 +489,8 @@ Title nodes are subject to level restriction, are automatically
 numbered using three-level identifiers, and are in addition to
 [[presentation]] collected into [[toc]].
 
+. "title level too deep"
+
 << Integrate the [[title]] element >>:
   # Check the title's level restriction
   if element.level > @last_title_level + 1 then
@@ -523,9 +529,9 @@ numbered using three-level identifiers, and are in addition to
   if element.type == :item then
     << Integrate the [[item]] element >>
   elsif element.type == :index_anchor then
-    # Integrating an index anchor only involves adding an entry
-    # to the index; it does not appear among the ordinary
-    # elements of a section.
+    # Integrating an index anchor only involves adding an
+    # entry to the index; it does not appear among the
+    # ordinary elements of a section.
     freeform_index_record(element.name).refs.push [
         @cursec.section_number, :manual]
   else
@@ -585,6 +591,8 @@ Also, a [[rubric]] causes a section break.
 
 In both cases, we'll warn the user if there wasn't an explicit
 section break.
+
+. "silent section break"
 
 << ? Break section and warn >>:
   if (@cursec and element.type == :rubric) or
@@ -646,6 +654,8 @@ section break.
   # new element to the innermost list in progress.
   @list_stack.last.items.push element
 
+
+. "unexpected dedent"
 
 << Discard pending lists deeper than [[element.indent]] >>:
   while @list_stack.last.indent > element.indent do
@@ -800,6 +810,8 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     << Create index entries >>
   end
 
+. "unuseable filename"
+
 << Root?  Check the filename for sanity >>:
   if element.root_type then
     # check the filename's reasonability
@@ -901,6 +913,9 @@ sets the [[final]] flag of the last divertee in a chain.  In
 order for this to work properly, the main parser calls this, via
 << Handle the end of fabric >>, once the input fabric ends.
 
+. "unused diversion"
+. "single-use diversion"
+
   def clear_diversion
     if @curdivert then
       if !@last_divertee then
@@ -923,6 +938,9 @@ order for this to work properly, the main parser calls this, via
 
 
 * Chunk length limit check.
+
+. "long chunk"
+. "very long chunk"
 
 << in [[Integrator]] >>:
   def check_chunk_sizes limit
@@ -1650,6 +1668,9 @@ intended as a reference, and while this should be fixed by
 appropriate escaping (or, well, dividing the bogus reference
 onto multiple code lines), this non-destructive approach is
 probably optimal as workarounds go.
+
+. "circular reference"
+. "dangling reference"
 
 << in [[Integrator]] >>:
   def tangle_transclusion node, sink, trace, referrer
