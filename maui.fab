@@ -437,9 +437,13 @@ integrator's output structure.
   warnings: [],
 
 
-Last but not least, we'll collect /index entries/, and arrange
-them for easy retrieval.  For now, we've got just one reference
-type -- [[:definition]].
+. [[:manual]] (index reference type)
+. [[:definition]] (index reference type)
+. [[:transclusion]] (index reference type)
+
+Last but not least, we'll collect /index reference entries/ of
+three types ([[:manual]], [[:definition]], and
+[[:transclusion]]), and arrange them for easy retrieval.
 
   index: {},
       # keyword => OpenStruct
