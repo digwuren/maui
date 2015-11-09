@@ -174,6 +174,21 @@ Next, let's consider top-level bullets.
       loc: element_location)
 
 
+A line starting with a period and whitespace is an index
+reference anchor.  This is a line-level, not paragraph-level,
+notation so that multiple anchor lines can immediately follow
+each other without the need for intervening whitespace.
+Luckily, index keywords (or -phrases) are normally reasonably
+short.
+
+  when /^\.\s+/ then
+    name = $'
+    element = OpenStruct.new(
+        type: :index_anchor,
+        name: name)
+    vp.get_line
+
+
 Finally, a line starting with a non-whitespace character starts
 an ordinary paragraph, a title, or a rubric.
 
@@ -507,6 +522,12 @@ numbered using three-level identifiers, and are in addition to
 
   if element.type == :item then
     << Integrate the [[item]] element >>
+  elsif element.type == :index_anchor then
+    # Integrating an index anchor only involves adding an entry
+    # to the index; it does not appear among the ordinary
+    # elements of a section.
+    freeform_index_record(element.name).refs.push [
+        @cursec.section_number, :manual]
   else
     @cursec.elements.push element
 
@@ -518,7 +539,7 @@ numbered using three-level identifiers, and are in addition to
           # narrative-type element follows
       << Parse the chunk's content >>
     end
-    << Chunk or divert?  Link to [[chunks_by_name]] >>
+    << Chunk or divert?  Cross-reference into [[@output]] >>
     @list_stack = nil
   end
 
@@ -758,7 +779,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 [[chunks_by_name[...].chunks]], and chunk headers ([[chunk]] or
 [[divert]]), linked under [[chunks_by_name[...].headers]].
 
-<< Chunk or divert?  Link to [[chunks_by_name]] >>:
+<< Chunk or divert?  Cross-reference into [[@output]] >>:
   if [:chunk, :diverted_chunk, :divert].include?(
       element.type) then
     cbn_record =
@@ -776,7 +797,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 
     << Update [[cbn_record.root_type]] from [[element]] >>
 
-    << Create index entry >>
+    << Create index entries >>
   end
 
 << Root?  Check the filename for sanity >>:
@@ -813,25 +834,48 @@ We'll keep separate track of chunk bodies ([[chunk]] or
   end
 
 
-<< Create index entry >>:
+<< Create index entries >>:
   chunk_index_record(element.name).refs.push [
       @cursec.section_number, :definition]
 
+  if [:chunk, :diverted_chunk].include?(
+      element.type) then
+    element.content.each do |node|
+      next unless node.type == :use
+      chunk_index_record(node.name).refs.push [
+          @cursec.section_number, :transclusion]
+    end
+  end
+
 
 << in [[Integrator]] >>:
+
   def chunk_index_record name
     identifier = "<< " +
         Fabricator.canonicalise(name) +
         " >>"
+    markup = [OpenStruct.new(
+        type: :mention_chunk,
+        name: name)]
+    return _index_record identifier, markup
+  end
+
+
+  def freeform_index_record name
+    identifier = Fabricator.canonicalise(name)
+    markup = Fabricator.parse_markup name,
+            Fabricator::MF::LINK
+    return _index_record identifier, markup
+  end
+
+
+  def _index_record identifier, markup
     return @output.index[identifier] ||=
         OpenStruct.new(
             sort_key: identifier.downcase.sub(
                 /^([^[:alnum:]]+)(.*)$/) {
                 $2 + ", " + $1},
-            canonical_representation: [OpenStruct.new(
-                type: :mention_chunk,
-                name: name,
-            )],
+            canonical_representation: markup,
             refs: [],
         )
   end
@@ -2458,8 +2502,14 @@ joiners interspersed.
       wr.add_plain ',' unless i.zero?
       wr.add_space
       case reftype
+      when :manual then
+        wr.add_plain symbolism.section_prefix + secno.to_s
       when :definition then
         wr.styled :underscore do
+          wr.add_plain symbolism.section_prefix + secno.to_s
+        end
+      when :transclusion then
+        wr.styled :italic do
           wr.add_plain symbolism.section_prefix + secno.to_s
         end
       else
@@ -2615,6 +2665,9 @@ Process a whole list of nodes.
     return
   end
 
+
+. hanging indentation
+. indentation, hanging
 
 Hanging indentation.  Used, for example, in the table of content
 and in lists.  The content is to be fed into the
@@ -3199,9 +3252,14 @@ into a local link, either in the [[#T.foo]] form for titles or
   end
 
 
-<< Sass rules >>
+<< Sass rules >>:
+  // .maui-index-manual does not need any rules
+
   .maui-index-definition
     text-decoration: underline
+
+  .maui-index-transclusion
+    font-style: italic
 
 
 * Conversion of a horizontal markup tree to HTML.

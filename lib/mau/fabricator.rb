@@ -257,6 +257,12 @@ module Fabricator
           # The list structure has been prepared.  Append the
           # new element to the innermost list in progress.
           @list_stack.last.items.push element
+        elsif element.type == :index_anchor then
+          # Integrating an index anchor only involves adding an entry
+          # to the index; it does not appear among the ordinary
+          # elements of a section.
+          freeform_index_record(element.name).refs.push [
+              @cursec.section_number, :manual]
         else
           @cursec.elements.push element
 
@@ -371,6 +377,15 @@ module Fabricator
 
             chunk_index_record(element.name).refs.push [
                 @cursec.section_number, :definition]
+
+            if [:chunk, :diverted_chunk].include?(
+                element.type) then
+              element.content.each do |node|
+                next unless node.type == :use
+                chunk_index_record(node.name).refs.push [
+                    @cursec.section_number, :transclusion]
+              end
+            end
           end
           @list_stack = nil
         end
@@ -382,15 +397,26 @@ module Fabricator
       identifier = "<< " +
           Fabricator.canonicalise(name) +
           " >>"
+      markup = [OpenStruct.new(
+          type: :mention_chunk,
+          name: name)]
+      return _index_record identifier, markup
+    end
+
+    def freeform_index_record name
+      identifier = Fabricator.canonicalise(name)
+      markup = Fabricator.parse_markup name,
+              Fabricator::MF::LINK
+      return _index_record identifier, markup
+    end
+
+    def _index_record identifier, markup
       return @output.index[identifier] ||=
           OpenStruct.new(
               sort_key: identifier.downcase.sub(
                   /^([^[:alnum:]]+)(.*)$/) {
                   $2 + ", " + $1},
-              canonical_representation: [OpenStruct.new(
-                  type: :mention_chunk,
-                  name: name,
-              )],
+              canonical_representation: markup,
               refs: [],
           )
     end
@@ -1712,6 +1738,13 @@ class << Fabricator
           indent: 0,
           loc: element_location)
 
+      when /^\.\s+/ then
+        name = $'
+        element = OpenStruct.new(
+            type: :index_anchor,
+            name: name)
+        vp.get_line
+
       when /^[^\s]/ then
         lines = []
         while vp.peek_line =~ /^[^\s]/ and
@@ -1868,8 +1901,14 @@ class << Fabricator
           wr.add_plain ',' unless i.zero?
           wr.add_space
           case reftype
+          when :manual then
+            wr.add_plain symbolism.section_prefix + secno.to_s
           when :definition then
             wr.styled :underscore do
+              wr.add_plain symbolism.section_prefix + secno.to_s
+            end
+          when :transclusion then
+            wr.styled :italic do
               wr.add_plain symbolism.section_prefix + secno.to_s
             end
           else
