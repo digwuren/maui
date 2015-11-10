@@ -93,6 +93,8 @@ blocks.
   element.body_loc = element_location
 
 
+. [[get_indented_lines_with_skip]]
+
 << in [[Vertical_Peeker]] >>:
   def get_indented_lines_with_skip
     indent = nil; lines = []
@@ -271,6 +273,7 @@ generate excessive warnings when the fault lies in a [[divert]].
 (And also, to make sure to generate a warning regarding this if
 a faulty [[divert]] is not actually ever used.)
 
+. [[check_root_type_consistency]]
 . "inconsistent root type" (warning)
 
 << in [[Integrator]] >>:
@@ -297,6 +300,8 @@ on an [[IO]] instance.  We won't limit the lookahead, although
 we'll only need two lines (when checking whether a blank line in
 an indented block is followed by another indented line).
 
+. [[Vertical_Peeker]]
+
 << in [[Fabricator]] >>:
   class Vertical_Peeker
     << in [[Vertical_Peeker]] >>
@@ -322,6 +327,8 @@ an indented block is followed by another indented line).
   end
 
 
+. [[peek_line]]
+
   def peek_line ahead = 0
     raise 'invalid argument' unless ahead >= 0
     until @buffer.length > ahead or @eof_seen do
@@ -337,6 +344,8 @@ an indented block is followed by another indented line).
   end
 
 
+. [[get_line]] (method of [[Vertical_Peeker]])
+
   def get_line
     # ensure that if a line is available, it's in [[@buffer]]
     peek_line
@@ -346,15 +355,21 @@ an indented block is followed by another indented line).
   end
 
 
+. [[eof?]] (method of [[Vertical_Peeker]])
+
   def eof?
     return peek_line.nil?
   end
 
 
+. [[lineno_ahead]] (method of [[Vertical_Peeker]])
+
   def lineno_ahead
     return @line_number + (@line_consumed ? 1 : 0)
   end
 
+
+. [[location_ahead]] (method of [[Vertical_Peeker]])
 
   def location_ahead
     return OpenStruct.new(
@@ -367,6 +382,8 @@ an indented block is followed by another indented line).
 An [[Integrator]] builds an internal representation of a fabric
 from the vertical elements extracted by a parser.
 
+. [[Integrator]]
+
 << in [[Fabricator]] >>:
   class Integrator
     << in [[Integrator]] >>
@@ -377,12 +394,16 @@ The root of the result, which will be a graph built out of
 [[OpenStruct]]s, can be accessed by the method
 [[Integrator#output]].
 
+. [[output]] (accessor of [[Integrator]])
+
 << in [[Integrator]] >>:
   attr_reader :output
 
 
 Its top-level structure is evident from the initialisation
 construct.
+
+. [[@output]] (slot of [[Integrator]])
 
 << Initialise [[Integrator@output]] >>:
   @output = OpenStruct.new(
@@ -480,6 +501,8 @@ them next:
 
 
 The integrator's main entry point.
+
+. [[integrate]]
 
   def integrate element
     if element.type == :title then
@@ -905,6 +928,8 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 
 << in [[Integrator]] >>:
 
+. [[chunk_index_record]]
+
   def chunk_index_record name
     identifier = "<< " +
         Fabricator.canonicalise(name) +
@@ -916,6 +941,8 @@ We'll keep separate track of chunk bodies ([[chunk]] or
   end
 
 
+. [[freeform_index_record]]
+
   def freeform_index_record name
     identifier = Fabricator.canonicalise(name)
     markup = Fabricator.parse_markup name,
@@ -923,6 +950,8 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     return _index_record identifier, markup
   end
 
+
+. [[_index_record]] (method of [[Integrator]])
 
   def _index_record identifier, markup
     return @output.index[identifier] ||=
@@ -943,6 +972,8 @@ This concludes the main integration decision tree.
 
 << in [[Integrator]] >>:
 
+. [[force_section_break]]
+
   def force_section_break
     @cursec = nil
     @list_stack = nil
@@ -956,6 +987,7 @@ sets the [[final]] flag of the last divertee in a chain.  In
 order for this to work properly, the main parser calls this, via
 << Handle the end of fabric >>, once the input fabric ends.
 
+. [[clear_diversion]]
 . "unused diversion" (warning)
 . "single-use diversion" (warning)
 
@@ -982,6 +1014,7 @@ order for this to work properly, the main parser calls this, via
 
 * Chunk length limit check.
 
+. [[check_chunk_sizes]]
 . "long chunk" (warning)
 . "very long chunk" (warning)
 
@@ -1021,6 +1054,8 @@ that it does not actually display the warning, for the fabric
 loader doesn't really know anything about the I/O system
 available for this.
 
+. [[warn]] (method of [[Integrator]])
+
 << in [[Integrator]] >>:
   def warn location, message, inline: false
     record = OpenStruct.new(
@@ -1035,6 +1070,8 @@ available for this.
 
 In the command line interface, we'll output the warnings once a
 fabric has been fully loaded.
+
+. [[show_warnings]]
 
 << Other methods >>:
   def show_warnings fabric
@@ -1053,6 +1090,8 @@ fields [[filename]] and [[line]] and optionally [[column]].
 
 << Other methods >>:
 
+. [[format_location]]
+
   def format_location h
     if h.column then
       return "%s:%i.%i" % [h.filename, h.line, h.column]
@@ -1066,6 +1105,8 @@ In order to encode a region's location, we'll save its two
 endpoints, both inclusive, in an [[OpenStruct]] instance as
 [[from]] and [[to]], as standard locations.  The [[dash]] is a
 parameter so as to permit n-dash to be used in HTML output.
+
+. [[format_location_range]]
 
   def format_location_range h, dash: "-"
     if h.from.filename != h.to.filename then
@@ -1099,6 +1140,8 @@ parameter so as to permit n-dash to be used in HTML output.
 This amounts to compressing all whitespace that is not marked as
 monospaced by double brackets.
 
+. [[canonicalise]]
+
 << Other methods >>:
   def canonicalise raw_name
     name = ''
@@ -1119,6 +1162,8 @@ itself is a fairly simple linear scanner, the main trick being
 [[Markup_Parser_Stack]] that holds the currently open markup
 constructs.
 
+. [[parse_markup]]
+
 << Other methods >>:
   def parse_markup s, suppress_modes = 0
     ps = Fabricator::Pointered_String.new s
@@ -1135,6 +1180,8 @@ constructs.
 
 So, let's consider [[Markup_Parser_Stack]] next.  Since it's a
 stack, we'll derive it from [[Array]]:
+
+. [[Markup_Parser_Stack]]
 
 << in [[Fabricator]] >>:
   class Markup_Parser_Stack < Array
@@ -1525,6 +1572,8 @@ The final part of the markup parser's puzzle is
 lookbehind) while traversing the string.  We'll derive it from
 [[String]] by augmenting it with the [[pointer]] field.
 
+. [[Pointered_String]]
+
 << in [[Fabricator]] >>:
   class Pointered_String < String
     def initialize value
@@ -1584,6 +1633,8 @@ matching [[OpenStruct]] to the array.
   def markup
     return Fabricator::Markup_Constructor.new
   end
+
+. [[Markup_Constructor]]
 
 << in [[Fabricator]] >>:
   class Markup_Constructor < Array
@@ -1889,6 +1940,8 @@ taking care of indentation, right-stripping the generated lines,
 and keeping track of the output location so as to permit
 cross-referencing chunks with where they appear in the generated
 files.
+
+. [[Tangling_Sink]]
 
 << in [[Fabricator]] >>:
   class Tangling_Sink
@@ -2609,6 +2662,8 @@ output width using [[Text_Wrapper]].  It also accounts for the
 escape sequences for colours, mainly by considering that their
 width, for word-wrapping purposes, is zero.
 
+. [[Text_Wrapper]]
+
 << in [[Fabricator]] >>:
   class Text_Wrapper
     def initialize port = $stdout,
@@ -2892,6 +2947,8 @@ First, let's take care of the I/O.
 
 We'll keep the global parameters of an HTML weaving process in
 an instance of [[HTML_Weaving]].
+
+. [[HTML_Weaving]]
 
 << in [[Fabricator]] >>:
   class HTML_Weaving
@@ -3654,6 +3711,8 @@ symbols.  Here are the defaults.
 
 
 == The skeletal composition of the library
+
+. [[Fabricator]] (top-level module)
 
 << .file lib/mau/fabricator.rb >>:
   # encoding: UTF-8
