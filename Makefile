@@ -14,4 +14,5 @@ maui-$(VERSION).gem: tangle-everything
 
 tangle-everything:
 	ruby -Ilib bin/maui maui.fab
+	ruby -Ilib bin/maui maui.fab --output-width 64 maui.ctxt
 	ruby -Ilib bin/maui README.fab README.html
