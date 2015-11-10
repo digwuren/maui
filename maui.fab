@@ -841,15 +841,14 @@ We'll keep separate track of chunk bodies ([[chunk]] or
       << Update [[cbn_record.root_type]] from [[element]] >>
     end
 
-    << ? Create or update [[definition]] index entry >>
+    << Create or update [[definition]] index entry >>
 
     # Do we have a chunk body?
     if [:chunk, :diverted_chunk].include?(
         element.type) then
       cbn_record.chunks.push element
+      << Create [[transclusion]] index entries >>
     end
-
-    << Chunk?  Create [[transclusion]] index entries >>
   end
 
 
@@ -896,7 +895,7 @@ for chunks of this name, with the order defined as [[nil]] <
   end
 
 
-<< ? Create or update [[definition]] index entry >>:
+<< Create or update [[definition]] index entry >>:
   case element.type
     when :chunk then
       # For an ordinary chunk, we'll just create a new
@@ -930,22 +929,16 @@ for chunks of this name, with the order defined as [[nil]] <
       @curdivert.index_ref[0] = prev_range.begin ..
           @cursec.section_number
 
-  else
-    raise 'assertion failed'
+    else
+      raise 'assertion failed'
   end
 
 
-If we've got an actual chunk, let's now create index reference
-entries for any transclusions it may contain.
-
-<< Chunk?  Create [[transclusion]] index entries >>:
-  if [:chunk, :diverted_chunk].include?(
-      element.type) then
-    element.content.each do |node|
-      next unless node.type == :use
-      chunk_index_record(node.name).refs.push [
-          @cursec.section_number, :transclusion]
-    end
+<< Create [[transclusion]] index entries >>:
+  element.content.each do |node|
+    next unless node.type == :use
+    chunk_index_record(node.name).refs.push [
+        @cursec.section_number, :transclusion]
   end
 
 

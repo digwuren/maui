@@ -387,18 +387,14 @@ module Fabricator
                 @curdivert.index_ref[0] = prev_range.begin ..
                     @cursec.section_number
 
-            else
-              raise 'assertion failed'
+              else
+                raise 'assertion failed'
             end
 
             # Do we have a chunk body?
             if [:chunk, :diverted_chunk].include?(
                 element.type) then
               cbn_record.chunks.push element
-            end
-
-            if [:chunk, :diverted_chunk].include?(
-                element.type) then
               element.content.each do |node|
                 next unless node.type == :use
                 chunk_index_record(node.name).refs.push [
