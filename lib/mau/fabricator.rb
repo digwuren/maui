@@ -262,7 +262,6 @@ module Fabricator
               @cursec.section_number, :manual]
         else
           @cursec.elements.push element
-
           if [:chunk, :diverted_chunk].
               include?(element.type) then
             element.section_number = @cursec.section_number
@@ -328,6 +327,7 @@ module Fabricator
               end
             end
           end
+
           if [:chunk, :diverted_chunk, :divert].include?(
               element.type) then
             cbn_record =

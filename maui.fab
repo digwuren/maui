@@ -561,16 +561,7 @@ addition to [[presentation]] collected into [[toc]].
     << Add [[manual]] index entry >>
   else
     @cursec.elements.push element
-
-    if [:chunk, :diverted_chunk].
-        include?(element.type) then
-      element.section_number = @cursec.section_number
-      @in_code = true
-          # so we can generate a section break if a
-          # narrative-type element follows
-      << Parse the chunk's content >>
-    end
-    << Chunk or divert?  Cross-reference into [[@output]] >>
+    << Chunk or divert?  Parse and cross-reference >>
     @list_stack = nil
   end
 
@@ -823,7 +814,16 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 [[chunks_by_name[...].chunks]], and chunk headers ([[chunk]] or
 [[divert]]), linked under [[chunks_by_name[...].headers]].
 
-<< Chunk or divert?  Cross-reference into [[@output]] >>:
+<< Chunk or divert?  Parse and cross-reference >>:
+  if [:chunk, :diverted_chunk].
+      include?(element.type) then
+    element.section_number = @cursec.section_number
+    @in_code = true
+        # so we can generate a section break if a
+        # narrative-type element follows
+    << Parse the chunk's content >>
+  end
+
   if [:chunk, :diverted_chunk, :divert].include?(
       element.type) then
     cbn_record =
@@ -840,7 +840,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     << Root?  Check the filename for sanity >>
     << Update [[cbn_record.root_type]] from [[element]] >>
     << ? Create or update [[definition]] index entry >>
-    << Chunk? Create [[transclusion]] index entries >>
+    << Chunk?  Create [[transclusion]] index entries >>
   end
 
 
@@ -924,7 +924,7 @@ for chunks of this name, with the order defined as [[nil]] <
 If we've got an actual chunk, let's now create index reference
 entries for any transclusions it may contain.
 
-<< Chunk? Create [[transclusion]] index entries >>:
+<< Chunk?  Create [[transclusion]] index entries >>:
   if [:chunk, :diverted_chunk].include?(
       element.type) then
     element.content.each do |node|
