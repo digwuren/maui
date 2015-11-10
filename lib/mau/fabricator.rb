@@ -967,16 +967,17 @@ module Fabricator
       return
     end
 
-    def hang
+    def hang column = nil
       # convert the preceding whitespace, if any, into 'hard'
       # space not subject to future wrapping
       if @curspace then
         @port.print @curspace.prepared_output
         @curspace = nil
       end
+
       prev_hangindent = @hangindent
       begin
-        @hangindent = @curpos
+        @hangindent = column || @curpos
         yield
       ensure
         @hangindent = prev_hangindent
@@ -1950,24 +1951,26 @@ class << Fabricator
       end.each do |keyword|
         record = index[keyword]
         wr.add_nodes record.canonical_representation
-        record.refs.each_with_index do |(secno, reftype), i|
-          wr.add_plain ',' unless i.zero?
-          wr.add_space
-          formatted_reference = _format_ctxt_index_ref secno,
-              symbolism: symbolism
-          case reftype
-          when :manual then
-            wr.add_plain formatted_reference
-          when :definition then
-            wr.styled :underscore do
+        wr.hang 2 do
+          record.refs.each_with_index do |(secno, reftype), i|
+            wr.add_plain ',' unless i.zero?
+            wr.add_space
+            formatted_reference = _format_ctxt_index_ref secno,
+                symbolism: symbolism
+            case reftype
+            when :manual then
               wr.add_plain formatted_reference
+            when :definition then
+              wr.styled :underscore do
+                wr.add_plain formatted_reference
+              end
+            when :transclusion then
+              wr.styled :italic do
+                wr.add_plain formatted_reference
+              end
+            else
+              raise 'assertion failed'
             end
-          when :transclusion then
-            wr.styled :italic do
-              wr.add_plain formatted_reference
-            end
-          else
-            raise 'assertion failed'
           end
         end
         wr.linebreak
