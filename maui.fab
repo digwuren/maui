@@ -3521,6 +3521,10 @@ into a local link, either in the [[#T.foo]] form for titles or
   end
 
 
+. [[.maui-index-manual]] (CSS class)
+. [[.maui-index-definition]] (CSS class)
+. [[.maui-index-transclusion]] (CSS class)
+
 << Sass rules >>:
   // .maui-index-manual does not need any rules
 
@@ -3656,6 +3660,8 @@ latter.
   @import url("#{$fontsrc}Roboto:#{$fontvariants}")
   @import url("#{$fontsrc}Cousine:#{$fontvariants}")
 
+. [[.maui-transclude]] (CSS class)
+
 << Sass rules >>:
   body, .maui-transclude
     font-family: "Roboto", sans-serif
@@ -3695,6 +3701,8 @@ element can contain multiple warnings.)
 << Sass colours >>:
   $inline-warning-colour: red
 
+. [[.maui-inline-warnings]] (CSS class)
+
 << Sass rules >>:
   .maui-inline-warnings
     color: $inline-warning-colour
@@ -3704,6 +3712,8 @@ The rules so far have a conflict.  What happens when a [[tt]]
 element appears inside an inline warning?  Left alone, they
 would become green.  However, in this context, we'll want them
 red.
+
+. [[.maui-warnings]] (CSS class)
 
 << Sass rules >>:
   .maui-warnings tt
@@ -3717,6 +3727,8 @@ instead of [[red]].
 << Sass colours >>:
   $rubric-colour: crimson
 
+. [[.maui-rubric]] (CSS class)
+
 << Sass rules >>:
   .maui-rubric
     color: $rubric-colour
@@ -3724,6 +3736,8 @@ instead of [[red]].
 
 Maui outputs warnings in unordered lists, but we don't actually
 want bullets in front of them.
+
+. [[.maui-warnings]] (CSS class)
 
 << Sass rules >>:
   ul.maui-warnings
@@ -3743,6 +3757,10 @@ First, the rules:
   $chunk-rule: 2px
   $chunk-rule-sep: 5px
   $final-chunk-rule-length: 40px
+
+. [[.maui-chunk-body]] (CSS class)
+. [[.maui-initial-chunk]] (CSS class)
+. [[.maui-final-chunk]] (CSS class)
 
 << Sass rules >>:
   .maui-chunk-body
@@ -3772,6 +3790,10 @@ applies to the block of warnings inside a chunk.
 << Sass dimensions >>:
   $paragraph-sep: 16px
 
+. [[.maui-chunk-body]] (CSS class)
+. [[.maui-chunk]] (CSS class)
+. [[.maui-warnings]] (CSS class)
+
 << Sass rules >>:
 
   .maui-chunk-body, .maui-chunk>.maui-warnings
@@ -3788,6 +3810,8 @@ italic for reduced obtrusivity, and they align with the chunk's
 vertical rule but are deliberately slightly off from aligning
 with the code inside the chunk.
 
+. [[.maui-chunk-xref]] (CSS class)
+
   .maui-chunk-xref
     font-size: small
     font-style: italic
@@ -3796,6 +3820,8 @@ with the code inside the chunk.
 
 We'll apply the same left indentation to sample code blocks as
 to chunks, except without the running vertical rule.
+
+. [[.maui-block]] (CSS class)
 
   .maui-block
     margin-left: $chunk-indent + $chunk-rule + $chunk-rule-sep
