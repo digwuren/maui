@@ -1953,16 +1953,8 @@ class << Fabricator
         record.refs.each_with_index do |(secno, reftype), i|
           wr.add_plain ',' unless i.zero?
           wr.add_space
-          formatted_reference = case secno
-            when Integer then
-              symbolism.section_prefix + secno.to_s
-            when Range then
-              symbolism.section_prefix + secno.begin.to_s +
-                  "-" +
-                  symbolism.section_prefix + secno.end.to_s
-            else
-              raise 'assertion failed'
-          end
+          formatted_reference = format_ctxt_index_ref secno,
+              symbolism: symbolism
           case reftype
           when :manual then
             wr.add_plain formatted_reference
@@ -2262,6 +2254,20 @@ class << Fabricator
       wr.linebreak
     end
     return
+  end
+
+  def format_ctxt_index_ref target,
+      symbolism: Fabricator.default_symbolism
+    return case target
+      when Integer then
+        symbolism.section_prefix + target.to_s
+      when Range then
+        symbolism.section_prefix + target.begin.to_s +
+            "-" +
+            symbolism.section_prefix + target.end.to_s
+      else
+        raise 'type mismatch'
+    end
   end
 
   def weave_html fabric, port,
