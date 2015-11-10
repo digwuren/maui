@@ -834,18 +834,21 @@ We'll keep separate track of chunk bodies ([[chunk]] or
         @output.chunks_by_name[element.name] ||=
             OpenStruct.new(chunks: [], headers: [])
 
+    # Do we have an explicit chunk header?
     if [:chunk, :divert].include? element.type then
       cbn_record.headers.push element
+      << Root?  Check the filename for sanity >>
+      << Update [[cbn_record.root_type]] from [[element]] >>
     end
 
+    << ? Create or update [[definition]] index entry >>
+
+    # Do we have a chunk body?
     if [:chunk, :diverted_chunk].include?(
         element.type) then
       cbn_record.chunks.push element
     end
 
-    << Root?  Check the filename for sanity >>
-    << Update [[cbn_record.root_type]] from [[element]] >>
-    << ? Create or update [[definition]] index entry >>
     << Chunk?  Create [[transclusion]] index entries >>
   end
 

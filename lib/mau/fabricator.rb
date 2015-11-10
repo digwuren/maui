@@ -332,41 +332,37 @@ module Fabricator
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
 
+            # Do we have an explicit chunk header?
             if [:chunk, :divert].include? element.type then
               cbn_record.headers.push element
+              if element.root_type then
+                # check the filename's reasonability
+                bad_name = false
+                parts = element.name.split '/'
+                if ['', '.', '..'].any?{|d| parts.include? d} then
+                  bad_name = true
+                end
+                unless parts.all?{|p| p =~ /\A[\w.-]+\Z/} then
+                  bad_name = true
+                end
+                if bad_name then
+                  (element.warnings ||= []).push \
+                      warn(element.header_loc,
+                          "unuseable filename",
+                          inline: true)
+                  element.root_type = nil
+                end
+              end
+              if element.root_type and
+                  cbn_record.root_type.nil? then
+                cbn_record.root_type = element.root_type
+                @output.roots.push element.name
+              end
+              if element.root_type == '.script' then
+                cbn_record.root_type = element.root_type
+              end
             end
 
-            if [:chunk, :diverted_chunk].include?(
-                element.type) then
-              cbn_record.chunks.push element
-            end
-
-            if element.root_type then
-              # check the filename's reasonability
-              bad_name = false
-              parts = element.name.split '/'
-              if ['', '.', '..'].any?{|d| parts.include? d} then
-                bad_name = true
-              end
-              unless parts.all?{|p| p =~ /\A[\w.-]+\Z/} then
-                bad_name = true
-              end
-              if bad_name then
-                (element.warnings ||= []).push \
-                    warn(element.header_loc,
-                        "unuseable filename",
-                        inline: true)
-                element.root_type = nil
-              end
-            end
-            if element.root_type and
-                cbn_record.root_type.nil? then
-              cbn_record.root_type = element.root_type
-              @output.roots.push element.name
-            end
-            if element.root_type == '.script' then
-              cbn_record.root_type = element.root_type
-            end
             case element.type
               when :chunk then
                 # For an ordinary chunk, we'll just create a new
@@ -403,6 +399,13 @@ module Fabricator
             else
               raise 'assertion failed'
             end
+
+            # Do we have a chunk body?
+            if [:chunk, :diverted_chunk].include?(
+                element.type) then
+              cbn_record.chunks.push element
+            end
+
             if [:chunk, :diverted_chunk].include?(
                 element.type) then
               element.content.each do |node|
