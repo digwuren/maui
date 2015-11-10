@@ -833,11 +833,11 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     end
 
     << Root?  Check the filename for sanity >>
-
     << Update [[cbn_record.root_type]] from [[element]] >>
-
-    << Create index entries >>
+    << ? Create or update [[definition]] index entry >>
+    << Chunk? Create [[transclusion]] index entries >>
   end
+
 
 . "unuseable filename" (warning)
 
@@ -861,10 +861,12 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     end
   end
 
+
+The [[:chunks_by_name]] record will hold the highest root type
+for chunks of this name, with the order defined as [[nil]] <
+[['.file']] < [['.script']].
+
 << Update [[cbn_record.root_type]] from [[element]] >>:
-  # The :chunks_by_name record will hold the highest
-  # root_type for chunks of this name, with the order
-  # defined as [[nil]] < [['.file']] < [['.script']].
   if element.root_type and
       cbn_record.root_type.nil? then
     cbn_record.root_type = element.root_type
@@ -875,7 +877,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
   end
 
 
-<< Create index entries >>:
+<< ? Create or update [[definition]] index entry >>:
   case element.type
     when :chunk then
       # For an ordinary chunk, we'll just create a new
@@ -913,9 +915,11 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     raise 'assertion failed'
   end
 
-  # If we've got an actual chunk, let's now create
-  # index reference entries for any transclusions it
-  # may contain.
+
+If we've got an actual chunk, let's now create index reference
+entries for any transclusions it may contain.
+
+<< Chunk? Create [[transclusion]] index entries >>:
   if [:chunk, :diverted_chunk].include?(
       element.type) then
     element.content.each do |node|

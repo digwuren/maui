@@ -362,10 +362,6 @@ module Fabricator
                 element.root_type = nil
               end
             end
-
-            # The :chunks_by_name record will hold the highest
-            # root_type for chunks of this name, with the order
-            # defined as [[nil]] < [['.file']] < [['.script']].
             if element.root_type and
                 cbn_record.root_type.nil? then
               cbn_record.root_type = element.root_type
@@ -374,7 +370,6 @@ module Fabricator
             if element.root_type == '.script' then
               cbn_record.root_type = element.root_type
             end
-
             case element.type
               when :chunk then
                 # For an ordinary chunk, we'll just create a new
@@ -411,10 +406,6 @@ module Fabricator
             else
               raise 'assertion failed'
             end
-
-            # If we've got an actual chunk, let's now create
-            # index reference entries for any transclusions it
-            # may contain.
             if [:chunk, :diverted_chunk].include?(
                 element.type) then
               element.content.each do |node|
