@@ -394,7 +394,7 @@ The root of the result, which will be a graph built out of
 [[OpenStruct]]s, can be accessed by the method
 [[Integrator#output]].
 
-. [[output]] (accessor of [[Integrator]])
+. [[output]] (accessor method of [[Integrator]])
 
 << in [[Integrator]] >>:
   attr_reader :output
