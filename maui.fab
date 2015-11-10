@@ -558,11 +558,7 @@ addition to [[presentation]] collected into [[toc]].
   if element.type == :item then
     << Integrate the list item >>
   elsif element.type == :index_anchor then
-    # Integrating an index anchor only involves adding an
-    # entry to the index; it does not appear among the
-    # ordinary elements of a section.
-    freeform_index_record(element.name).refs.push [
-        @cursec.section_number, :manual]
+    << Add [[manual]] index entry >>
   else
     @cursec.elements.push element
 
@@ -715,6 +711,15 @@ section break.
     @list_stack.last.items.last.sublist = new_list
     @list_stack.push new_list
   end
+
+
+Integrating an index anchor only involves adding an entry to the
+index; the [[index_anchor]] element won't be appended into the
+body of the containing [[section]].
+
+<< Add [[manual]] index entry >>:
+  freeform_index_record(element.name).refs.push [
+      @cursec.section_number, :manual]
 
 
 Chunks come out of the parser as series of lines.  For
