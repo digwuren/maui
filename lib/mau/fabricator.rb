@@ -391,8 +391,9 @@ module Fabricator
             end
           end
 
-          # If a chunk body is followed by a narrative-type element,
-          # we'll want to generate an automatic section break.
+          # If a chunk body is followed by a narrative-type
+          # element, we'll want to generate an automatic section
+          # break.
           if [:chunk, :diverted_chunk].
               include?(element.type) then
             @in_code = true
