@@ -857,22 +857,27 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 
 << Root?  Check the filename for sanity >>:
   if element.root_type then
-    # check the filename's reasonability
-    bad_name = false
-    parts = element.name.split '/'
-    if ['', '.', '..'].any?{|d| parts.include? d} then
-      bad_name = true
-    end
-    unless parts.all?{|p| p =~ /\A[\w.-]+\Z/} then
-      bad_name = true
-    end
-    if bad_name then
+    if !Fabricator.filename_sane? element.name then
       (element.warnings ||= []).push \
           warn(element.header_loc,
               "unuseable filename",
               inline: true)
       element.root_type = nil
     end
+  end
+
+
+. [[filename_sane?]]
+
+<< Other methods >>:
+  def filename_sane? name
+    parts = name.split '/', -1
+    return false if parts.empty?
+    parts.each do |p|
+      return false if ['', '.', '..'].include? p
+      return false unless p =~ /\A[\w.-]+\Z/
+    end
+    return true
   end
 
 
@@ -2166,7 +2171,7 @@ This output mode is convenient for use in a modern (x)terminal.
 << Weave [[fabric]] (ctxt) >>:
   open filename, 'w' do |port|
     symbolism = $cmdline.symbolism.dup
-    symbolism.chunk_name_delim ||= 
+    symbolism.chunk_name_delim ||=
         if $cmdline.pseudographics ==
             Fabricator::ASCII_PSEUDOGRAPHICS then
           "<\<" .. ">>"

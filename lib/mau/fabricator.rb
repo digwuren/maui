@@ -336,16 +336,7 @@ module Fabricator
             if [:chunk, :divert].include? element.type then
               cbn_record.headers.push element
               if element.root_type then
-                # check the filename's reasonability
-                bad_name = false
-                parts = element.name.split '/'
-                if ['', '.', '..'].any?{|d| parts.include? d} then
-                  bad_name = true
-                end
-                unless parts.all?{|p| p =~ /\A[\w.-]+\Z/} then
-                  bad_name = true
-                end
-                if bad_name then
+                if !Fabricator.filename_sane? element.name then
                   (element.warnings ||= []).push \
                       warn(element.header_loc,
                           "unuseable filename",
@@ -1472,6 +1463,16 @@ module Fabricator
 end
 
 class << Fabricator
+  def filename_sane? name
+    parts = name.split '/', -1
+    return false if parts.empty?
+    parts.each do |p|
+      return false if ['', '.', '..'].include? p
+      return false unless p =~ /\A[\w.-]+\Z/
+    end
+    return true
+  end
+
   def show_warnings fabric
     fabric.warnings.each do |warning|
       $stderr.puts "%s: %s" %
