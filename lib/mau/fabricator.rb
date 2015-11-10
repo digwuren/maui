@@ -1957,7 +1957,8 @@ class << Fabricator
             when Integer then
               symbolism.section_prefix + secno.to_s
             when Range then
-              symbolism.section_prefix + secno.begin.to_s + "-" +
+              symbolism.section_prefix + secno.begin.to_s +
+                  "-" +
                   symbolism.section_prefix + secno.end.to_s
             else
               raise 'assertion failed'
