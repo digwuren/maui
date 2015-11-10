@@ -841,7 +841,11 @@ We'll keep separate track of chunk bodies ([[chunk]] or
       << Update [[cbn_record.root_type]] from [[element]] >>
     end
 
-    << Create or update [[definition]] index entry >>
+    case element.type
+      << [[case]] clauses to index a [[definition]] >>
+      else
+        raise 'assertion failed'
+    end
 
     # Do we have a chunk body?
     if [:chunk, :diverted_chunk].include?(
@@ -895,44 +899,49 @@ for chunks of this name, with the order defined as [[nil]] <
   end
 
 
-<< Create or update [[definition]] index entry >>:
-  case element.type
-    when :chunk then
-      # For an ordinary chunk, we'll just create a new
-      # index reference entry.
-      chunk_index_record(element.name).refs.push [
-          @cursec.section_number, :definition]
+<< [[case]] clauses to index a [[definition]] >>:
 
-    when :divert then
-      # For a divert, we'll create an index reference
-      # entry with a range in the place of the section
-      # number.  For now, the range will have the
-      # section number the divert appears in as both
-      # its beginning and its end.
-      index_ref = [@cursec.section_number ..
-          @cursec.section_number, :definition]
-      chunk_index_record(element.name).refs.push(
-          index_ref)
-      # We'll add a pointer to this reference entry
-      # into [[@curdivert]] so we can replace the
-      # range later to cover all the sections in which
-      # headerless chunks collected by this divert are
-      # present.
-      @curdivert.index_ref = index_ref
+For an ordinary chunk, we'll just create a new index reference
+entry.
 
-    when :diverted_chunk then
-      # For a diverted entry, we won't create a new
-      # index reference entry but replace the
-      # previously existing one to also include the
-      # new section.
-      prev_range = @curdivert.index_ref[0]
-      @curdivert.index_ref[0] = prev_range.begin ..
-          @cursec.section_number
+. [[:definition]] (index reference type)
 
-    else
-      raise 'assertion failed'
-  end
+  when :chunk then
+    chunk_index_record(element.name).refs.push [
+        @cursec.section_number, :definition]
 
+
+For a divert, we'll create an index reference entry with a range
+in the place of the section number.  Initially, the range will
+have the section number the divert appears in as both of its
+endpoints.
+
+. [[:definition]] (index reference type)
+
+  when :divert then
+    index_ref = [@cursec.section_number ..
+        @cursec.section_number, :definition]
+    chunk_index_record(element.name).refs.push(
+        index_ref)
+    # We'll add a pointer to this reference entry
+    # into [[@curdivert]] so we can replace the
+    # range later to cover all the sections in which
+    # headerless chunks collected by this divert are
+    # present.
+    @curdivert.index_ref = index_ref
+
+
+For a diverted entry, we won't create a new index reference
+entry but replace the previously existing one to also include
+the new section.
+
+  when :diverted_chunk then
+    prev_range = @curdivert.index_ref[0]
+    @curdivert.index_ref[0] = prev_range.begin ..
+        @cursec.section_number
+
+
+. [[:transclusion]] (index reference type)
 
 << Create [[transclusion]] index entries >>:
   element.content.each do |node|

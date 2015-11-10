@@ -356,17 +356,10 @@ module Fabricator
 
             case element.type
               when :chunk then
-                # For an ordinary chunk, we'll just create a new
-                # index reference entry.
                 chunk_index_record(element.name).refs.push [
                     @cursec.section_number, :definition]
 
               when :divert then
-                # For a divert, we'll create an index reference
-                # entry with a range in the place of the section
-                # number.  For now, the range will have the
-                # section number the divert appears in as both
-                # its beginning and its end.
                 index_ref = [@cursec.section_number ..
                     @cursec.section_number, :definition]
                 chunk_index_record(element.name).refs.push(
@@ -379,14 +372,9 @@ module Fabricator
                 @curdivert.index_ref = index_ref
 
               when :diverted_chunk then
-                # For a diverted entry, we won't create a new
-                # index reference entry but replace the
-                # previously existing one to also include the
-                # new section.
                 prev_range = @curdivert.index_ref[0]
                 @curdivert.index_ref[0] = prev_range.begin ..
                     @cursec.section_number
-
               else
                 raise 'assertion failed'
             end
