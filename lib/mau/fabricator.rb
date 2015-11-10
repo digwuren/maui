@@ -1960,14 +1960,17 @@ class << Fabricator
             case reftype
             when :manual then
               wr.add_plain formatted_reference
+
             when :definition then
               wr.styled :underscore do
                 wr.add_plain formatted_reference
               end
+
             when :transclusion then
               wr.styled :italic do
                 wr.add_plain formatted_reference
               end
+
             else
               raise 'assertion failed'
             end
