@@ -1212,7 +1212,8 @@ module Fabricator
           htmlify(
               Fabricator.xref_chain(element, @fabric,
                   symbolism: @symbolism,
-                  dash: "\u2013"))
+                  dash: "\u2013",
+                  link_sections: true))
           @port.puts "</div>"
         end
         @port.puts "</div>"
@@ -2133,7 +2134,8 @@ class << Fabricator
   # last in a chunk chain (i.e., that have [[final]] set).
   def xref_chain element, fabric,
       dash: "-", # used to indicate ranges
-      symbolism: default_symbolism
+      symbolism: default_symbolism,
+      link_sections: false
     xref = markup
     if element.initial then
       xref.words "This chunk is "
@@ -2148,9 +2150,13 @@ class << Fabricator
           transcluders.map{|ref| markup.
               node(:mention_chunk, name: ref.name).
               space.
-              plain("(%s%i)" % [
-                symbolism.section_prefix,
-                ref.section_number])
+              plain("(").
+              node(:link,
+                content: markup.
+                    plain(symbolism.section_prefix +
+                        ref.section_number.to_s),
+                target: "#S.#{ref.section_number}").
+              plain(")")
           })
     else
       if cbn_entry.root_type then
