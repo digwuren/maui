@@ -2163,6 +2163,7 @@ This output mode is convenient for use in a modern (x)terminal.
   end
   puts "Weaved #{filename}"
 
+
 . [[weave_ctxt]]
 
 << Other methods >>:
@@ -2972,6 +2973,8 @@ we'll also support plain ASCII box graphics.
 
 << in [[Fabricator]] >>:
 
+. [[UNICODE_PSEUDOGRAPHICS]]
+
   UNICODE_PSEUDOGRAPHICS = OpenStruct.new(
     bullet: [0x2022].pack('U*'),
     initial_chunk_margin: [0x2500, 0x2510].pack('U*'),
@@ -2981,6 +2984,8 @@ we'll also support plain ASCII box graphics.
         ([0x0020, 0x2514] + [0x2500] * 3).pack('U*'),
   )
 
+
+. [[ASCII_PSEUDOGRAPHICS]]
 
   ASCII_PSEUDOGRAPHICS = OpenStruct.new(
     bullet: "-",
@@ -4101,6 +4106,8 @@ symbols.  Here are the defaults.
   $cmdline.symbolism = OpenStruct.new(section_prefix: "§")
 
 
+. [[--section-prefix]]
+
 << Option summary >>:
   --section-prefix=STRING
       Use this string rather than § as the section prefix.
@@ -4112,6 +4119,8 @@ symbols.  Here are the defaults.
   when '--section-prefix' then
     $cmdline.symbolism.section_prefix = arg
 
+
+. [[--chunk-name-delim]]
 
 << Option summary >>:
   --chunk-name-delim=BEFORE,AFTER
@@ -4130,6 +4139,8 @@ symbols.  Here are the defaults.
     end
     $cmdline.symbolism.chunk_name_delim = before .. after
 
+
+. [[--output-width]]
 
 << Option summary >>:
   --output-width=N
@@ -4153,6 +4164,8 @@ symbols.  Here are the defaults.
 Chunks longer than this many lines will be dubbed 'long' by a
 warning.  If longer than twice this many lines, 'very long'.
 Zero disables this check.
+
+. [[--chunk-size-limit]]
 
 << Option summary >>:
   --chunk-size-limit=LINE-COUNT
@@ -4181,6 +4194,8 @@ Zero disables this check.
 For HTML output, the [[--link-css]] option permits the user to
 specify one or more stylesheets that should be applied to the
 result.
+
+. [[--link-css]]
 
 << Option summary >>:
   --link-css=URL
@@ -4212,6 +4227,8 @@ result.
   $cmdline.fabric_filename = ARGV.shift
 
 
+. [[--unicode-boxes]]
+
 << Command line option handlers >>:
   when '--unicode-boxes' then
     $cmdline.pseudographics =
@@ -4220,6 +4237,8 @@ result.
 << Option declarations >>:
   ['--unicode-boxes', GetoptLong::NO_ARGUMENT],
 
+
+. [[--ascii-boxes]]
 
 << Command line option handlers >>:
   when '--ascii-boxes' then
