@@ -261,13 +261,11 @@ module Fabricator
           freeform_index_record(element.name).refs.push [
               @cursec.section_number, :manual]
         else
+          @list_stack = nil
           @cursec.elements.push element
           if [:chunk, :diverted_chunk].
               include?(element.type) then
             element.section_number = @cursec.section_number
-            @in_code = true
-                # so we can generate a section break if a
-                # narrative-type element follows
             element.content = []
             element.lines.each_with_index do
                 |line, lineno_in_chunk|
@@ -412,7 +410,13 @@ module Fabricator
               end
             end
           end
-          @list_stack = nil
+
+          # If a chunk body is followed by a narrative-type element,
+          # we'll want to generate an automatic section break.
+          if [:chunk, :diverted_chunk].
+              include?(element.type) then
+            @in_code = true
+          end
         end
       end
       return
