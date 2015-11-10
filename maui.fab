@@ -3160,6 +3160,8 @@ conventions.
   htmlify element.content
   @port.puts '</h%i>' % (element.level + 1)
 
+. [[.maui-section]] (CSS class)
+
 << Weave the [[section]] (HTML) >>:
   rubricated = element.elements[0].type == :rubric
   # If we're encountering the first rubric/title, output
@@ -3203,6 +3205,9 @@ conventions.
   if warnings then
     html_warning_list warnings, inline: true
   end
+
+. [[.maui-rubric]] (CSS class)
+. [[.maui-section-number]] (CSS class)
 
 << Weave section's number and rubric (HTML) >>:
   @port.print "<b class='%s'>" %
@@ -3250,6 +3255,12 @@ conventions.
     html_warning_list element.warnings, inline: true
 
 
+. [[.maui-chunk]] (CSS class)
+. [[.maui-initial-chunk]] (CSS class)
+. [[.maui-final-chunk]] (CSS class)
+. [[.maui-chunk-header]] (CSS class)
+. [[.maui-chunk-xref]] (CSS class)
+
   when :chunk, :diverted_chunk then
     @port.print "<div class='maui-chunk"
     @port.print " maui-initial-chunk" if element.initial
@@ -3273,6 +3284,8 @@ conventions.
     end
     @port.puts "</div>"
 
+
+. [[.maui-block]] (CSS class)
 
   when :block then
     @port.print "<pre class='maui-block'>"
@@ -3388,6 +3401,7 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 
 . [[html_chunk_body]] (method of [[HTML_Weaving]])
+. [[.maui-chunk-body]] (CSS class)
 
   def html_chunk_body element
     @port.print "<pre class='maui-chunk-body'>"
@@ -3405,6 +3419,8 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.puts "</pre>"
     return
   end
+
+. [[.maui-transclude]] (CSS class)
 
 << Weave the [[use]] node (HTML) >>:
   @port.print "<span class='maui-transclude'>"
@@ -3442,6 +3458,8 @@ into a local link, either in the [[#T.foo]] form for titles or
   end
 
 . [[html_warning_list]]
+. [[.maui-warnings]] (CSS class)
+. [[.maui-inline-warnings]] (CSS class)
 
 << in [[HTML_Weaving]] >>:
   def html_warning_list list, inline: false
@@ -3472,12 +3490,16 @@ into a local link, either in the [[#T.foo]] form for titles or
 * Generating the index in HTML.
 
 . [[html_index]] (method of [[HTML_Weaving]])
+. [[#maui-index]] (CSS identifier)
+. [[.maui-index-manual]] (CSS class)
+. [[.maui-index-definition]] (CSS class)
+. [[.maui-index-transclusion]] (CSS class)
 
 << in [[HTML_Weaving]] >>:
   def html_index
     @port.puts "<h2>Index</h2>"
     @port.puts
-    @port.puts "<nav id='index'>"
+    @port.puts "<nav id='maui-index'>"
     @port.puts "<ul>"
     index = @fabric.index
     index.keys.sort do |a, b|
@@ -3572,6 +3594,8 @@ into a local link, either in the [[#T.foo]] form for titles or
     htmlify node.content
     @port.print "</%s>" % html_tag
 
+
+. [[.maui-chunk-mention]] (CSS class)
 
   when :mention_chunk then
     @port.print "<span class='maui-chunk-mention'>"

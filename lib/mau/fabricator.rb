@@ -1368,7 +1368,7 @@ module Fabricator
     def html_index
       @port.puts "<h2>Index</h2>"
       @port.puts
-      @port.puts "<nav id='index'>"
+      @port.puts "<nav id='maui-index'>"
       @port.puts "<ul>"
       index = @fabric.index
       index.keys.sort do |a, b|
