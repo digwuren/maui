@@ -331,12 +331,14 @@ module Fabricator
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
+
+            if [:chunk, :divert].include? element.type then
+              cbn_record.headers.push element
+            end
+
             if [:chunk, :diverted_chunk].include?(
                 element.type) then
               cbn_record.chunks.push element
-            end
-            if [:chunk, :divert].include? element.type then
-              cbn_record.headers.push element
             end
 
             if element.root_type then
