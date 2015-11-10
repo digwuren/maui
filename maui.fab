@@ -52,7 +52,7 @@ whether that is the case by the [[in_list]] flag.
   integrator.check_chunk_sizes(chunk_size_limit)
 
 
-. "more than two consecutive blank lines"
+. "more than two consecutive blank lines" (warning)
 
 << Pass and count blank lines >>:
   vertical_separation = 0
@@ -176,6 +176,8 @@ Next, let's consider top-level bullets.
       loc: element_location)
 
 
+. [[:index_anchor]]
+
 A line starting with a period and whitespace is an index
 reference anchor.  This is a line-level, not paragraph-level,
 notation so that multiple anchor lines can immediately follow
@@ -269,7 +271,7 @@ generate excessive warnings when the fault lies in a [[divert]].
 (And also, to make sure to generate a warning regarding this if
 a faulty [[divert]] is not actually ever used.)
 
-. "inconsistent root type"
+. "inconsistent root type" (warning)
 
 << in [[Integrator]] >>:
   def check_root_type_consistency
@@ -493,7 +495,7 @@ Title nodes are subject to level restriction, are automatically
 numbered using three-level identifiers, and are in addition to
 [[presentation]] collected into [[toc]].
 
-. "title level too deep"
+. "title level too deep" (warning)
 
 << Integrate the [[title]] element >>:
   # Check the title's level restriction
@@ -596,7 +598,7 @@ Also, a [[rubric]] causes a section break.
 In both cases, we'll warn the user if there wasn't an explicit
 section break.
 
-. "silent section break"
+. "silent section break" (warning)
 
 << ? Break section and warn >>:
   if (@cursec and element.type == :rubric) or
@@ -659,7 +661,7 @@ section break.
   @list_stack.last.items.push element
 
 
-. "unexpected dedent"
+. "unexpected dedent" (warning)
 
 << Discard pending lists deeper than [[element.indent]] >>:
   while @list_stack.last.indent > element.indent do
@@ -814,7 +816,7 @@ We'll keep separate track of chunk bodies ([[chunk]] or
     << Create index entries >>
   end
 
-. "unuseable filename"
+. "unuseable filename" (warning)
 
 << Root?  Check the filename for sanity >>:
   if element.root_type then
@@ -853,39 +855,44 @@ We'll keep separate track of chunk bodies ([[chunk]] or
 << Create index entries >>:
   case element.type
     when :chunk then
-      # For an ordinary chunk, we'll just create a new index
-      # reference entry.
+      # For an ordinary chunk, we'll just create a new
+      # index reference entry.
       chunk_index_record(element.name).refs.push [
           @cursec.section_number, :definition]
 
     when :divert then
-      # For a divert, we'll create an index reference entry with
-      # a range in the place of the section number.  For now,
-      # the range will have the section number the divert
-      # appears in as both its beginning and its end.
+      # For a divert, we'll create an index reference
+      # entry with a range in the place of the section
+      # number.  For now, the range will have the
+      # section number the divert appears in as both
+      # its beginning and its end.
       index_ref = [@cursec.section_number ..
           @cursec.section_number, :definition]
-      chunk_index_record(element.name).refs.push index_ref
-      # We'll add a pointer to this reference entry into
-      # [[@curdivert]] so we can replace the range later to
-      # cover all the sections in which headerless chunks
-      # collected by this divert are present.
+      chunk_index_record(element.name).refs.push(
+          index_ref)
+      # We'll add a pointer to this reference entry
+      # into [[@curdivert]] so we can replace the
+      # range later to cover all the sections in which
+      # headerless chunks collected by this divert are
+      # present.
       @curdivert.index_ref = index_ref
 
     when :diverted_chunk then
-      # For a diverted entry, we won't create a new index
-      # reference entry but replace the previously existing one
-      # to also include the new section.
-      index_range = @curdivert.index_ref[0]
-      index_range = index_range.begin .. @cursec.section_number
-      @curdivert.index_ref[0] = index_range
+      # For a diverted entry, we won't create a new
+      # index reference entry but replace the
+      # previously existing one to also include the
+      # new section.
+      prev_range = @curdivert.index_ref[0]
+      @curdivert.index_ref[0] = prev_range.begin ..
+          @cursec.section_number
 
   else
     raise 'assertion failed'
   end
 
-  # If we've got an actual chunk, let's now create index
-  # reference entries for any transclusions it may contain.
+  # If we've got an actual chunk, let's now create
+  # index reference entries for any transclusions it
+  # may contain.
   if [:chunk, :diverted_chunk].include?(
       element.type) then
     element.content.each do |node|
@@ -949,8 +956,8 @@ sets the [[final]] flag of the last divertee in a chain.  In
 order for this to work properly, the main parser calls this, via
 << Handle the end of fabric >>, once the input fabric ends.
 
-. "unused diversion"
-. "single-use diversion"
+. "unused diversion" (warning)
+. "single-use diversion" (warning)
 
   def clear_diversion
     if @curdivert then
@@ -975,8 +982,8 @@ order for this to work properly, the main parser calls this, via
 
 * Chunk length limit check.
 
-. "long chunk"
-. "very long chunk"
+. "long chunk" (warning)
+. "very long chunk" (warning)
 
 << in [[Integrator]] >>:
   def check_chunk_sizes limit
@@ -1705,8 +1712,8 @@ appropriate escaping (or, well, dividing the bogus reference
 onto multiple code lines), this non-destructive approach is
 probably optimal as workarounds go.
 
-. "circular reference"
-. "dangling reference"
+. "circular reference" (warning)
+. "dangling reference" (warning)
 
 << in [[Integrator]] >>:
   def tangle_transclusion node, sink, trace, referrer
@@ -3969,6 +3976,8 @@ result.
 Finally, the GNU Coding Standards recommend implementing
 [[--help]] and [[--version]].
 
+. [[--help]]
+
 << Option summary >>:
   --help
       Print this usage.
@@ -3982,6 +3991,7 @@ Finally, the GNU Coding Standards recommend implementing
     puts
     exit 0
 
+
 << Usage help >>:
   Usage: maui [options] fabric-file
 
@@ -3992,6 +4002,8 @@ Finally, the GNU Coding Standards recommend implementing
 
   Report bugs to: <dig@mirky.net>
 
+
+. [[--version]]
 
 << Option summary >>:
   --version
