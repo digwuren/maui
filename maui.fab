@@ -556,7 +556,7 @@ addition to [[presentation]] collected into [[toc]].
   << [[divert]]?  Apply it >>
 
   if element.type == :item then
-    << Integrate the [[item]] element >>
+    << Integrate the list item >>
   elsif element.type == :index_anchor then
     # Integrating an index anchor only involves adding an
     # entry to the index; it does not appear among the
@@ -662,7 +662,7 @@ section break.
   end
 
 
-<< Integrate the [[item]] element >>:
+<< Integrate the list item >>:
   # Is this a top-level or descendant item?
   unless @list_stack then
     raise 'assertion failed' unless element.indent == 0
@@ -3516,11 +3516,9 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 . [[html_index]] (method of [[HTML_Weaving]])
 . [[#maui-index]] (CSS identifier)
-. [[.maui-index-manual]] (CSS class)
-. [[.maui-index-definition]] (CSS class)
-. [[.maui-index-transclusion]] (CSS class)
 
 << in [[HTML_Weaving]] >>:
+
   def html_index
     @port.puts "<h2>Index</h2>"
     @port.puts
@@ -3537,33 +3535,43 @@ into a local link, either in the [[#T.foo]] form for titles or
       record.refs.each_with_index do |(secno, reftype), i|
         @port.print ',' unless i.zero?
         @port.print ' '
-        @port.print "<span class='maui-index-#{reftype}'>"
-        case secno
-          when Integer then
-            @port.print "<a href='#S.#{secno}'>"
-            @port.print @symbolism.section_prefix
-            @port.print secno
-            @port.print "</a>"
-          when Range then
-            # The hyperlink will reference only the very first
-            # section in the range, but we'll mark the whole
-            # range up as a link for cosmetic reasons.
-            @port.print "<a href='#S.#{secno.begin}'>"
-            @port.print @symbolism.section_prefix
-            @port.print secno.begin
-            @port.print "\u2013"
-            @port.print @symbolism.section_prefix
-            @port.print secno.end
-            @port.print "</a>"
-          else
-            raise 'assertion failed'
-        end
-        @port.print "</span>"
+        html_index_reference secno, reftype
       end
       @port.puts "</li>"
     end
     @port.puts "</ul>"
     @port.puts "</nav>"
+    return
+  end
+
+
+. [[.maui-index-manual]] (CSS class)
+. [[.maui-index-definition]] (CSS class)
+. [[.maui-index-transclusion]] (CSS class)
+
+  def html_index_reference secno, reftype
+    @port.print "<span class='maui-index-#{reftype}'>"
+    case secno
+      when Integer then
+        @port.print "<a href='#S.#{secno}'>"
+        @port.print @symbolism.section_prefix
+        @port.print secno
+        @port.print "</a>"
+      when Range then
+        # The hyperlink will reference only the very first
+        # section in the range, but we'll mark the whole
+        # range up as a link for cosmetic reasons.
+        @port.print "<a href='#S.#{secno.begin}'>"
+        @port.print @symbolism.section_prefix
+        @port.print secno.begin
+        @port.print "\u2013"
+        @port.print @symbolism.section_prefix
+        @port.print secno.end
+        @port.print "</a>"
+      else
+        raise 'assertion failed'
+    end
+    @port.print "</span>"
     return
   end
 

@@ -1383,33 +1383,38 @@ module Fabricator
         record.refs.each_with_index do |(secno, reftype), i|
           @port.print ',' unless i.zero?
           @port.print ' '
-          @port.print "<span class='maui-index-#{reftype}'>"
-          case secno
-            when Integer then
-              @port.print "<a href='#S.#{secno}'>"
-              @port.print @symbolism.section_prefix
-              @port.print secno
-              @port.print "</a>"
-            when Range then
-              # The hyperlink will reference only the very first
-              # section in the range, but we'll mark the whole
-              # range up as a link for cosmetic reasons.
-              @port.print "<a href='#S.#{secno.begin}'>"
-              @port.print @symbolism.section_prefix
-              @port.print secno.begin
-              @port.print "\u2013"
-              @port.print @symbolism.section_prefix
-              @port.print secno.end
-              @port.print "</a>"
-            else
-              raise 'assertion failed'
-          end
-          @port.print "</span>"
+          html_index_reference secno, reftype
         end
         @port.puts "</li>"
       end
       @port.puts "</ul>"
       @port.puts "</nav>"
+      return
+    end
+
+    def html_index_reference secno, reftype
+      @port.print "<span class='maui-index-#{reftype}'>"
+      case secno
+        when Integer then
+          @port.print "<a href='#S.#{secno}'>"
+          @port.print @symbolism.section_prefix
+          @port.print secno
+          @port.print "</a>"
+        when Range then
+          # The hyperlink will reference only the very first
+          # section in the range, but we'll mark the whole
+          # range up as a link for cosmetic reasons.
+          @port.print "<a href='#S.#{secno.begin}'>"
+          @port.print @symbolism.section_prefix
+          @port.print secno.begin
+          @port.print "\u2013"
+          @port.print @symbolism.section_prefix
+          @port.print secno.end
+          @port.print "</a>"
+        else
+          raise 'assertion failed'
+      end
+      @port.print "</span>"
       return
     end
 
