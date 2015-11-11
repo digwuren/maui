@@ -614,7 +614,7 @@ section break.
 Also, a [[rubric]] causes a section break.
 
 In both cases, we'll warn the user if there wasn't an explicit
-section break.
+section break in the form of two adjacent blank lines.
 
 . "silent section break" (warning)
 
