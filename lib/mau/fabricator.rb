@@ -1698,7 +1698,9 @@ class << Fabricator
     vp = Fabricator::Vertical_Peeker.new input
     integrator = Fabricator::Integrator.new
 
-    in_list = false
+    parser_state = OpenStruct.new(
+        in_list: false,
+    )
     loop do
       vertical_separation = 0
       while vp.peek_line == '' do
@@ -1712,12 +1714,12 @@ class << Fabricator
       break if vp.eof?
       if vertical_separation >= 2 then
         integrator.force_section_break
-        in_list = false
+        parser_state.in_list = false
       end
       element_location = vp.location_ahead
       case vp.peek_line
       when /^\s+/ then
-        if !in_list or
+        if !parser_state.in_list or
             vp.peek_line !~ /^
                 (?<margin> \s+ )
                 - (?<separator> \s+ )
@@ -1822,7 +1824,7 @@ class << Fabricator
       else raise 'assertion failed'
       end
       integrator.integrate element
-      in_list = element.type == :item
+      parser_state.in_list = element.type == :item
     end
     integrator.clear_diversion
 

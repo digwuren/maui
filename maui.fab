@@ -35,7 +35,9 @@ unindented, and indented bullet items can only appear if a
 higher-level list has already been established.  We'll track
 whether that is the case by the [[in_list]] flag.
 
-  in_list = false
+  parser_state = OpenStruct.new(
+      in_list: false,
+  )
   loop do
     << Pass and count blank lines >>
     break if vp.eof?
@@ -46,7 +48,7 @@ whether that is the case by the [[in_list]] flag.
     else raise 'assertion failed'
     end
     integrator.integrate element
-    in_list = element.type == :item
+    parser_state.in_list = element.type == :item
   end
   << Handle the end of fabric >>
   integrator.check_chunk_sizes(chunk_size_limit)
@@ -68,7 +70,7 @@ whether that is the case by the [[in_list]] flag.
 
 << Vertical elements' parsing rules >>:
   when /^\s+/ then
-    if !in_list or
+    if !parser_state.in_list or
         vp.peek_line !~ /^
             (?<margin> \s+ )
             - (?<separator> \s+ )
@@ -245,7 +247,7 @@ explicit section break.
 << Handle explicit section break >>:
   if vertical_separation >= 2 then
     integrator.force_section_break
-    in_list = false
+    parser_state.in_list = false
   end
 
 
