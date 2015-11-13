@@ -1700,19 +1700,22 @@ class << Fabricator
 
     parser_state = OpenStruct.new(
         in_list: false,
+        vertical_separation: nil,
+            # the number of blank lines immediately preceding the
+            # element currently being parsed
     )
     loop do
-      vertical_separation = 0
+      parser_state.vertical_separation = 0
       while vp.peek_line == '' do
-        if vertical_separation == 2 then
+        if parser_state.vertical_separation == 2 then
           integrator.warn vp.location_ahead,
               "more than two consecutive blank lines"
         end
-        vertical_separation += 1
+        parser_state.vertical_separation += 1
         vp.get_line
       end
       break if vp.eof?
-      if vertical_separation >= 2 then
+      if parser_state.vertical_separation >= 2 then
         integrator.force_section_break
         parser_state.in_list = false
       end
