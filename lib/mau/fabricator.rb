@@ -434,12 +434,12 @@ module Fabricator
 
     def force_section_break
       if @cursec and @cursec.elements.empty? then
-        # Section nodes are only created when there's at least one
-        # element to be integrated.  This element may be an index
-        # anchor, which is not actually added into the section's
-        # [[elements]] list.  Since this is the only such case,
-        # the meaning of [[elements]] being empty by the end of
-        # the secion is unambiguous.
+        # Section nodes are only created when there's at least
+        # one element to be integrated.  This element may be an
+        # index anchor, which is not actually added into the
+        # section's [[elements]] list.  Since this is the only
+        # such case, the meaning of [[elements]] being empty by
+        # the end of the section is unambiguous.
         (@cursec.warnings ||= []).push \
             warn(@cursec.loc,
                 "section with index anchor(s) but no content",
