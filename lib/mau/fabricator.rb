@@ -1718,8 +1718,8 @@ class << Fabricator
 
     parser_state = OpenStruct.new(
         vertical_separation: nil,
-            # the number of blank lines immediately preceding the
-            # element currently being parsed
+            # the number of blank lines immediately preceding
+            # the element currently being parsed
     )
     loop do
       parser_state.vertical_separation = 0
