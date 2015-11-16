@@ -433,6 +433,18 @@ module Fabricator
     end
 
     def force_section_break
+      if @cursec and @cursec.elements.empty? then
+        # Section nodes are only created when there's at least one
+        # element to be integrated.  This element may be an index
+        # anchor, which is not actually added into the section's
+        # [[elements]] list.  Since this is the only such case,
+        # the meaning of [[elements]] being empty by the end of
+        # the secion is unambiguous.
+        (@cursec.warnings ||= []).push \
+            warn(@cursec.loc,
+                "section with index anchor(s) but no content",
+                inline: true)
+      end
       @cursec = nil
       @list_stack = nil
       @in_code = false
@@ -1097,7 +1109,8 @@ module Fabricator
           htmlify element.content
           @port.puts '</h%i>' % (element.level + 1)
         when :section then
-          rubricated = element.elements[0].type == :rubric
+          rubricated = !element.elements.empty? &&
+              element.elements[0].type == :rubric
           # If we're encountering the first rubric/title, output
           # the table of contents.
           if rubricated and !toc_generated then
@@ -1873,7 +1886,11 @@ class << Fabricator
         wr.linebreak
         wr.linebreak
       when :section then
-        rubricated = element.elements[0].type == :rubric
+        # [[element.elements]] can be empty if a section contains
+        # index anchor(s) but no content.  This is a pathological
+        # case, to be sure, but it can happen, so we'll need to check.
+        rubricated = !element.elements.empty? &&
+            element.elements[0].type == :rubric
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
