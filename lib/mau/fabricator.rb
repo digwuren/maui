@@ -458,6 +458,10 @@ module Fabricator
       return
     end
 
+    def in_list?
+      return !@list_stack.nil?
+    end
+
     def check_chunk_sizes limit
       return unless limit
       @output.presentation.each do |node|
@@ -1699,7 +1703,6 @@ class << Fabricator
     integrator = Fabricator::Integrator.new
 
     parser_state = OpenStruct.new(
-        in_list: false,
         vertical_separation: nil,
             # the number of blank lines immediately preceding the
             # element currently being parsed
@@ -1717,12 +1720,11 @@ class << Fabricator
       break if vp.eof?
       if parser_state.vertical_separation >= 2 then
         integrator.force_section_break
-        parser_state.in_list = false
       end
       element_location = vp.location_ahead
       case vp.peek_line
       when /^\s+/ then
-        if !parser_state.in_list or
+        if !integrator.in_list? or
             vp.peek_line !~ /^
                 (?<margin> \s+ )
                 - (?<separator> \s+ )
@@ -1827,7 +1829,6 @@ class << Fabricator
       else raise 'assertion failed'
       end
       integrator.integrate element
-      parser_state.in_list = element.type == :item
     end
     integrator.clear_diversion
 
