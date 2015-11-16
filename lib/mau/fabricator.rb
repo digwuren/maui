@@ -1886,9 +1886,10 @@ class << Fabricator
         wr.linebreak
         wr.linebreak
       when :section then
-        # [[element.elements]] can be empty if a section contains
-        # index anchor(s) but no content.  This is a pathological
-        # case, to be sure, but it can happen, so we'll need to check.
+        # [[element.elements]] can be empty if a section
+        # contains index anchor(s) but no content.  This is a
+        # pathological case, to be sure, but it can happen, so
+        # we'll need to check.
         rubricated = !element.elements.empty? &&
             element.elements[0].type == :rubric
         # If we're encountering the first rubric/title, output
