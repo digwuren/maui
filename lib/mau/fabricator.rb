@@ -201,7 +201,8 @@ module Fabricator
             type: :section,
             section_number: @first_section_number +
                 @section_count,
-            elements: [])
+            elements: [],
+            loc: element.loc)
             @section_count += 1
           @output.presentation.push @cursec
         end
@@ -1830,9 +1831,8 @@ class << Fabricator
       end
       integrator.integrate element
     end
+    integrator.force_section_break
     integrator.clear_diversion
-
-    integrator.check_root_type_consistency
     integrator.check_chunk_sizes(chunk_size_limit)
     integrator.tangle_roots
     return integrator.output

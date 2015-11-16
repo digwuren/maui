@@ -259,7 +259,7 @@ chunks, diversions, titles -- but when the fabric is over, we'll
 have to make it explicit.
 
 << Handle the end of fabric >>:
-
+  integrator.force_section_break
   integrator.clear_diversion
 
 
@@ -639,7 +639,8 @@ section break in the form of two adjacent blank lines.
       type: :section,
       section_number: @first_section_number +
           @section_count,
-      elements: [])
+      elements: [],
+      loc: element.loc)
       @section_count += 1
     @output.presentation.push @cursec
   end
