@@ -40,7 +40,6 @@ whether that is the case by the [[in_list]] flag.
       vertical_separation: nil,
           # the number of blank lines immediately preceding the
           # element currently being parsed
-      last_element_type: nil,
   )
   loop do
     << Pass and count blank lines >>
@@ -53,7 +52,6 @@ whether that is the case by the [[in_list]] flag.
     end
     integrator.integrate element
     parser_state.in_list = element.type == :item
-    parser_state.last_element_type = element.type
   end
   << Handle the end of fabric >>
   integrator.check_chunk_sizes(chunk_size_limit)
