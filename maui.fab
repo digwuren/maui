@@ -4164,7 +4164,7 @@ symbols.  Here are the defaults.
   << Initialise [[$cmdline]] .dense >>
 
   GetoptLong.new(
-      << Option declarations >>
+      << Option declarations .dense >>
       ).each do |opt, arg|
     case opt
     << Command line option handlers >>

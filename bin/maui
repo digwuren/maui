@@ -15,21 +15,13 @@ begin
 
   GetoptLong.new(
       ['--section-prefix', GetoptLong::REQUIRED_ARGUMENT],
-
       ['--chunk-name-delim', GetoptLong::REQUIRED_ARGUMENT],
-
       ['--output-width', GetoptLong::REQUIRED_ARGUMENT],
-
       ['--chunk-size-limit', GetoptLong::REQUIRED_ARGUMENT],
-
       ['--link-css', GetoptLong::REQUIRED_ARGUMENT],
-
       ['--unicode-boxes', GetoptLong::NO_ARGUMENT],
-
       ['--ascii-boxes', GetoptLong::NO_ARGUMENT],
-
       ['--help', GetoptLong::NO_ARGUMENT],
-
       ['--version', GetoptLong::NO_ARGUMENT],
       ).each do |opt, arg|
     case opt
