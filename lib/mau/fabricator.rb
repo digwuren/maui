@@ -1703,6 +1703,7 @@ class << Fabricator
         vertical_separation: nil,
             # the number of blank lines immediately preceding the
             # element currently being parsed
+        last_element_type: nil,
     )
     loop do
       parser_state.vertical_separation = 0
@@ -1828,6 +1829,7 @@ class << Fabricator
       end
       integrator.integrate element
       parser_state.in_list = element.type == :item
+      parser_state.last_element_type = element.type
     end
     integrator.clear_diversion
 
