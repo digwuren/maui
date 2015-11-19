@@ -619,10 +619,11 @@ module Fabricator
     attr_reader :section_count
   end
 
-  NT_ITEM    = 0x0001
-  NT_RUBRIC  = 0x0002
-  NT_LIST    = 0x0003
-  NT_CHUNK   = 0x0004
+  NTF_HAS_HEADER  = 0x0100
+  NT_ITEM         = 0x0001
+  NT_RUBRIC       = 0x0002
+  NT_LIST         = 0x0003
+  NT_CHUNK        = 0x0004 | NTF_HAS_HEADER
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
