@@ -231,7 +231,7 @@ an ordinary paragraph, a title, or a rubric.
   when /^\*\s+/ then
     lines[0] = $'
     element = OpenStruct.new(
-        type: :rubric,
+        type: NT_RUBRIC,
         loc: element_location)
 
 
@@ -427,7 +427,7 @@ further, lower-level, structure.
 
 
 In order to simplify generating the table of content of the
-fabric, we'll furthermore gather the [[title]] and [[rubric]]
+fabric, we'll furthermore gather the [[title]] and [[NT_RUBRIC]]
 nodes into the integrator's output under the key of [[toc]].
 It's a flat list; however, [[title]] nodes will define a
 hierarchical structure by their [[level]] fields.
@@ -556,7 +556,7 @@ addition to [[presentation]] collected into [[toc]].
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
-  << [[rubric]]?  Link to [[toc]] >>
+  << [[NT_RUBRIC]]?  Link to [[toc]] >>
   << [[divert]]?  Apply it >>
 
   if element.type == NT_ITEM then
@@ -615,7 +615,7 @@ difference being that multiple chunks can appear in a single
 section.  A transition from code to narrative thus causes a
 section break.
 
-Also, a [[rubric]] causes a section break.
+Also, a [[NT_RUBRIC]] node causes a section break.
 
 In both cases, we'll warn the user if there wasn't an explicit
 section break in the form of two adjacent blank lines.
@@ -623,7 +623,7 @@ section break in the form of two adjacent blank lines.
 . "silent section break" (warning)
 
 << ? Break section and warn >>:
-  if (@cursec and element.type == :rubric) or
+  if (@cursec and element.type == NT_RUBRIC) or
       (@in_code and
           [:paragraph, :block, NT_ITEM].include?(
               element.type)) then
@@ -648,8 +648,8 @@ section break in the form of two adjacent blank lines.
   end
 
 
-<< [[rubric]]?  Link to [[toc]] >>:
-  if element.type == :rubric then
+<< [[NT_RUBRIC]]?  Link to [[toc]] >>:
+  if element.type == NT_RUBRIC then
     element.section_number = @cursec.section_number
     @output.toc.push element
   end
@@ -1197,7 +1197,8 @@ These constants are used to encode the types of nodes generated
 as a fabric is being parsed.
 
 << in [[Fabricator]] >>:
-  NT_ITEM  = 0x0001
+  NT_ITEM    = 0x0001
+  NT_RUBRIC  = 0x0002
 
 
 == Horizontal parsing
@@ -2318,7 +2319,7 @@ to an empty list.
   # pathological case, to be sure, but it can happen, so
   # we'll need to check.
   rubricated = !element.elements.empty? &&
-      element.elements[0].type == :rubric
+      element.elements[0].type == NT_RUBRIC
   # If we're encountering the first rubric/title, output
   # the table of contents.
   if rubricated and !toc_generated then
@@ -2738,7 +2739,7 @@ joiners interspersed.
       wr.add_nodes entry.content, symbolism: symbolism
     end
 
-  when :rubric then
+  when NT_RUBRIC then
     wr.add_plain '  ' * rubric_level
     wr.add_plain '%s%i.' % [
       symbolism.section_prefix,
@@ -3260,7 +3261,7 @@ conventions.
 
 << Weave the [[section]] (HTML) >>:
   rubricated = !element.elements.empty? &&
-      element.elements[0].type == :rubric
+      element.elements[0].type == NT_RUBRIC
   # If we're encountering the first rubric/title, output
   # the table of contents.
   if rubricated and !toc_generated then
@@ -3411,7 +3412,7 @@ into a local link, either in the [[#T.foo]] form for titles or
       # (sub(sub))chapter appear at?
       rubric_level = 1
       @fabric.toc.each do |entry|
-        if entry.type == :rubric then
+        if entry.type == NT_RUBRIC then
           level = rubric_level
         else
           level = entry.level
@@ -3445,7 +3446,7 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print "<a href='#T.#{entry.number}'>"
     htmlify entry.content
     @port.print "</a>"
-  when :rubric then
+  when NT_RUBRIC then
     @port.print @symbolism.section_prefix
     @port.print entry.section_number
     @port.print ". "

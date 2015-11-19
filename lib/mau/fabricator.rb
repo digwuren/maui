@@ -186,7 +186,7 @@ module Fabricator
         if [:divert, :chunk].include? element.type then
           clear_diversion
         end
-        if (@cursec and element.type == :rubric) or
+        if (@cursec and element.type == NT_RUBRIC) or
             (@in_code and
                 [:paragraph, :block, NT_ITEM].include?(
                     element.type)) then
@@ -206,7 +206,7 @@ module Fabricator
             @section_count += 1
           @output.presentation.push @cursec
         end
-        if element.type == :rubric then
+        if element.type == NT_RUBRIC then
           element.section_number = @cursec.section_number
           @output.toc.push element
         end
@@ -619,7 +619,8 @@ module Fabricator
     attr_reader :section_count
   end
 
-  NT_ITEM  = 0x0001
+  NT_ITEM    = 0x0001
+  NT_RUBRIC  = 0x0002
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1112,7 +1113,7 @@ module Fabricator
           @port.puts '</h%i>' % (element.level + 1)
         when :section then
           rubricated = !element.elements.empty? &&
-              element.elements[0].type == :rubric
+              element.elements[0].type == NT_RUBRIC
           # If we're encountering the first rubric/title, output
           # the table of contents.
           if rubricated and !toc_generated then
@@ -1232,7 +1233,7 @@ module Fabricator
         # (sub(sub))chapter appear at?
         rubric_level = 1
         @fabric.toc.each do |entry|
-          if entry.type == :rubric then
+          if entry.type == NT_RUBRIC then
             level = rubric_level
           else
             level = entry.level
@@ -1254,7 +1255,7 @@ module Fabricator
             @port.print "<a href='#T.#{entry.number}'>"
             htmlify entry.content
             @port.print "</a>"
-          when :rubric then
+          when NT_RUBRIC then
             @port.print @symbolism.section_prefix
             @port.print entry.section_number
             @port.print ". "
@@ -1831,7 +1832,7 @@ class << Fabricator
         when /^\*\s+/ then
           lines[0] = $'
           element = OpenStruct.new(
-              type: :rubric,
+              type: NT_RUBRIC,
               loc: element_location)
 
         else
@@ -1894,7 +1895,7 @@ class << Fabricator
         # pathological case, to be sure, but it can happen, so
         # we'll need to check.
         rubricated = !element.elements.empty? &&
-            element.elements[0].type == :rubric
+            element.elements[0].type == NT_RUBRIC
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
@@ -2263,7 +2264,7 @@ class << Fabricator
             wr.add_nodes entry.content, symbolism: symbolism
           end
 
-        when :rubric then
+        when NT_RUBRIC then
           wr.add_plain '  ' * rubric_level
           wr.add_plain '%s%i.' % [
             symbolism.section_prefix,
