@@ -220,9 +220,9 @@ module Fabricator
           unless @list_stack then
             raise 'assertion failed' unless element.indent == 0
 
-            # Create a new [[list]] node.
+            # Create a new [[NT_LIST]] node.
             new_list = OpenStruct.new(
-              type: :list,
+              type: NT_LIST,
               items: [],
               indent: element.indent)
             @cursec.elements.push new_list
@@ -247,7 +247,7 @@ module Fabricator
                 raise 'assertion failed'
               end
               new_list = OpenStruct.new(
-                type: :list,
+                type: NT_LIST,
                 items: [],
                 indent: element.indent)
               @list_stack.last.items.last.sublist = new_list
@@ -621,6 +621,7 @@ module Fabricator
 
   NT_ITEM    = 0x0001
   NT_RUBRIC  = 0x0002
+  NT_LIST    = 0x0003
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1180,7 +1181,7 @@ module Fabricator
         htmlify element.content
         @port.puts "</p>"
 
-      when :list then
+      when NT_LIST then
         html_list element.items
 
       when :divert then
@@ -2079,7 +2080,7 @@ class << Fabricator
         end
       end
 
-    when :list then
+    when NT_LIST then
       _weave_ctxt_list element.items, wr,
           symbolism: symbolism
 
