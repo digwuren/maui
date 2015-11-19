@@ -188,7 +188,7 @@ module Fabricator
         end
         if (@cursec and element.type == :rubric) or
             (@in_code and
-                [:paragraph, :block, :item].include?(
+                [:paragraph, :block, NT_ITEM].include?(
                     element.type)) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
@@ -215,7 +215,7 @@ module Fabricator
           raise 'assertion failed' unless @last_divertee.nil?
         end
 
-        if element.type == :item then
+        if element.type == NT_ITEM then
           # Is this a top-level or descendant item?
           unless @list_stack then
             raise 'assertion failed' unless element.indent == 0
@@ -618,6 +618,8 @@ module Fabricator
 
     attr_reader :section_count
   end
+
+  NT_ITEM  = 0x0001
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1466,6 +1468,7 @@ module Fabricator
 end
 
 class << Fabricator
+  include Fabricator
   def filename_sane? name
     parts = name.split '/', -1
     return false if parts.empty?
@@ -1757,7 +1760,7 @@ class << Fabricator
             lines.push vp.get_line[margin.length .. -1]
           end
           element = OpenStruct.new(
-            type: :item,
+            type: NT_ITEM,
             lines: lines,
             content: parse_markup(lines.map(&:strip).join ' '),
             indent: margin.length,
@@ -1796,7 +1799,7 @@ class << Fabricator
           lines.push vp.get_line
         end
         element = OpenStruct.new(
-          type: :item,
+          type: NT_ITEM,
           lines: lines,
           content: parse_markup(lines.map(&:strip).join ' '),
           indent: 0,

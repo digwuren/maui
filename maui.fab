@@ -127,7 +127,7 @@ blocks.
     lines.push vp.get_line[margin.length .. -1]
   end
   element = OpenStruct.new(
-    type: :item,
+    type: NT_ITEM,
     lines: lines,
     content: parse_markup(lines.map(&:strip).join ' '),
     indent: margin.length,
@@ -174,7 +174,7 @@ Next, let's consider top-level bullets.
       lines.push vp.get_line
     end
     element = OpenStruct.new(
-      type: :item,
+      type: NT_ITEM,
       lines: lines,
       content: parse_markup(lines.map(&:strip).join ' '),
       indent: 0,
@@ -559,7 +559,7 @@ addition to [[presentation]] collected into [[toc]].
   << [[rubric]]?  Link to [[toc]] >>
   << [[divert]]?  Apply it >>
 
-  if element.type == :item then
+  if element.type == NT_ITEM then
     << Integrate the list item >>
   elsif element.type == :index_anchor then
     << Add [[manual]] index entry >>
@@ -625,7 +625,7 @@ section break in the form of two adjacent blank lines.
 << ? Break section and warn >>:
   if (@cursec and element.type == :rubric) or
       (@in_code and
-          [:paragraph, :block, :item].include?(
+          [:paragraph, :block, NT_ITEM].include?(
               element.type)) then
     (@cursec.warnings ||= []).push \
         warn(element.loc,
@@ -1189,6 +1189,15 @@ parameter so as to permit n-dash to be used in HTML output.
       return result
     end
   end
+
+
+* Node types.
+
+These constants are used to encode the types of nodes generated
+as a fabric is being parsed.
+
+<< in [[Fabricator]] >>:
+  NT_ITEM  = 0x0001
 
 
 == Horizontal parsing
@@ -3996,6 +4005,7 @@ symbols.  Here are the defaults.
   end
 
   class << Fabricator
+    include Fabricator
     << Other methods >>
   end
 
