@@ -121,8 +121,8 @@ module Fabricator
         chunks_by_name: {},
             # canonical_name => OpenStruct
             #   root_type: String,
-            #   chunks: list of :chunk/:diverted_chunk records,
-            #   headers: list of :chunk/:divert records,
+            #   chunks: list of NT_CHUNK/:diverted_chunk records,
+            #   headers: list of NT_CHUNK/:divert records,
 
         roots: [], # list of canonical names
 
@@ -183,7 +183,7 @@ module Fabricator
           element.initial = true if @last_divertee.nil?
           @last_divertee = element
         end
-        if [:divert, :chunk].include? element.type then
+        if [:divert, NT_CHUNK].include? element.type then
           clear_diversion
         end
         if (@cursec and element.type == NT_RUBRIC) or
@@ -264,7 +264,7 @@ module Fabricator
         else
           @list_stack = nil
           @cursec.elements.push element
-          if [:chunk, :diverted_chunk].
+          if [NT_CHUNK, :diverted_chunk].
               include?(element.type) then
             element.section_number = @cursec.section_number
             element.content = []
@@ -327,14 +327,14 @@ module Fabricator
             end
           end
 
-          if [:chunk, :diverted_chunk, :divert].include?(
+          if [NT_CHUNK, :diverted_chunk, :divert].include?(
               element.type) then
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
 
             # Do we have an explicit chunk header?
-            if [:chunk, :divert].include? element.type then
+            if [NT_CHUNK, :divert].include? element.type then
               cbn_record.headers.push element
               if element.root_type then
                 if !Fabricator.filename_sane? element.name then
@@ -356,7 +356,7 @@ module Fabricator
             end
 
             case element.type
-              when :chunk then
+              when NT_CHUNK then
                 chunk_index_record(element.name).refs.push [
                     @cursec.section_number, :definition]
 
@@ -381,7 +381,7 @@ module Fabricator
             end
 
             # Do we have a chunk body?
-            if [:chunk, :diverted_chunk].include?(
+            if [NT_CHUNK, :diverted_chunk].include?(
                 element.type) then
               cbn_record.chunks.push element
               element.content.each do |node|
@@ -395,7 +395,7 @@ module Fabricator
           # If a chunk body is followed by a narrative-type
           # element, we'll want to generate an automatic section
           # break.
-          if [:chunk, :diverted_chunk].
+          if [NT_CHUNK, :diverted_chunk].
               include?(element.type) then
             @in_code = true
           end
@@ -480,7 +480,7 @@ module Fabricator
       @output.presentation.each do |node|
         next unless node.type == :section
         node.elements.each do |element|
-          next unless element.type == :chunk
+          next unless element.type == NT_CHUNK
           if element.lines.length > limit then
             if element.lines.length > limit * 2 then
               assessment, factor = "very long chunk", 2
@@ -622,6 +622,7 @@ module Fabricator
   NT_ITEM    = 0x0001
   NT_RUBRIC  = 0x0002
   NT_LIST    = 0x0003
+  NT_CHUNK   = 0x0004
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1189,12 +1190,12 @@ module Fabricator
         @port.puts
         html_warning_list element.warnings, inline: true
 
-      when :chunk, :diverted_chunk then
+      when NT_CHUNK, :diverted_chunk then
         @port.print "<div class='maui-chunk"
         @port.print " maui-initial-chunk" if element.initial
         @port.print " maui-final-chunk" if element.final
         @port.print "'>"
-        if element.type == :chunk then
+        if element.type == NT_CHUNK then
           html_chunk_header element, 'maui-chunk-header'
           @port.puts
         end
@@ -1784,7 +1785,7 @@ class << Fabricator
         body_location = vp.location_ahead
         body = vp.get_indented_lines_with_skip
         if body then
-          element.type = :chunk
+          element.type = NT_CHUNK
           element.lines = body.lines
           element.indent = body.indent
           element.body_loc = body_location
@@ -1930,7 +1931,7 @@ class << Fabricator
         starter = element.elements[start_index]
         if starter then
           case starter.type
-          when :paragraph, :divert, :chunk then
+          when :paragraph, :divert, NT_CHUNK then
             wr.add_space
             weave_ctxt_section_part starter, fabric, wr,
                 symbolism: symbolism
@@ -2031,14 +2032,14 @@ class << Fabricator
       wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
-    when :divert, :chunk, :diverted_chunk then
-      if [:divert, :chunk].include? element.type then
+    when :divert, NT_CHUNK, :diverted_chunk then
+      if [:divert, NT_CHUNK].include? element.type then
         weave_ctxt_chunk_header element, wr,
             symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
-      if [:chunk, :diverted_chunk].include? element.type then
+      if [NT_CHUNK, :diverted_chunk].include? element.type then
         wr.styled :chunk_frame do
           wr.add_pseudographics element.initial ?
             :initial_chunk_margin :
