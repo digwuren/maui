@@ -443,7 +443,7 @@ output structure under the key of [[chunks_by_name]].  (See also
   chunks_by_name: {},
       # canonical_name => OpenStruct
       #   root_type: String,
-      #   chunks: list of NT_CHUNK/:diverted_chunk records,
+      #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
       #   headers: list of NT_CHUNK/:divert records,
 
 
@@ -552,7 +552,7 @@ addition to [[presentation]] collected into [[toc]].
 
 
 << Integrate the sub-[[section]] element >>:
-  << [[block]] and diverting?  Upgrade to [[diverted_chunk]] >>
+  << [[block]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
@@ -571,8 +571,9 @@ addition to [[presentation]] collected into [[toc]].
     # If a chunk body is followed by a narrative-type
     # element, we'll want to generate an automatic section
     # break.
-    if [NT_CHUNK, :diverted_chunk].
-        include?(element.type) then
+    # FIXME: take the type check out once [[element.type]] is
+    # always an [[Integer]]
+    if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
       @in_code = true
     end
   end
@@ -583,7 +584,7 @@ just shown in the woven output, or a headerless code chunk,
 which needs to be tangled, also.  Whether it's one or the other
 depends on whether a diversion is in effect; a piece of context
 that the parser does not track.  Accordingly, we'll upgrade
-[[block]] nodes to [[diverted_chunk]] nodes in the integrator
+[[block]] nodes to [[NT_DIVERTED_CHUNK]] nodes in the integrator
 when a diversion is in effect.
 
 This is also a convenient place to keep track of the chains of
@@ -592,9 +593,9 @@ the current divert was not used before, and we'll also point
 [[@last_divertee]] to the diverted block so that we can set the
 [[final]] flag on it later.
 
-<< [[block]] and diverting?  Upgrade to [[diverted_chunk]] >>:
+<< [[block]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>:
   if element.type == :block and @curdivert then
-    element.type = :diverted_chunk
+    element.type = NT_DIVERTED_CHUNK
     element.name = @curdivert.name
     element.divert = @curdivert
 
@@ -823,18 +824,19 @@ capturing regex.
 
 Chunks and diverts we'll be linking under [[chunk_by_name]].
 We'll keep separate track of chunk bodies ([[NT_CHUNK]] or
-[[diverted_chunk]]), linked under
+[[NT_DIVERTED_CHUNK]]), linked under
 [[chunks_by_name[...].chunks]], and chunk headers ([[NT_CHUNK]] or
 [[divert]]), linked under [[chunks_by_name[...].headers]].
 
 << Chunk or divert?  Parse and cross-reference >>:
-  if [NT_CHUNK, :diverted_chunk].
-      include?(element.type) then
+  # FIXME: take the type check out once [[element.type]] is
+  # always an [[Integer]]
+  if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
     element.section_number = @cursec.section_number
     << Parse the chunk's content >>
   end
 
-  if [NT_CHUNK, :diverted_chunk, :divert].include?(
+  if [NT_CHUNK, NT_DIVERTED_CHUNK, :divert].include?(
       element.type) then
     cbn_record =
         @output.chunks_by_name[element.name] ||=
@@ -854,8 +856,9 @@ We'll keep separate track of chunk bodies ([[NT_CHUNK]] or
     end
 
     # Do we have a chunk body?
-    if [NT_CHUNK, :diverted_chunk].include?(
-        element.type) then
+    # FIXME: take the type check out once [[element.type]] is
+    # always an [[Integer]]
+    if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
       cbn_record.chunks.push element
       << Create [[transclusion]] index entries >>
     end
@@ -941,7 +944,7 @@ For a diverted entry, we won't create a new index reference
 entry but replace the previously existing one to also include
 the new section.
 
-  when :diverted_chunk then
+  when NT_DIVERTED_CHUNK then
     prev_range = @curdivert.index_ref[0]
     @curdivert.index_ref[0] = prev_range.begin ..
         @cursec.section_number
@@ -1202,14 +1205,16 @@ as a fabric is being parsed.
 . [[NT_RUBRIC]]
 . [[NT_LIST]]
 . [[NT_CHUNK]]
+. [[NT_DIVERTED_CHUNK]]
 
 << in [[Fabricator]] >>:
-  NTF_HAS_HEADER  = 0x0100
-  NTF_HAS_CODE    = 0x0200
-  NT_ITEM         = 0x0001
-  NT_RUBRIC       = 0x0002
-  NT_LIST         = 0x0003
-  NT_CHUNK        = 0x0004 | NTF_HAS_HEADER | NTF_HAS_CODE
+  NTF_HAS_HEADER     = 0x0100
+  NTF_HAS_CODE       = 0x0200
+  NT_ITEM            = 0x0001
+  NT_RUBRIC          = 0x0002
+  NT_LIST            = 0x0003
+  NT_CHUNK           = 0x0004 | NTF_HAS_HEADER | NTF_HAS_CODE
+  NT_DIVERTED_CHUNK  = 0x0005 | NTF_HAS_CODE
 
 
 == Horizontal parsing
@@ -1812,8 +1817,8 @@ During tangling, we'll collect each chunk's tangling locations.
 (Note that it's possible that one chunk will be tangled into
 multiple places).  We'll store this data into the chunk as the
 [[tangle_locs]] list.  We'll also collect tangling locations of
-chunk chains -- sequences of [[diverted_chunk]] elements
-diverted by the same [[divert]].  We'll store this data into the
+chunk chains -- sequences of [[NT_DIVERTED_CHUNK]] elements
+diverted by the same divert.  We'll store this data into the
 [[divert]] node as the [[chain_tangle_locs]] list.
 
 . [[tangle_chunks]]
@@ -2431,14 +2436,16 @@ plain ones.
     wr.linebreak
 
 
-  when :divert, NT_CHUNK, :diverted_chunk then
+  when :divert, NT_CHUNK, NT_DIVERTED_CHUNK then
     if [:divert, NT_CHUNK].include? element.type then
       weave_ctxt_chunk_header element, wr,
           symbolism: symbolism
       weave_ctxt_warning_list element.warnings, wr,
           inline: true
     end
-    if [NT_CHUNK, :diverted_chunk].include? element.type then
+    # FIXME: take the type check out once [[element.type]] is
+    # always an [[Integer]]
+    if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
       << Weave the chunk's lines (ctxt) >>
       << ? Output the chain's finality marker >>
       weave_ctxt_warning_list element.warnings, wr,
@@ -3370,7 +3377,7 @@ conventions.
 . [[.maui-chunk-header]] (CSS class)
 . [[.maui-chunk-xref]] (CSS class)
 
-  when NT_CHUNK, :diverted_chunk then
+  when NT_CHUNK, NT_DIVERTED_CHUNK then
     @port.print "<div class='maui-chunk"
     @port.print " maui-initial-chunk" if element.initial
     @port.print " maui-final-chunk" if element.final

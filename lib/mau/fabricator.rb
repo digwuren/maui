@@ -121,7 +121,7 @@ module Fabricator
         chunks_by_name: {},
             # canonical_name => OpenStruct
             #   root_type: String,
-            #   chunks: list of NT_CHUNK/:diverted_chunk records,
+            #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
             #   headers: list of NT_CHUNK/:divert records,
 
         roots: [], # list of canonical names
@@ -176,7 +176,7 @@ module Fabricator
         clear_diversion
       else
         if element.type == :block and @curdivert then
-          element.type = :diverted_chunk
+          element.type = NT_DIVERTED_CHUNK
           element.name = @curdivert.name
           element.divert = @curdivert
 
@@ -264,8 +264,9 @@ module Fabricator
         else
           @list_stack = nil
           @cursec.elements.push element
-          if [NT_CHUNK, :diverted_chunk].
-              include?(element.type) then
+          # FIXME: take the type check out once [[element.type]] is
+          # always an [[Integer]]
+          if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
             element.section_number = @cursec.section_number
             element.content = []
             element.lines.each_with_index do
@@ -327,7 +328,7 @@ module Fabricator
             end
           end
 
-          if [NT_CHUNK, :diverted_chunk, :divert].include?(
+          if [NT_CHUNK, NT_DIVERTED_CHUNK, :divert].include?(
               element.type) then
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
@@ -372,7 +373,7 @@ module Fabricator
                 # present.
                 @curdivert.index_ref = index_ref
 
-              when :diverted_chunk then
+              when NT_DIVERTED_CHUNK then
                 prev_range = @curdivert.index_ref[0]
                 @curdivert.index_ref[0] = prev_range.begin ..
                     @cursec.section_number
@@ -381,8 +382,9 @@ module Fabricator
             end
 
             # Do we have a chunk body?
-            if [NT_CHUNK, :diverted_chunk].include?(
-                element.type) then
+            # FIXME: take the type check out once [[element.type]] is
+            # always an [[Integer]]
+            if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
               cbn_record.chunks.push element
               element.content.each do |node|
                 next unless node.type == :use
@@ -395,8 +397,9 @@ module Fabricator
           # If a chunk body is followed by a narrative-type
           # element, we'll want to generate an automatic section
           # break.
-          if [NT_CHUNK, :diverted_chunk].
-              include?(element.type) then
+          # FIXME: take the type check out once [[element.type]] is
+          # always an [[Integer]]
+          if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
             @in_code = true
           end
         end
@@ -619,12 +622,13 @@ module Fabricator
     attr_reader :section_count
   end
 
-  NTF_HAS_HEADER  = 0x0100
-  NTF_HAS_CODE    = 0x0200
-  NT_ITEM         = 0x0001
-  NT_RUBRIC       = 0x0002
-  NT_LIST         = 0x0003
-  NT_CHUNK        = 0x0004 | NTF_HAS_HEADER | NTF_HAS_CODE
+  NTF_HAS_HEADER     = 0x0100
+  NTF_HAS_CODE       = 0x0200
+  NT_ITEM            = 0x0001
+  NT_RUBRIC          = 0x0002
+  NT_LIST            = 0x0003
+  NT_CHUNK           = 0x0004 | NTF_HAS_HEADER | NTF_HAS_CODE
+  NT_DIVERTED_CHUNK  = 0x0005 | NTF_HAS_CODE
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1192,7 +1196,7 @@ module Fabricator
         @port.puts
         html_warning_list element.warnings, inline: true
 
-      when NT_CHUNK, :diverted_chunk then
+      when NT_CHUNK, NT_DIVERTED_CHUNK then
         @port.print "<div class='maui-chunk"
         @port.print " maui-initial-chunk" if element.initial
         @port.print " maui-final-chunk" if element.final
@@ -2034,14 +2038,16 @@ class << Fabricator
       wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
-    when :divert, NT_CHUNK, :diverted_chunk then
+    when :divert, NT_CHUNK, NT_DIVERTED_CHUNK then
       if [:divert, NT_CHUNK].include? element.type then
         weave_ctxt_chunk_header element, wr,
             symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
-      if [NT_CHUNK, :diverted_chunk].include? element.type then
+      # FIXME: take the type check out once [[element.type]] is
+      # always an [[Integer]]
+      if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
         wr.styled :chunk_frame do
           wr.add_pseudographics element.initial ?
             :initial_chunk_margin :
