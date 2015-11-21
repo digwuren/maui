@@ -3759,6 +3759,19 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print "</%s>" % html_tag
 
 
+. [[MARKUP2HTML]]
+
+<< in [[Fabricator]] >>:
+  MARKUP2HTML = { # node type tag => HTML tag
+    MU_MONOSPACE => 'code',
+    MU_BOLD => 'b',
+    MU_ITALIC => 'i',
+    MU_UNDERSCORE => 'u',
+  }
+
+
+<< [[case]] clauses of [[htmlify]] >>:
+
 . [[.maui-chunk-mention]] (CSS class)
 
   when MU_MENTION_CHUNK then
@@ -3783,15 +3796,6 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print ">"
     htmlify node.content
     @port.print "</a>"
-
-
-<< in [[Fabricator]] >>:
-  MARKUP2HTML = { # node type tag => HTML tag
-    MU_MONOSPACE => 'code',
-    MU_BOLD => 'b',
-    MU_ITALIC => 'i',
-    MU_UNDERSCORE => 'u',
-  }
 
 
 * XML escaping.
