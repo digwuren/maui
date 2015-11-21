@@ -1600,11 +1600,10 @@ construct a simple link node.
     target = ps[stack[j].start_offset + 1 ... ps.pointer]
     if link_like? target then
       stack[j .. -1] = []
-      stack.last.content.push OpenStruct.new(
-          type: NT_LINK,
+      stack.last.content.node NT_LINK,
           implicit_face: true,
           target: target,
-          content: Fabricator.markup.plain(target))
+          content: Fabricator.markup.plain(target)
     else
       # False alarm: this is not a link, after all.
       stack.cancel_link
