@@ -636,6 +636,7 @@ module Fabricator
   NT_PARAGRAPH       = 0x000A
   NT_LINK            = 0x000B
   NT_PLAIN           = 0x000C
+  NT_SPACE           = 0x000D
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -756,12 +757,12 @@ module Fabricator
     end
 
     def space data = nil
-      return node(:space, data: data)
+      return node(NT_SPACE, data: data)
     end
 
     def words s
       s.split(/(\s+)/, -1).each_with_index do |part, i|
-        node(i.even? ? NT_PLAIN : :space, data: part)
+        node(i.even? ? NT_PLAIN : NT_SPACE, data: part)
       end
       return self
     end
@@ -930,7 +931,7 @@ module Fabricator
       case node.type
       when NT_PLAIN then
         add_plain node.data
-      when :space then
+      when NT_SPACE then
         add_space node.data || ' '
       when :nbsp then
         add_plain ' '
@@ -1442,7 +1443,7 @@ module Fabricator
         when NT_PLAIN then
           @port.print node.data.to_xml
 
-        when :space then
+        when NT_SPACE then
           @port.print((node.data || ' ').to_xml)
 
         when :nbsp then
@@ -1568,7 +1569,7 @@ class << Fabricator
         ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
             each_with_index do |part, i|
           monospaced_content.push OpenStruct.new(
-              type: i.even? ? NT_PLAIN : :space,
+              type: i.even? ? NT_PLAIN : NT_SPACE,
               data: part
           )
         end
@@ -1682,7 +1683,7 @@ class << Fabricator
         while ps.at? ' ' do
           ps.pointer += 1
         end
-        stack.last.content.push OpenStruct.new(type: :space)
+        stack.last.content.push OpenStruct.new(type: NT_SPACE)
 
       elsif ps.at? "\u00A0" then
         stack.last.content.push OpenStruct.new(type: :nbsp)
