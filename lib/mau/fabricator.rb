@@ -632,6 +632,7 @@ module Fabricator
   NT_BOLD            = 0x0006
   NT_ITALIC          = 0x0007
   NT_UNDERSCORE      = 0x0008
+  NT_MONOSPACE       = 0x0009
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -927,9 +928,9 @@ module Fabricator
         add_space node.data || ' '
       when :nbsp then
         add_plain ' '
-      when :monospace, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+      when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
         styled({
-          :monospace => :monospace,
+          NT_MONOSPACE => :monospace,
           NT_BOLD => :bold,
           NT_ITALIC => :italic,
           NT_UNDERSCORE => :underscore,
@@ -1440,7 +1441,7 @@ module Fabricator
         when :nbsp then
           @port.print '&nbsp;'
 
-        when :monospace, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+        when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
           htmlify node.content
@@ -1477,7 +1478,7 @@ module Fabricator
   end
 
   MARKUP2HTML = { # node type tag => HTML tag
-    :monospace => 'code',
+    NT_MONOSPACE => 'code',
     NT_BOLD => 'b',
     NT_ITALIC => 'i',
     NT_UNDERSCORE => 'u',
@@ -1564,7 +1565,7 @@ class << Fabricator
           )
         end
         stack.last.content.push OpenStruct.new(
-            type: :monospace,
+            type: NT_MONOSPACE,
             content: monospaced_content)
         ps.pointer = end_offset + 2
 
