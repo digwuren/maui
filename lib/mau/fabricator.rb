@@ -2238,18 +2238,16 @@ class << Fabricator
   end
 
   def commatise_oxfordly items
-    result = []
+    result = markup
     items.each_with_index do |item, i|
       unless i.zero? then
         unless items.length == 2 then
-          result.push OpenStruct.new(:type => NT_PLAIN,
-              :data => ',')
+          result.plain ','
         end
-        result.push OpenStruct.new(:type => :space)
+        result.space
         if i == items.length - 1 then
-          result.push OpenStruct.new(:type => NT_PLAIN,
-              :data => 'and')
-          result.push OpenStruct.new(:type => :space)
+          result.plain 'and'
+          result.space
         end
       end
       result.push *item

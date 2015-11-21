@@ -2672,25 +2672,24 @@ which in its regard, are just chunk headers.
 
 This contraption generates lists with Oxford/Harvard-style
 commas.  The input is a list of lists of markup nodes.  The
-output is a single list of markup nodes, with appropriate
-joiners interspersed.
+output is a single list (to be specific, a
+[[Markup_Constructor]], which inherits from [[Array]]) of markup
+nodes, with appropriate joiners interspersed.
 
 . [[commatise_oxfordly]]
 
 << Other methods >>:
   def commatise_oxfordly items
-    result = []
+    result = markup
     items.each_with_index do |item, i|
       unless i.zero? then
         unless items.length == 2 then
-          result.push OpenStruct.new(:type => NT_PLAIN,
-              :data => ',')
+          result.plain ','
         end
-        result.push OpenStruct.new(:type => :space)
+        result.space
         if i == items.length - 1 then
-          result.push OpenStruct.new(:type => NT_PLAIN,
-              :data => 'and')
-          result.push OpenStruct.new(:type => :space)
+          result.plain 'and'
+          result.space
         end
       end
       result.push *item
