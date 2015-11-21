@@ -830,8 +830,9 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
   if element.type & OLF_FUNCTIONAL != 0 then
     element.section_number = @cursec.section_number
 
-    cbn_record = @output.chunks_by_name[element.name] ||=
-        OpenStruct.new(chunks: [], headers: [])
+    cbn_record =
+        @output.chunks_by_name[element.name] ||=
+            OpenStruct.new(chunks: [], headers: [])
 
     if element.type & OLF_HAS_HEADER != 0 then
       cbn_record.headers.push element
