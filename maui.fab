@@ -92,7 +92,7 @@ blocks.
 << Parse indented block >>:
   body_location = vp.location_ahead
   element = vp.get_indented_lines_with_skip
-  element.type = NT_BLOCK
+  element.type = OL_BLOCK
   element.body_loc = element_location
 
 
@@ -127,7 +127,7 @@ blocks.
     lines.push vp.get_line[margin.length .. -1]
   end
   element = OpenStruct.new(
-    type: NT_ITEM,
+    type: OL_ITEM,
     lines: lines,
     content: parse_markup(lines.map(&:strip).join ' '),
     indent: margin.length,
@@ -146,7 +146,7 @@ it's followed by an indented block, it's a chunk.
     name = canonicalise $~['raw-name']
     vp.get_line
     element = OpenStruct.new(
-      type: NT_DIVERT,
+      type: OL_DIVERT,
       root_type: $~['root-type'],
       name: name,
       header_loc: element_location)
@@ -154,7 +154,7 @@ it's followed by an indented block, it's a chunk.
     body_location = vp.location_ahead
     body = vp.get_indented_lines_with_skip
     if body then
-      element.type = NT_CHUNK
+      element.type = OL_CHUNK
       element.lines = body.lines
       element.indent = body.indent
       element.body_loc = body_location
@@ -174,14 +174,14 @@ Next, let's consider top-level bullets.
       lines.push vp.get_line
     end
     element = OpenStruct.new(
-      type: NT_ITEM,
+      type: OL_ITEM,
       lines: lines,
       content: parse_markup(lines.map(&:strip).join ' '),
       indent: 0,
       loc: element_location)
 
 
-. [[NT_INDEX_ANCHOR]]
+. [[OL_INDEX_ANCHOR]]
 
 A line starting with a period and whitespace is an index
 reference anchor.  This is a line-level, not paragraph-level,
@@ -193,7 +193,7 @@ short.
   when /^\.\s+/ then
     name = $'
     element = OpenStruct.new(
-        type: NT_INDEX_ANCHOR,
+        type: OL_INDEX_ANCHOR,
         name: name)
     vp.get_line
 
@@ -231,13 +231,13 @@ an ordinary paragraph, a title, or a rubric.
   when /^\*\s+/ then
     lines[0] = $'
     element = OpenStruct.new(
-        type: NT_RUBRIC,
+        type: OL_RUBRIC,
         loc: element_location)
 
 
   else
     element = OpenStruct.new(
-        type: NT_PARAGRAPH,
+        type: OL_PARAGRAPH,
         loc: element_location)
 
 
@@ -426,7 +426,7 @@ further, lower-level, structure.
 
 
 In order to simplify generating the table of content of the
-fabric, we'll furthermore gather the [[title]] and [[NT_RUBRIC]]
+fabric, we'll furthermore gather the [[title]] and [[OL_RUBRIC]]
 nodes into the integrator's output under the key of [[toc]].
 It's a flat list; however, [[title]] nodes will define a
 hierarchical structure by their [[level]] fields.
@@ -442,8 +442,8 @@ output structure under the key of [[chunks_by_name]].  (See also
   chunks_by_name: {},
       # canonical_name => OpenStruct
       #   root_type: String,
-      #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
-      #   headers: list of NT_CHUNK/NT_DIVERT records,
+      #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes,
+      #   headers: list of OL_CHUNK/OL_DIVERT records,
 
 
 Also, we'll collect the (canonicalised) names of the root
@@ -551,16 +551,16 @@ addition to [[presentation]] collected into [[toc]].
 
 
 << Integrate the sub-[[section]] element >>:
-  << [[NT_BLOCK]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>
+  << [[OL_BLOCK]] and diverting?  Upgrade to [[OL_DIVERTED_CHUNK]] >>
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
-  << [[NT_RUBRIC]]?  Link to [[toc]] >>
-  << [[NT_DIVERT]]?  Apply it >>
+  << [[OL_RUBRIC]]?  Link to [[toc]] >>
+  << [[OL_DIVERT]]?  Apply it >>
 
-  if element.type == NT_ITEM then
+  if element.type == OL_ITEM then
     << Integrate the list item >>
-  elsif element.type == NT_INDEX_ANCHOR then
+  elsif element.type == OL_INDEX_ANCHOR then
     << Add [[manual]] index entry >>
   else
     @list_stack = nil
@@ -571,7 +571,7 @@ addition to [[presentation]] collected into [[toc]].
     # we'll want to generate an automatic section break.  To
     # that end, we'll set the [[@in_code]] flag when we
     # encounter a node with a chunk body.
-    if element.type & NTF_HAS_CODE != 0 then
+    if element.type & OLF_HAS_CODE != 0 then
       @in_code = true
     end
   end
@@ -582,7 +582,7 @@ just shown in the woven output, or a headerless code chunk,
 which needs to be tangled, also.  Whether it's one or the other
 depends on whether a diversion is in effect; a piece of context
 that the parser does not track.  Accordingly, we'll upgrade
-[[NT_BLOCK]] nodes to [[NT_DIVERTED_CHUNK]] nodes in the
+[[OL_BLOCK]] nodes to [[OL_DIVERTED_CHUNK]] nodes in the
 integrator when a diversion is in effect.
 
 This is also a convenient place to keep track of the chains of
@@ -591,9 +591,9 @@ the current divert was not used before, and we'll also point
 [[@last_divertee]] to the diverted block so that we can set the
 [[final]] flag on it later.
 
-<< [[NT_BLOCK]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>:
-  if element.type == NT_BLOCK and @curdivert then
-    element.type = NT_DIVERTED_CHUNK
+<< [[OL_BLOCK]] and diverting?  Upgrade to [[OL_DIVERTED_CHUNK]] >>:
+  if element.type == OL_BLOCK and @curdivert then
+    element.type = OL_DIVERTED_CHUNK
     element.name = @curdivert.name
     element.divert = @curdivert
 
@@ -603,7 +603,7 @@ the current divert was not used before, and we'll also point
 
 
 << New chunk header?  Clear diversion >>:
-  if element.type & NTF_HAS_HEADER != 0 then
+  if element.type & OLF_HAS_HEADER != 0 then
     clear_diversion
   end
 
@@ -614,7 +614,7 @@ difference being that multiple chunks can appear in a single
 section.  A transition from code to narrative thus causes a
 section break.
 
-Also, a [[NT_RUBRIC]] node causes a section break.
+Also, a [[OL_RUBRIC]] node causes a section break.
 
 In both cases, we'll warn the user if there wasn't an explicit
 section break in the form of two adjacent blank lines.
@@ -622,8 +622,8 @@ section break in the form of two adjacent blank lines.
 . "silent section break" (warning)
 
 << ? Break section and warn >>:
-  if (@cursec and element.type == NT_RUBRIC) or
-      (@in_code and element.type & NTF_NARRATIVE != 0) then
+  if (@cursec and element.type == OL_RUBRIC) or
+      (@in_code and element.type & OLF_NARRATIVE != 0) then
     (@cursec.warnings ||= []).push \
         warn(element.loc,
             "silent section break",
@@ -645,15 +645,15 @@ section break in the form of two adjacent blank lines.
   end
 
 
-<< [[NT_RUBRIC]]?  Link to [[toc]] >>:
-  if element.type == NT_RUBRIC then
+<< [[OL_RUBRIC]]?  Link to [[toc]] >>:
+  if element.type == OL_RUBRIC then
     element.section_number = @cursec.section_number
     @output.toc.push element
   end
 
 
-<< [[NT_DIVERT]]?  Apply it >>:
-  if element.type == NT_DIVERT then
+<< [[OL_DIVERT]]?  Apply it >>:
+  if element.type == OL_DIVERT then
     @curdivert = element
     raise 'assertion failed' unless @last_divertee.nil?
   end
@@ -664,9 +664,9 @@ section break in the form of two adjacent blank lines.
   unless @list_stack then
     raise 'assertion failed' unless element.indent == 0
 
-    # Create a new [[NT_LIST]] node.
+    # Create a new [[OL_LIST]] node.
     new_list = OpenStruct.new(
-      type: NT_LIST,
+      type: OL_LIST,
       items: [],
       indent: element.indent)
     @cursec.elements.push new_list
@@ -706,7 +706,7 @@ section break in the form of two adjacent blank lines.
       raise 'assertion failed'
     end
     new_list = OpenStruct.new(
-      type: NT_LIST,
+      type: OL_LIST,
       items: [],
       indent: element.indent)
     @list_stack.last.items.last.sublist = new_list
@@ -715,7 +715,7 @@ section break in the form of two adjacent blank lines.
 
 
 Integrating an index anchor only involves adding an entry to the
-index; the [[NT_INDEX_ANCHOR]] node won't be appended into the
+index; the [[OL_INDEX_ANCHOR]] node won't be appended into the
 body of the containing [[section]].
 
 << Add [[manual]] index entry >>:
@@ -819,23 +819,23 @@ capturing regex.
 
 
 Chunks and diverts we'll be linking under [[chunk_by_name]].
-We'll keep separate track of chunk bodies ([[NT_CHUNK]] or
-[[NT_DIVERTED_CHUNK]]), linked under
-[[chunks_by_name[...].chunks]], and chunk headers ([[NT_CHUNK]]
-or [[NT_DIVERT]]), linked under [[chunks_by_name[...].headers]].
+We'll keep separate track of chunk bodies ([[OL_CHUNK]] or
+[[OL_DIVERTED_CHUNK]]), linked under
+[[chunks_by_name[...].chunks]], and chunk headers ([[OL_CHUNK]]
+or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
 << Chunk or divert?  Parse and cross-reference >>:
-  if element.type & NTF_HAS_CODE != 0 then
+  if element.type & OLF_HAS_CODE != 0 then
     element.section_number = @cursec.section_number
     << Parse the chunk's content >>
   end
 
-  if element.type & NTF_FUNCTIONAL != 0 then
+  if element.type & OLF_FUNCTIONAL != 0 then
     cbn_record =
         @output.chunks_by_name[element.name] ||=
             OpenStruct.new(chunks: [], headers: [])
 
-    if element.type & NTF_HAS_HEADER != 0 then
+    if element.type & OLF_HAS_HEADER != 0 then
       cbn_record.headers.push element
       << Root?  Check the filename for sanity >>
       << Update [[cbn_record.root_type]] from [[element]] >>
@@ -848,7 +848,7 @@ or [[NT_DIVERT]]), linked under [[chunks_by_name[...].headers]].
     end
 
     # Do we have a chunk body?
-    if element.type & NTF_HAS_CODE != 0 then
+    if element.type & OLF_HAS_CODE != 0 then
       cbn_record.chunks.push element
       << Create [[transclusion]] index entries >>
     end
@@ -905,7 +905,7 @@ entry.
 
 . [[:definition]] (index reference type)
 
-  when NT_CHUNK then
+  when OL_CHUNK then
     chunk_index_record(element.name).refs.push [
         @cursec.section_number, :definition]
 
@@ -917,7 +917,7 @@ endpoints.
 
 . [[:definition]] (index reference type)
 
-  when NT_DIVERT then
+  when OL_DIVERT then
     index_ref = [@cursec.section_number ..
         @cursec.section_number, :definition]
     chunk_index_record(element.name).refs.push(
@@ -934,7 +934,7 @@ For a diverted entry, we won't create a new index reference
 entry but replace the previously existing one to also include
 the new section.
 
-  when NT_DIVERTED_CHUNK then
+  when OL_DIVERTED_CHUNK then
     prev_range = @curdivert.index_ref[0]
     @curdivert.index_ref[0] = prev_range.begin ..
         @cursec.section_number
@@ -959,7 +959,7 @@ the new section.
         Fabricator.canonicalise(name) +
         " >>"
     markup = [OpenStruct.new(
-        type: NT_MENTION_CHUNK,
+        type: MU_MENTION_CHUNK,
         name: name)]
     return _index_record identifier, markup
   end
@@ -1075,7 +1075,7 @@ it needs to ask the integrator.
     @output.presentation.each do |node|
       next unless node.type == :section
       node.elements.each do |element|
-        next unless element.type == NT_CHUNK
+        next unless element.type == OL_CHUNK
         if element.lines.length > limit then
           if element.lines.length > limit * 2 then
             assessment, factor = "very long chunk", 2
@@ -1196,77 +1196,77 @@ bit patterns to them.
   space, and iterating over the result using
   [[each_with_index]].  The markup nodes thus generated have a
   natural checkerboard pattern: the zeroth one necessarily has
-  type [[NT_PLAIN]], the next one [[NT_SPACE]], then again
-  [[NT_PLAIN]], and so on.  By choosing [[NT_PLAIN]] to be zero
-  and [[NT_SPACE]] to be one, we can reduce the index of a piece
+  type [[MU_PLAIN]], the next one [[MU_SPACE]], then again
+  [[MU_PLAIN]], and so on.  By choosing [[MU_PLAIN]] to be zero
+  and [[MU_SPACE]] to be one, we can reduce the index of a piece
   to its markup node type value with only one arithmetic
   operation -- [[i & 1]], and won't have to use branching of any
   sort.
 
-- We reserve two bits for the [[NTF_HAS_HEADER]] and
-  [[NTF_HAS_CODE]] flags.
+- We reserve two bits for the [[OLF_HAS_HEADER]] and
+  [[OLF_HAS_CODE]] flags.
 
-- We reserve one bit for the [[NTF_NARRATIVE]] flag.  When the
+- We reserve one bit for the [[OLF_NARRATIVE]] flag.  When the
   parser (front-end) sees a node with this flag set, it'll force
   a section break and warn.  There's no strict need to attach
-  this flag to [[NT_LIST]], because it's checked by the parser
+  this flag to [[OL_LIST]], because it's checked by the parser
   front-end which sees only items, not lists (as list containers
   are built from separate items by the parser's back-end,
-  [[Integrator]]), nor to [[NT_RUBRIC]], because a rubric
+  [[Integrator]]), nor to [[OL_RUBRIC]], because a rubric
   element starts a new section explicitly, but we'll do it
   anyway in order to slightly simplify the flag's conceptual
   semantics: it marks major narrative nodes.
 
-. [[NTF_HAS_HEADER]]
-. [[NTF_HAS_CODE]]
-. [[NTF_FUNCTIONAL]]
-. [[NT_PLAIN]]
-. [[NT_SPACE]]
-. [[NT_NBSP]]
-. [[NT_BOLD]]
-. [[NT_ITALIC]]
-. [[NT_UNDERSCORE]]
-. [[NT_MONOSPACE]]
-. [[NT_LINK]]
-. [[NT_MENTION_CHUNK]]
-. [[NT_RUBRIC]]
-. [[NT_ITEM]]
-. [[NT_LIST]]
-. [[NT_PARAGRAPH]]
-. [[NT_BLOCK]]
-. [[NT_DIVERT]]
-. [[NT_DIVERTED_CHUNK]]
-. [[NT_CHUNK]]
-. [[NT_INDEX_ANCHOR]]
+. [[OLF_HAS_HEADER]]
+. [[OLF_HAS_CODE]]
+. [[OLF_FUNCTIONAL]]
+. [[MU_PLAIN]]
+. [[MU_SPACE]]
+. [[MU_NBSP]]
+. [[MU_BOLD]]
+. [[MU_ITALIC]]
+. [[MU_UNDERSCORE]]
+. [[MU_MONOSPACE]]
+. [[MU_LINK]]
+. [[MU_MENTION_CHUNK]]
+. [[OL_RUBRIC]]
+. [[OL_ITEM]]
+. [[OL_LIST]]
+. [[OL_PARAGRAPH]]
+. [[OL_BLOCK]]
+. [[OL_DIVERT]]
+. [[OL_DIVERTED_CHUNK]]
+. [[OL_CHUNK]]
+. [[OL_INDEX_ANCHOR]]
 
 << in [[Fabricator]] >>:
   # Flags
-  NTF_HAS_HEADER     = 0x0002
-  NTF_HAS_CODE       = 0x0004
-  NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
-  NTF_NARRATIVE      = 0x0008
+  OLF_HAS_HEADER     = 0x0002
+  OLF_HAS_CODE       = 0x0004
+  OLF_FUNCTIONAL     = OLF_HAS_HEADER | OLF_HAS_CODE
+  OLF_NARRATIVE      = 0x0008
 
-  # Inline nodes
-  NT_PLAIN           = 0x0000
-  NT_SPACE           = 0x0001
-  NT_NBSP            = 0x0010
-  NT_BOLD            = 0x0020
-  NT_ITALIC          = 0x0030
-  NT_UNDERSCORE      = 0x0040
-  NT_MONOSPACE       = 0x0050
-  NT_LINK            = 0x0060
-  NT_MENTION_CHUNK   = 0x0070
+  # Markup nodes
+  MU_PLAIN           = 0x0000
+  MU_SPACE           = 0x0001
+  MU_NBSP            = 0x0010
+  MU_BOLD            = 0x0020
+  MU_ITALIC          = 0x0030
+  MU_UNDERSCORE      = 0x0040
+  MU_MONOSPACE       = 0x0050
+  MU_LINK            = 0x0060
+  MU_MENTION_CHUNK   = 0x0070
 
-  # Major nodes
-  NT_RUBRIC          = 0x0080 | NTF_NARRATIVE
-  NT_ITEM            = 0x0090 | NTF_NARRATIVE
-  NT_LIST            = 0x00A0 | NTF_NARRATIVE
-  NT_PARAGRAPH       = 0x00B0 | NTF_NARRATIVE
-  NT_BLOCK           = 0x00C0 | NTF_NARRATIVE
-  NT_DIVERT          = 0x00D0 | NTF_HAS_HEADER
-  NT_DIVERTED_CHUNK  = 0x00D0 | NTF_HAS_CODE
-  NT_CHUNK           = 0x00D0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_INDEX_ANCHOR    = 0x00E0
+  # Outline nodes
+  OL_RUBRIC          = 0x0080 | OLF_NARRATIVE
+  OL_ITEM            = 0x0090 | OLF_NARRATIVE
+  OL_LIST            = 0x00A0 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x00B0 | OLF_NARRATIVE
+  OL_BLOCK           = 0x00C0 | OLF_NARRATIVE
+  OL_DIVERT          = 0x00D0 | OLF_HAS_HEADER
+  OL_DIVERTED_CHUNK  = 0x00D0 | OLF_HAS_CODE
+  OL_CHUNK           = 0x00D0 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x00E0
 
 
 == Horizontal parsing
@@ -1442,7 +1442,7 @@ lets the user to use multiple terminal closing brackets in a
 natural manner, as in [[[[a[b[i]]]]]].
 
 When parsing the monospaced string, we'll split it into
-[[NT_PLAIN]] and [[NT_SPACE]] nodes.  This is one of the rare
+[[MU_PLAIN]] and [[MU_SPACE]] nodes.  This is one of the rare
 cases in Maui's notation when whitespace needs to be recorded,
 for we'll want to retain sequences of multiple whitespaces in
 monospaced text.
@@ -1453,7 +1453,7 @@ monospaced text.
     while ps[end_offset + 2] == ?] do
       end_offset += 1
     end
-    stack.last.content.node NT_MONOSPACE,
+    stack.last.content.node MU_MONOSPACE,
         content: Fabricator.markup.
             words(ps[ps.pointer + 2 ... end_offset].strip)
     ps.pointer = end_offset + 2
@@ -1526,19 +1526,19 @@ The parser's rules are similarly straightforward, too.
 
   elsif stack.last.mode & Fabricator::MF::END_BOLD != 0 and
       ps.biu_terminator? ?* then
-    stack.ennode NT_BOLD, Fabricator::MF::END_BOLD
+    stack.ennode MU_BOLD, Fabricator::MF::END_BOLD
     ps.pointer += 1
 
   elsif stack.last.mode & Fabricator::MF::END_ITALIC \
           != 0 and
       ps.biu_terminator? ?/ then
-    stack.ennode NT_ITALIC, Fabricator::MF::END_ITALIC
+    stack.ennode MU_ITALIC, Fabricator::MF::END_ITALIC
     ps.pointer += 1
 
   elsif stack.last.mode & Fabricator::MF::END_UNDERSCORE \
           != 0 and
       ps.biu_terminator? ?_ then
-    stack.ennode NT_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
+    stack.ennode MU_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
     ps.pointer += 1
 
 
@@ -1573,7 +1573,7 @@ terminated by [[>]], and wrap up the link node.
       end_offset = s.index(?>, ps.pointer + 1) then
     target = ps[ps.pointer + 1 ... end_offset]
     if link_like? target then
-      stack.ennode NT_LINK,
+      stack.ennode MU_LINK,
           Fabricator::MF::END_LINK,
           target: target
       ps.pointer = end_offset + 1
@@ -1600,7 +1600,7 @@ construct a simple link node.
     target = ps[stack[j].start_offset + 1 ... ps.pointer]
     if link_like? target then
       stack[j .. -1] = []
-      stack.last.content.node NT_LINK,
+      stack.last.content.node MU_LINK,
           implicit_face: true,
           target: target,
           content: Fabricator.markup.plain(target)
@@ -1666,12 +1666,12 @@ parse it as a kind of special node.
 
 
 We'll consider the [[U+00A0 NO-BREAK SPACE]] a form of markup.
-Each such character will be a node of the type [[NT_NBSP]], with
+Each such character will be a node of the type [[MU_NBSP]], with
 no attributes.
 
 << Parse a bit of markup >>:
   elsif ps.at? "\u00A0" then
-    stack.last.content.node NT_NBSP
+    stack.last.content.node MU_NBSP
     ps.pointer += 1
 
 
@@ -1794,14 +1794,14 @@ Let's first write an abstract appender and specialise it later.
 . [[plain]] (method of [[Markup_Constructor]])
 
   def plain data
-    return node(NT_PLAIN, data: data)
+    return node(MU_PLAIN, data: data)
   end
 
 
 . [[space]] (method of [[Markup_Constructor]])
 
   def space data = nil
-    return node(NT_SPACE, data: data)
+    return node(MU_SPACE, data: data)
   end
 
 
@@ -1815,7 +1815,7 @@ word-wrapping the result.
 
   def words s
     s.split(/(\s+)/, -1).each_with_index do |part, i|
-      # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
+      # Note that 0 is [[MU_PLAIN]] and 1 is [[MU_SPACE]].
       node(i & 1, data: part)
     end
     return self
@@ -1848,9 +1848,9 @@ During tangling, we'll collect each chunk's tangling locations.
 (Note that it's possible that one chunk will be tangled into
 multiple places).  We'll store this data into the chunk as the
 [[tangle_locs]] list.  We'll also collect tangling locations of
-chunk chains -- sequences of [[NT_DIVERTED_CHUNK]] elements
+chunk chains -- sequences of [[OL_DIVERTED_CHUNK]] elements
 diverted by the same divert.  We'll store this data into the
-[[NT_DIVERT]] node as the [[chain_tangle_locs]] list.
+[[OL_DIVERT]] node as the [[chain_tangle_locs]] list.
 
 . [[tangle_chunks]]
 
@@ -2366,7 +2366,7 @@ to an empty list.
   # pathological case, to be sure, but it can happen, so
   # we'll need to check.
   rubricated = !element.elements.empty? &&
-      element.elements[0].type == NT_RUBRIC
+      element.elements[0].type == OL_RUBRIC
   # If we're encountering the first rubric/title, output
   # the table of contents.
   if rubricated and !toc_generated then
@@ -2406,7 +2406,7 @@ plain ones.
   starter = element.elements[start_index]
   if starter then
     case starter.type
-    when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
+    when OL_PARAGRAPH, OL_DIVERT, OL_CHUNK then
       wr.add_space
       weave_ctxt_section_part starter, fabric, wr,
           symbolism: symbolism
@@ -2462,19 +2462,19 @@ plain ones.
 
 << [[weave_ctxt_section_part]] rules >>:
 
-  when NT_PARAGRAPH then
+  when OL_PARAGRAPH then
     wr.add_nodes element.content, symbolism: symbolism
     wr.linebreak
 
 
-  when NT_DIVERT, NT_CHUNK, NT_DIVERTED_CHUNK then
-    if element.type & NTF_HAS_HEADER != 0 then
+  when OL_DIVERT, OL_CHUNK, OL_DIVERTED_CHUNK then
+    if element.type & OLF_HAS_HEADER != 0 then
       weave_ctxt_chunk_header element, wr,
           symbolism: symbolism
       weave_ctxt_warning_list element.warnings, wr,
           inline: true
     end
-    if element.type & NTF_HAS_CODE != 0 then
+    if element.type & OLF_HAS_CODE != 0 then
       << Weave the chunk's lines (ctxt) >>
       << ? Output the chain's finality marker >>
       weave_ctxt_warning_list element.warnings, wr,
@@ -2490,12 +2490,12 @@ plain ones.
     end
 
 
-  when NT_LIST then
+  when OL_LIST then
     _weave_ctxt_list element.items, wr,
         symbolism: symbolism
 
 
-  when NT_BLOCK then
+  when OL_BLOCK then
     weave_ctxt_block element, wr
 
 
@@ -2642,10 +2642,10 @@ which in its regard, are just chunk headers.
     xref.words "transcluded by "
     xref.push *commatise_oxfordly(
         transcluders.map{|ref| markup.
-            node(NT_MENTION_CHUNK, name: ref.name).
+            node(MU_MENTION_CHUNK, name: ref.name).
             space.
             plain("(").
-            node(NT_LINK,
+            node(MU_LINK,
               content: markup.
                   plain(symbolism.section_prefix +
                       ref.section_number.to_s),
@@ -2785,7 +2785,7 @@ nodes, with appropriate joiners interspersed.
       wr.add_nodes entry.content, symbolism: symbolism
     end
 
-  when NT_RUBRIC then
+  when OL_RUBRIC then
     wr.add_plain '  ' * rubric_level
     wr.add_plain '%s%i.' % [
       symbolism.section_prefix,
@@ -2970,29 +2970,29 @@ Process a node, as generated by [[parse_markup]].
   def add_node node,
       symbolism: Fabricator.default_symbolism
     case node.type
-    when NT_PLAIN then
+    when MU_PLAIN then
       add_plain node.data
-    when NT_SPACE then
+    when MU_SPACE then
       add_space node.data || ' '
-    when NT_NBSP then
+    when MU_NBSP then
       add_plain ' '
-    when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+    when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
       # FIXME: this table should be a constant
       styled({
-        NT_MONOSPACE => :monospace,
-        NT_BOLD => :bold,
-        NT_ITALIC => :italic,
-        NT_UNDERSCORE => :underscore,
+        MU_MONOSPACE => :monospace,
+        MU_BOLD => :bold,
+        MU_ITALIC => :italic,
+        MU_UNDERSCORE => :underscore,
       }[node.type]) do
         add_nodes node.content, symbolism: symbolism
       end
-    when NT_MENTION_CHUNK then
+    when MU_MENTION_CHUNK then
       add_plain symbolism.chunk_name_delim.begin
       add_nodes Fabricator.parse_markup(node.name,
               Fabricator::MF::LINK),
           symbolism: symbolism
       add_plain symbolism.chunk_name_delim.end
-    when NT_LINK then
+    when MU_LINK then
       if node.implicit_face then
         styled :link do
           add_plain '<'
@@ -3313,7 +3313,7 @@ conventions.
 
 << Weave the [[section]] (HTML) >>:
   rubricated = !element.elements.empty? &&
-      element.elements[0].type == NT_RUBRIC
+      element.elements[0].type == OL_RUBRIC
   # If we're encountering the first rubric/title, output
   # the table of contents.
   if rubricated and !toc_generated then
@@ -3341,11 +3341,11 @@ conventions.
   warnings = nil
   if subelement then
     case subelement.type
-      when NT_PARAGRAPH then
+      when OL_PARAGRAPH then
         @port.print " "
         htmlify subelement.content
         start_index += 1
-      when NT_DIVERT then
+      when OL_DIVERT then
         @port.print " "
         html_chunk_header subelement, 'maui-divert',
             tag: 'span'
@@ -3392,17 +3392,17 @@ conventions.
 
 << [[html_section_part]] rules >>:
 
-  when NT_PARAGRAPH then
+  when OL_PARAGRAPH then
     @port.print "<p>"
     htmlify element.content
     @port.puts "</p>"
 
 
-  when NT_LIST then
+  when OL_LIST then
     html_list element.items
 
 
-  when NT_DIVERT then
+  when OL_DIVERT then
     html_chunk_header element, 'maui-divert'
     @port.puts
     html_warning_list element.warnings, inline: true
@@ -3414,12 +3414,12 @@ conventions.
 . [[.maui-chunk-header]] (CSS class)
 . [[.maui-chunk-xref]] (CSS class)
 
-  when NT_CHUNK, NT_DIVERTED_CHUNK then
+  when OL_CHUNK, OL_DIVERTED_CHUNK then
     @port.print "<div class='maui-chunk"
     @port.print " maui-initial-chunk" if element.initial
     @port.print " maui-final-chunk" if element.final
     @port.print "'>"
-    if element.type == NT_CHUNK then
+    if element.type == OL_CHUNK then
       html_chunk_header element, 'maui-chunk-header'
       @port.puts
     end
@@ -3441,7 +3441,7 @@ conventions.
 
 . [[.maui-block]] (CSS class)
 
-  when NT_BLOCK then
+  when OL_BLOCK then
     @port.print "<pre class='maui-block'>"
     element.lines.each_with_index do |line, i|
       @port.puts unless i.zero?
@@ -3467,7 +3467,7 @@ into a local link, either in the [[#T.foo]] form for titles or
       # (sub(sub))chapter appear at?
       rubric_level = 1
       @fabric.toc.each do |entry|
-        if entry.type == NT_RUBRIC then
+        if entry.type == OL_RUBRIC then
           level = rubric_level
         else
           level = entry.level
@@ -3501,7 +3501,7 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print "<a href='#T.#{entry.number}'>"
     htmlify entry.content
     @port.print "</a>"
-  when NT_RUBRIC then
+  when OL_RUBRIC then
     @port.print @symbolism.section_prefix
     @port.print entry.section_number
     @port.print ". "
@@ -3738,19 +3738,19 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 << [[case]] clauses of [[htmlify]] >>:
 
-  when NT_PLAIN then
+  when MU_PLAIN then
     @port.print node.data.to_xml
 
 
-  when NT_SPACE then
+  when MU_SPACE then
     @port.print((node.data || ' ').to_xml)
 
 
-  when NT_NBSP then
+  when MU_NBSP then
     @port.print '&nbsp;'
 
 
-  when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+  when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
     html_tag = Fabricator::MARKUP2HTML[node.type]
     @port.print "<%s>" % html_tag
     htmlify node.content
@@ -3759,7 +3759,7 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 . [[.maui-chunk-mention]] (CSS class)
 
-  when NT_MENTION_CHUNK then
+  when MU_MENTION_CHUNK then
     @port.print "<span class='maui-chunk-mention'>"
     @port.print @symbolism.chunk_name_delim.begin
     htmlify Fabricator.parse_markup(node.name,
@@ -3768,7 +3768,7 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print "</span>"
 
 
-  when NT_LINK then
+  when MU_LINK then
     target = node.target
     if @link_processor then
       target, *classes = @link_processor.call target
@@ -3786,10 +3786,10 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 << in [[Fabricator]] >>:
   MARKUP2HTML = { # node type tag => HTML tag
-    NT_MONOSPACE => 'code',
-    NT_BOLD => 'b',
-    NT_ITALIC => 'i',
-    NT_UNDERSCORE => 'u',
+    MU_MONOSPACE => 'code',
+    MU_BOLD => 'b',
+    MU_ITALIC => 'i',
+    MU_UNDERSCORE => 'u',
   }
 
 

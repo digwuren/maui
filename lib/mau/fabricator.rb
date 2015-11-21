@@ -121,8 +121,8 @@ module Fabricator
         chunks_by_name: {},
             # canonical_name => OpenStruct
             #   root_type: String,
-            #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
-            #   headers: list of NT_CHUNK/NT_DIVERT records,
+            #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes,
+            #   headers: list of OL_CHUNK/OL_DIVERT records,
 
         roots: [], # list of canonical names
 
@@ -175,19 +175,19 @@ module Fabricator
         # Enforce (sub(sub))chapter-locality of diversions
         clear_diversion
       else
-        if element.type == NT_BLOCK and @curdivert then
-          element.type = NT_DIVERTED_CHUNK
+        if element.type == OL_BLOCK and @curdivert then
+          element.type = OL_DIVERTED_CHUNK
           element.name = @curdivert.name
           element.divert = @curdivert
 
           element.initial = true if @last_divertee.nil?
           @last_divertee = element
         end
-        if element.type & NTF_HAS_HEADER != 0 then
+        if element.type & OLF_HAS_HEADER != 0 then
           clear_diversion
         end
-        if (@cursec and element.type == NT_RUBRIC) or
-            (@in_code and element.type & NTF_NARRATIVE != 0) then
+        if (@cursec and element.type == OL_RUBRIC) or
+            (@in_code and element.type & OLF_NARRATIVE != 0) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
                   "silent section break",
@@ -204,23 +204,23 @@ module Fabricator
             @section_count += 1
           @output.presentation.push @cursec
         end
-        if element.type == NT_RUBRIC then
+        if element.type == OL_RUBRIC then
           element.section_number = @cursec.section_number
           @output.toc.push element
         end
-        if element.type == NT_DIVERT then
+        if element.type == OL_DIVERT then
           @curdivert = element
           raise 'assertion failed' unless @last_divertee.nil?
         end
 
-        if element.type == NT_ITEM then
+        if element.type == OL_ITEM then
           # Is this a top-level or descendant item?
           unless @list_stack then
             raise 'assertion failed' unless element.indent == 0
 
-            # Create a new [[NT_LIST]] node.
+            # Create a new [[OL_LIST]] node.
             new_list = OpenStruct.new(
-              type: NT_LIST,
+              type: OL_LIST,
               items: [],
               indent: element.indent)
             @cursec.elements.push new_list
@@ -245,7 +245,7 @@ module Fabricator
                 raise 'assertion failed'
               end
               new_list = OpenStruct.new(
-                type: NT_LIST,
+                type: OL_LIST,
                 items: [],
                 indent: element.indent)
               @list_stack.last.items.last.sublist = new_list
@@ -256,13 +256,13 @@ module Fabricator
           # The list structure has been prepared.  Append the
           # new element to the innermost list in progress.
           @list_stack.last.items.push element
-        elsif element.type == NT_INDEX_ANCHOR then
+        elsif element.type == OL_INDEX_ANCHOR then
           freeform_index_record(element.name).refs.push [
               @cursec.section_number, :manual]
         else
           @list_stack = nil
           @cursec.elements.push element
-          if element.type & NTF_HAS_CODE != 0 then
+          if element.type & OLF_HAS_CODE != 0 then
             element.section_number = @cursec.section_number
             element.content = []
             element.lines.each_with_index do
@@ -324,12 +324,12 @@ module Fabricator
             end
           end
 
-          if element.type & NTF_FUNCTIONAL != 0 then
+          if element.type & OLF_FUNCTIONAL != 0 then
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
 
-            if element.type & NTF_HAS_HEADER != 0 then
+            if element.type & OLF_HAS_HEADER != 0 then
               cbn_record.headers.push element
               if element.root_type then
                 if !Fabricator.filename_sane? element.name then
@@ -351,11 +351,11 @@ module Fabricator
             end
 
             case element.type
-              when NT_CHUNK then
+              when OL_CHUNK then
                 chunk_index_record(element.name).refs.push [
                     @cursec.section_number, :definition]
 
-              when NT_DIVERT then
+              when OL_DIVERT then
                 index_ref = [@cursec.section_number ..
                     @cursec.section_number, :definition]
                 chunk_index_record(element.name).refs.push(
@@ -367,7 +367,7 @@ module Fabricator
                 # present.
                 @curdivert.index_ref = index_ref
 
-              when NT_DIVERTED_CHUNK then
+              when OL_DIVERTED_CHUNK then
                 prev_range = @curdivert.index_ref[0]
                 @curdivert.index_ref[0] = prev_range.begin ..
                     @cursec.section_number
@@ -376,7 +376,7 @@ module Fabricator
             end
 
             # Do we have a chunk body?
-            if element.type & NTF_HAS_CODE != 0 then
+            if element.type & OLF_HAS_CODE != 0 then
               cbn_record.chunks.push element
               element.content.each do |node|
                 next unless node.type == :use
@@ -390,7 +390,7 @@ module Fabricator
           # we'll want to generate an automatic section break.  To
           # that end, we'll set the [[@in_code]] flag when we
           # encounter a node with a chunk body.
-          if element.type & NTF_HAS_CODE != 0 then
+          if element.type & OLF_HAS_CODE != 0 then
             @in_code = true
           end
         end
@@ -403,7 +403,7 @@ module Fabricator
           Fabricator.canonicalise(name) +
           " >>"
       markup = [OpenStruct.new(
-          type: NT_MENTION_CHUNK,
+          type: MU_MENTION_CHUNK,
           name: name)]
       return _index_record identifier, markup
     end
@@ -474,7 +474,7 @@ module Fabricator
       @output.presentation.each do |node|
         next unless node.type == :section
         node.elements.each do |element|
-          next unless element.type == NT_CHUNK
+          next unless element.type == OL_CHUNK
           if element.lines.length > limit then
             if element.lines.length > limit * 2 then
               assessment, factor = "very long chunk", 2
@@ -614,32 +614,32 @@ module Fabricator
   end
 
   # Flags
-  NTF_HAS_HEADER     = 0x0002
-  NTF_HAS_CODE       = 0x0004
-  NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
-  NTF_NARRATIVE      = 0x0008
+  OLF_HAS_HEADER     = 0x0002
+  OLF_HAS_CODE       = 0x0004
+  OLF_FUNCTIONAL     = OLF_HAS_HEADER | OLF_HAS_CODE
+  OLF_NARRATIVE      = 0x0008
 
-  # Inline nodes
-  NT_PLAIN           = 0x0000
-  NT_SPACE           = 0x0001
-  NT_NBSP            = 0x0010
-  NT_BOLD            = 0x0020
-  NT_ITALIC          = 0x0030
-  NT_UNDERSCORE      = 0x0040
-  NT_MONOSPACE       = 0x0050
-  NT_LINK            = 0x0060
-  NT_MENTION_CHUNK   = 0x0070
+  # Markup nodes
+  MU_PLAIN           = 0x0000
+  MU_SPACE           = 0x0001
+  MU_NBSP            = 0x0010
+  MU_BOLD            = 0x0020
+  MU_ITALIC          = 0x0030
+  MU_UNDERSCORE      = 0x0040
+  MU_MONOSPACE       = 0x0050
+  MU_LINK            = 0x0060
+  MU_MENTION_CHUNK   = 0x0070
 
-  # Major nodes
-  NT_RUBRIC          = 0x0080 | NTF_NARRATIVE
-  NT_ITEM            = 0x0090 | NTF_NARRATIVE
-  NT_LIST            = 0x00A0 | NTF_NARRATIVE
-  NT_PARAGRAPH       = 0x00B0 | NTF_NARRATIVE
-  NT_BLOCK           = 0x00C0 | NTF_NARRATIVE
-  NT_DIVERT          = 0x00D0 | NTF_HAS_HEADER
-  NT_DIVERTED_CHUNK  = 0x00D0 | NTF_HAS_CODE
-  NT_CHUNK           = 0x00D0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_INDEX_ANCHOR    = 0x00E0
+  # Outline nodes
+  OL_RUBRIC          = 0x0080 | OLF_NARRATIVE
+  OL_ITEM            = 0x0090 | OLF_NARRATIVE
+  OL_LIST            = 0x00A0 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x00B0 | OLF_NARRATIVE
+  OL_BLOCK           = 0x00C0 | OLF_NARRATIVE
+  OL_DIVERT          = 0x00D0 | OLF_HAS_HEADER
+  OL_DIVERTED_CHUNK  = 0x00D0 | OLF_HAS_CODE
+  OL_CHUNK           = 0x00D0 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x00E0
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -750,16 +750,16 @@ module Fabricator
     end
 
     def plain data
-      return node(NT_PLAIN, data: data)
+      return node(MU_PLAIN, data: data)
     end
 
     def space data = nil
-      return node(NT_SPACE, data: data)
+      return node(MU_SPACE, data: data)
     end
 
     def words s
       s.split(/(\s+)/, -1).each_with_index do |part, i|
-        # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
+        # Note that 0 is [[MU_PLAIN]] and 1 is [[MU_SPACE]].
         node(i & 1, data: part)
       end
       return self
@@ -927,29 +927,29 @@ module Fabricator
     def add_node node,
         symbolism: Fabricator.default_symbolism
       case node.type
-      when NT_PLAIN then
+      when MU_PLAIN then
         add_plain node.data
-      when NT_SPACE then
+      when MU_SPACE then
         add_space node.data || ' '
-      when NT_NBSP then
+      when MU_NBSP then
         add_plain ' '
-      when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+      when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
         # FIXME: this table should be a constant
         styled({
-          NT_MONOSPACE => :monospace,
-          NT_BOLD => :bold,
-          NT_ITALIC => :italic,
-          NT_UNDERSCORE => :underscore,
+          MU_MONOSPACE => :monospace,
+          MU_BOLD => :bold,
+          MU_ITALIC => :italic,
+          MU_UNDERSCORE => :underscore,
         }[node.type]) do
           add_nodes node.content, symbolism: symbolism
         end
-      when NT_MENTION_CHUNK then
+      when MU_MENTION_CHUNK then
         add_plain symbolism.chunk_name_delim.begin
         add_nodes Fabricator.parse_markup(node.name,
                 Fabricator::MF::LINK),
             symbolism: symbolism
         add_plain symbolism.chunk_name_delim.end
-      when NT_LINK then
+      when MU_LINK then
         if node.implicit_face then
           styled :link do
             add_plain '<'
@@ -1136,7 +1136,7 @@ module Fabricator
           @port.puts '</h%i>' % (element.level + 1)
         when :section then
           rubricated = !element.elements.empty? &&
-              element.elements[0].type == NT_RUBRIC
+              element.elements[0].type == OL_RUBRIC
           # If we're encountering the first rubric/title, output
           # the table of contents.
           if rubricated and !toc_generated then
@@ -1165,11 +1165,11 @@ module Fabricator
           warnings = nil
           if subelement then
             case subelement.type
-              when NT_PARAGRAPH then
+              when OL_PARAGRAPH then
                 @port.print " "
                 htmlify subelement.content
                 start_index += 1
-              when NT_DIVERT then
+              when OL_DIVERT then
                 @port.print " "
                 html_chunk_header subelement, 'maui-divert',
                     tag: 'span'
@@ -1201,25 +1201,25 @@ module Fabricator
 
     def html_section_part element
       case element.type
-      when NT_PARAGRAPH then
+      when OL_PARAGRAPH then
         @port.print "<p>"
         htmlify element.content
         @port.puts "</p>"
 
-      when NT_LIST then
+      when OL_LIST then
         html_list element.items
 
-      when NT_DIVERT then
+      when OL_DIVERT then
         html_chunk_header element, 'maui-divert'
         @port.puts
         html_warning_list element.warnings, inline: true
 
-      when NT_CHUNK, NT_DIVERTED_CHUNK then
+      when OL_CHUNK, OL_DIVERTED_CHUNK then
         @port.print "<div class='maui-chunk"
         @port.print " maui-initial-chunk" if element.initial
         @port.print " maui-final-chunk" if element.final
         @port.print "'>"
-        if element.type == NT_CHUNK then
+        if element.type == OL_CHUNK then
           html_chunk_header element, 'maui-chunk-header'
           @port.puts
         end
@@ -1238,7 +1238,7 @@ module Fabricator
         end
         @port.puts "</div>"
 
-      when NT_BLOCK then
+      when OL_BLOCK then
         @port.print "<pre class='maui-block'>"
         element.lines.each_with_index do |line, i|
           @port.puts unless i.zero?
@@ -1259,7 +1259,7 @@ module Fabricator
         # (sub(sub))chapter appear at?
         rubric_level = 1
         @fabric.toc.each do |entry|
-          if entry.type == NT_RUBRIC then
+          if entry.type == OL_RUBRIC then
             level = rubric_level
           else
             level = entry.level
@@ -1281,7 +1281,7 @@ module Fabricator
             @port.print "<a href='#T.#{entry.number}'>"
             htmlify entry.content
             @port.print "</a>"
-          when NT_RUBRIC then
+          when OL_RUBRIC then
             @port.print @symbolism.section_prefix
             @port.print entry.section_number
             @port.print ". "
@@ -1441,22 +1441,22 @@ module Fabricator
     def htmlify nodes
       nodes.each do |node|
         case node.type
-        when NT_PLAIN then
+        when MU_PLAIN then
           @port.print node.data.to_xml
 
-        when NT_SPACE then
+        when MU_SPACE then
           @port.print((node.data || ' ').to_xml)
 
-        when NT_NBSP then
+        when MU_NBSP then
           @port.print '&nbsp;'
 
-        when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+        when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
           htmlify node.content
           @port.print "</%s>" % html_tag
 
-        when NT_MENTION_CHUNK then
+        when MU_MENTION_CHUNK then
           @port.print "<span class='maui-chunk-mention'>"
           @port.print @symbolism.chunk_name_delim.begin
           htmlify Fabricator.parse_markup(node.name,
@@ -1464,7 +1464,7 @@ module Fabricator
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
 
-        when NT_LINK then
+        when MU_LINK then
           target = node.target
           if @link_processor then
             target, *classes = @link_processor.call target
@@ -1487,10 +1487,10 @@ module Fabricator
   end
 
   MARKUP2HTML = { # node type tag => HTML tag
-    NT_MONOSPACE => 'code',
-    NT_BOLD => 'b',
-    NT_ITALIC => 'i',
-    NT_UNDERSCORE => 'u',
+    MU_MONOSPACE => 'code',
+    MU_BOLD => 'b',
+    MU_ITALIC => 'i',
+    MU_UNDERSCORE => 'u',
   }
 end
 
@@ -1565,7 +1565,7 @@ class << Fabricator
         while ps[end_offset + 2] == ?] do
           end_offset += 1
         end
-        stack.last.content.node NT_MONOSPACE,
+        stack.last.content.node MU_MONOSPACE,
             content: Fabricator.markup.
                 words(ps[ps.pointer + 2 ... end_offset].strip)
         ps.pointer = end_offset + 2
@@ -1594,19 +1594,19 @@ class << Fabricator
 
       elsif stack.last.mode & Fabricator::MF::END_BOLD != 0 and
           ps.biu_terminator? ?* then
-        stack.ennode NT_BOLD, Fabricator::MF::END_BOLD
+        stack.ennode MU_BOLD, Fabricator::MF::END_BOLD
         ps.pointer += 1
 
       elsif stack.last.mode & Fabricator::MF::END_ITALIC \
               != 0 and
           ps.biu_terminator? ?/ then
-        stack.ennode NT_ITALIC, Fabricator::MF::END_ITALIC
+        stack.ennode MU_ITALIC, Fabricator::MF::END_ITALIC
         ps.pointer += 1
 
       elsif stack.last.mode & Fabricator::MF::END_UNDERSCORE \
               != 0 and
           ps.biu_terminator? ?_ then
-        stack.ennode NT_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
+        stack.ennode MU_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
         ps.pointer += 1
 
       elsif stack.last.mode & Fabricator::MF::LINK != 0 and
@@ -1622,7 +1622,7 @@ class << Fabricator
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
         if link_like? target then
-          stack.ennode NT_LINK,
+          stack.ennode MU_LINK,
               Fabricator::MF::END_LINK,
               target: target
           ps.pointer = end_offset + 1
@@ -1641,7 +1641,7 @@ class << Fabricator
         target = ps[stack[j].start_offset + 1 ... ps.pointer]
         if link_like? target then
           stack[j .. -1] = []
-          stack.last.content.node NT_LINK,
+          stack.last.content.node MU_LINK,
               implicit_face: true,
               target: target,
               content: Fabricator.markup.plain(target)
@@ -1660,7 +1660,7 @@ class << Fabricator
         stack.last.content.space
 
       elsif ps.at? "\u00A0" then
-        stack.last.content.node NT_NBSP
+        stack.last.content.node MU_NBSP
         ps.pointer += 1
 
       else
@@ -1754,7 +1754,7 @@ class << Fabricator
                 /x then
           body_location = vp.location_ahead
           element = vp.get_indented_lines_with_skip
-          element.type = NT_BLOCK
+          element.type = OL_BLOCK
           element.body_loc = element_location
         else
           margin = $~['margin']
@@ -1766,7 +1766,7 @@ class << Fabricator
             lines.push vp.get_line[margin.length .. -1]
           end
           element = OpenStruct.new(
-            type: NT_ITEM,
+            type: OL_ITEM,
             lines: lines,
             content: parse_markup(lines.map(&:strip).join ' '),
             indent: margin.length,
@@ -1780,7 +1780,7 @@ class << Fabricator
         name = canonicalise $~['raw-name']
         vp.get_line
         element = OpenStruct.new(
-          type: NT_DIVERT,
+          type: OL_DIVERT,
           root_type: $~['root-type'],
           name: name,
           header_loc: element_location)
@@ -1788,7 +1788,7 @@ class << Fabricator
         body_location = vp.location_ahead
         body = vp.get_indented_lines_with_skip
         if body then
-          element.type = NT_CHUNK
+          element.type = OL_CHUNK
           element.lines = body.lines
           element.indent = body.indent
           element.body_loc = body_location
@@ -1805,7 +1805,7 @@ class << Fabricator
           lines.push vp.get_line
         end
         element = OpenStruct.new(
-          type: NT_ITEM,
+          type: OL_ITEM,
           lines: lines,
           content: parse_markup(lines.map(&:strip).join ' '),
           indent: 0,
@@ -1814,7 +1814,7 @@ class << Fabricator
       when /^\.\s+/ then
         name = $'
         element = OpenStruct.new(
-            type: NT_INDEX_ANCHOR,
+            type: OL_INDEX_ANCHOR,
             name: name)
         vp.get_line
 
@@ -1837,12 +1837,12 @@ class << Fabricator
         when /^\*\s+/ then
           lines[0] = $'
           element = OpenStruct.new(
-              type: NT_RUBRIC,
+              type: OL_RUBRIC,
               loc: element_location)
 
         else
           element = OpenStruct.new(
-              type: NT_PARAGRAPH,
+              type: OL_PARAGRAPH,
               loc: element_location)
         end
         element.lines = lines
@@ -1900,7 +1900,7 @@ class << Fabricator
         # pathological case, to be sure, but it can happen, so
         # we'll need to check.
         rubricated = !element.elements.empty? &&
-            element.elements[0].type == NT_RUBRIC
+            element.elements[0].type == OL_RUBRIC
         # If we're encountering the first rubric/title, output
         # the table of contents.
         if rubricated and !toc_generated then
@@ -1934,7 +1934,7 @@ class << Fabricator
         starter = element.elements[start_index]
         if starter then
           case starter.type
-          when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
+          when OL_PARAGRAPH, OL_DIVERT, OL_CHUNK then
             wr.add_space
             weave_ctxt_section_part starter, fabric, wr,
                 symbolism: symbolism
@@ -2031,18 +2031,18 @@ class << Fabricator
   def weave_ctxt_section_part element, fabric, wr,
       symbolism: default_symbolism
     case element.type
-    when NT_PARAGRAPH then
+    when OL_PARAGRAPH then
       wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
-    when NT_DIVERT, NT_CHUNK, NT_DIVERTED_CHUNK then
-      if element.type & NTF_HAS_HEADER != 0 then
+    when OL_DIVERT, OL_CHUNK, OL_DIVERTED_CHUNK then
+      if element.type & OLF_HAS_HEADER != 0 then
         weave_ctxt_chunk_header element, wr,
             symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
-      if element.type & NTF_HAS_CODE != 0 then
+      if element.type & OLF_HAS_CODE != 0 then
         wr.styled :chunk_frame do
           wr.add_pseudographics element.initial ?
             :initial_chunk_margin :
@@ -2084,11 +2084,11 @@ class << Fabricator
         end
       end
 
-    when NT_LIST then
+    when OL_LIST then
       _weave_ctxt_list element.items, wr,
           symbolism: symbolism
 
-    when NT_BLOCK then
+    when OL_BLOCK then
       weave_ctxt_block element, wr
     else
       raise 'data structure error'
@@ -2169,10 +2169,10 @@ class << Fabricator
       xref.words "transcluded by "
       xref.push *commatise_oxfordly(
           transcluders.map{|ref| markup.
-              node(NT_MENTION_CHUNK, name: ref.name).
+              node(MU_MENTION_CHUNK, name: ref.name).
               space.
               plain("(").
-              node(NT_LINK,
+              node(MU_LINK,
                 content: markup.
                     plain(symbolism.section_prefix +
                         ref.section_number.to_s),
@@ -2267,7 +2267,7 @@ class << Fabricator
             wr.add_nodes entry.content, symbolism: symbolism
           end
 
-        when NT_RUBRIC then
+        when OL_RUBRIC then
           wr.add_plain '  ' * rubric_level
           wr.add_plain '%s%i.' % [
             symbolism.section_prefix,
