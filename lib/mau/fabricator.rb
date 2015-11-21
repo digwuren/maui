@@ -122,7 +122,7 @@ module Fabricator
             # canonical_name => OpenStruct
             #   root_type: String,
             #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
-            #   headers: list of NT_CHUNK/:divert records,
+            #   headers: list of NT_CHUNK/NT_DIVERT records,
 
         roots: [], # list of canonical names
 
@@ -183,7 +183,8 @@ module Fabricator
           element.initial = true if @last_divertee.nil?
           @last_divertee = element
         end
-        if [:divert, NT_CHUNK].include? element.type then
+        # FIXME: this test should be a bit operation
+        if [NT_DIVERT, NT_CHUNK].include? element.type then
           clear_diversion
         end
         if (@cursec and element.type == NT_RUBRIC) or
@@ -212,7 +213,7 @@ module Fabricator
           element.section_number = @cursec.section_number
           @output.toc.push element
         end
-        if element.type == :divert then
+        if element.type == NT_DIVERT then
           @curdivert = element
           raise 'assertion failed' unless @last_divertee.nil?
         end
@@ -330,14 +331,16 @@ module Fabricator
             end
           end
 
-          if [NT_CHUNK, NT_DIVERTED_CHUNK, :divert].include?(
+          # FIXME: this test should be a bit operation
+          if [NT_CHUNK, NT_DIVERTED_CHUNK, NT_DIVERT].include?(
               element.type) then
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
 
             # Do we have an explicit chunk header?
-            if [NT_CHUNK, :divert].include? element.type then
+            # FIXME: this test should be a bit operation
+            if [NT_CHUNK, NT_DIVERT].include? element.type then
               cbn_record.headers.push element
               if element.root_type then
                 if !Fabricator.filename_sane? element.name then
@@ -363,7 +366,7 @@ module Fabricator
                 chunk_index_record(element.name).refs.push [
                     @cursec.section_number, :definition]
 
-              when :divert then
+              when NT_DIVERT then
                 index_ref = [@cursec.section_number ..
                     @cursec.section_number, :definition]
                 chunk_index_record(element.name).refs.push(
@@ -644,6 +647,7 @@ module Fabricator
   NT_NBSP            = 0x000D
   NT_MENTION_CHUNK   = 0x000E
   NT_BLOCK           = 0x000F
+  NT_DIVERT          = 0x0010 | NTF_HAS_HEADER
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1173,17 +1177,19 @@ module Fabricator
           @port.print "</b>"
           subelement = element.elements[start_index]
           warnings = nil
-          case subelement && subelement.type
-            when NT_PARAGRAPH then
-              @port.print " "
-              htmlify subelement.content
-              start_index += 1
-            when :divert then
-              @port.print " "
-              html_chunk_header subelement, 'maui-divert',
-                  tag: 'span'
-              warnings = subelement.warnings
-              start_index += 1
+          if subelement then
+            case subelement.type
+              when NT_PARAGRAPH then
+                @port.print " "
+                htmlify subelement.content
+                start_index += 1
+              when NT_DIVERT then
+                @port.print " "
+                html_chunk_header subelement, 'maui-divert',
+                    tag: 'span'
+                warnings = subelement.warnings
+                start_index += 1
+            end
           end
           @port.puts "</p>"
           if warnings then
@@ -1216,7 +1222,7 @@ module Fabricator
       when NT_LIST then
         html_list element.items
 
-      when :divert then
+      when NT_DIVERT then
         html_chunk_header element, 'maui-divert'
         @port.puts
         html_warning_list element.warnings, inline: true
@@ -1825,7 +1831,7 @@ class << Fabricator
         name = canonicalise $~['raw-name']
         vp.get_line
         element = OpenStruct.new(
-          type: :divert,
+          type: NT_DIVERT,
           root_type: $~['root-type'],
           name: name,
           header_loc: element_location)
@@ -1978,8 +1984,9 @@ class << Fabricator
         # it in the same paragraph.
         starter = element.elements[start_index]
         if starter then
+          # FIXME: this test should be a bit operation
           case starter.type
-          when NT_PARAGRAPH, :divert, NT_CHUNK then
+          when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
             wr.add_space
             weave_ctxt_section_part starter, fabric, wr,
                 symbolism: symbolism
@@ -2080,8 +2087,9 @@ class << Fabricator
       wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
-    when :divert, NT_CHUNK, NT_DIVERTED_CHUNK then
-      if [:divert, NT_CHUNK].include? element.type then
+    when NT_DIVERT, NT_CHUNK, NT_DIVERTED_CHUNK then
+      # FIXME: this test should be a bit operation
+      if [NT_DIVERT, NT_CHUNK].include? element.type then
         weave_ctxt_chunk_header element, wr,
             symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,

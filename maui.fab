@@ -146,7 +146,7 @@ it's followed by an indented block, it's a chunk.
     name = canonicalise $~['raw-name']
     vp.get_line
     element = OpenStruct.new(
-      type: :divert,
+      type: NT_DIVERT,
       root_type: $~['root-type'],
       name: name,
       header_loc: element_location)
@@ -273,9 +273,7 @@ error, but the user might want to know.
 
 
 For this check, we iterate over chunk headers, so as not to
-generate excessive warnings when the fault lies in a [[divert]].
-(And also, to make sure to generate a warning regarding this if
-a faulty [[divert]] is not actually ever used.)
+generate excessive warnings when the fault lies in a diversion.
 
 . [[check_root_type_consistency]]
 . "inconsistent root type" (warning)
@@ -444,7 +442,7 @@ output structure under the key of [[chunks_by_name]].  (See also
       # canonical_name => OpenStruct
       #   root_type: String,
       #   chunks: list of NT_CHUNK/NT_DIVERTED_CHUNK nodes,
-      #   headers: list of NT_CHUNK/:divert records,
+      #   headers: list of NT_CHUNK/NT_DIVERT records,
 
 
 Also, we'll collect the (canonicalised) names of the root
@@ -557,7 +555,7 @@ addition to [[presentation]] collected into [[toc]].
   << ? Break section and warn >>
   << ? Begin new section >>
   << [[NT_RUBRIC]]?  Link to [[toc]] >>
-  << [[divert]]?  Apply it >>
+  << [[NT_DIVERT]]?  Apply it >>
 
   if element.type == NT_ITEM then
     << Integrate the list item >>
@@ -605,7 +603,8 @@ the current divert was not used before, and we'll also point
 
 
 << New chunk header?  Clear diversion >>:
-  if [:divert, NT_CHUNK].include? element.type then
+  # FIXME: this test should be a bit operation
+  if [NT_DIVERT, NT_CHUNK].include? element.type then
     clear_diversion
   end
 
@@ -658,8 +657,8 @@ section break in the form of two adjacent blank lines.
   end
 
 
-<< [[divert]]?  Apply it >>:
-  if element.type == :divert then
+<< [[NT_DIVERT]]?  Apply it >>:
+  if element.type == NT_DIVERT then
     @curdivert = element
     raise 'assertion failed' unless @last_divertee.nil?
   end
@@ -828,7 +827,7 @@ Chunks and diverts we'll be linking under [[chunk_by_name]].
 We'll keep separate track of chunk bodies ([[NT_CHUNK]] or
 [[NT_DIVERTED_CHUNK]]), linked under
 [[chunks_by_name[...].chunks]], and chunk headers ([[NT_CHUNK]] or
-[[divert]]), linked under [[chunks_by_name[...].headers]].
+[[NT_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
 << Chunk or divert?  Parse and cross-reference >>:
   # FIXME: take the type check out once [[element.type]] is
@@ -838,14 +837,16 @@ We'll keep separate track of chunk bodies ([[NT_CHUNK]] or
     << Parse the chunk's content >>
   end
 
-  if [NT_CHUNK, NT_DIVERTED_CHUNK, :divert].include?(
+  # FIXME: this test should be a bit operation
+  if [NT_CHUNK, NT_DIVERTED_CHUNK, NT_DIVERT].include?(
       element.type) then
     cbn_record =
         @output.chunks_by_name[element.name] ||=
             OpenStruct.new(chunks: [], headers: [])
 
     # Do we have an explicit chunk header?
-    if [NT_CHUNK, :divert].include? element.type then
+    # FIXME: this test should be a bit operation
+    if [NT_CHUNK, NT_DIVERT].include? element.type then
       cbn_record.headers.push element
       << Root?  Check the filename for sanity >>
       << Update [[cbn_record.root_type]] from [[element]] >>
@@ -929,7 +930,7 @@ endpoints.
 
 . [[:definition]] (index reference type)
 
-  when :divert then
+  when NT_DIVERT then
     index_ref = [@cursec.section_number ..
         @cursec.section_number, :definition]
     chunk_index_record(element.name).refs.push(
@@ -1250,6 +1251,7 @@ Many of these values are chosen arbitrarily.  Some have special bit patterns to 
   NT_NBSP            = 0x000D
   NT_MENTION_CHUNK   = 0x000E
   NT_BLOCK           = 0x000F
+  NT_DIVERT          = 0x0010 | NTF_HAS_HEADER
 
 
 == Horizontal parsing
@@ -1875,7 +1877,7 @@ multiple places).  We'll store this data into the chunk as the
 [[tangle_locs]] list.  We'll also collect tangling locations of
 chunk chains -- sequences of [[NT_DIVERTED_CHUNK]] elements
 diverted by the same divert.  We'll store this data into the
-[[divert]] node as the [[chain_tangle_locs]] list.
+[[NT_DIVERT]] node as the [[chain_tangle_locs]] list.
 
 . [[tangle_chunks]]
 
@@ -2430,8 +2432,9 @@ plain ones.
   # it in the same paragraph.
   starter = element.elements[start_index]
   if starter then
+    # FIXME: this test should be a bit operation
     case starter.type
-    when NT_PARAGRAPH, :divert, NT_CHUNK then
+    when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
       wr.add_space
       weave_ctxt_section_part starter, fabric, wr,
           symbolism: symbolism
@@ -2492,8 +2495,9 @@ plain ones.
     wr.linebreak
 
 
-  when :divert, NT_CHUNK, NT_DIVERTED_CHUNK then
-    if [:divert, NT_CHUNK].include? element.type then
+  when NT_DIVERT, NT_CHUNK, NT_DIVERTED_CHUNK then
+    # FIXME: this test should be a bit operation
+    if [NT_DIVERT, NT_CHUNK].include? element.type then
       weave_ctxt_chunk_header element, wr,
           symbolism: symbolism
       weave_ctxt_warning_list element.warnings, wr,
@@ -3366,17 +3370,19 @@ conventions.
   << Weave section's number and rubric (HTML) >>
   subelement = element.elements[start_index]
   warnings = nil
-  case subelement && subelement.type
-    when NT_PARAGRAPH then
-      @port.print " "
-      htmlify subelement.content
-      start_index += 1
-    when :divert then
-      @port.print " "
-      html_chunk_header subelement, 'maui-divert',
-          tag: 'span'
-      warnings = subelement.warnings
-      start_index += 1
+  if subelement then
+    case subelement.type
+      when NT_PARAGRAPH then
+        @port.print " "
+        htmlify subelement.content
+        start_index += 1
+      when NT_DIVERT then
+        @port.print " "
+        html_chunk_header subelement, 'maui-divert',
+            tag: 'span'
+        warnings = subelement.warnings
+        start_index += 1
+    end
   end
   @port.puts "</p>"
   if warnings then
@@ -3426,7 +3432,7 @@ conventions.
     html_list element.items
 
 
-  when :divert then
+  when NT_DIVERT then
     html_chunk_header element, 'maui-divert'
     @port.puts
     html_warning_list element.warnings, inline: true
