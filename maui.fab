@@ -1287,25 +1287,6 @@ to use branching of any sort.
 
 == Horizontal parsing
 
-* Chunk name canonicalisation.
-
-This amounts to compressing all whitespace that is not marked as
-monospaced by double brackets.
-
-. [[canonicalise]]
-
-<< Other methods >>:
-  def canonicalise raw_name
-    name = ''
-    raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
-        each_with_index do |part, i|
-      part.gsub! /\s+/, ' ' if i.even?
-      name << part
-    end
-    return name
-  end
-
-
 * Markup parsing.
 
 The markup parser materialises as a function that takes a string
@@ -1835,6 +1816,25 @@ word-wrapping the result.
       node(i & 1, data: part)
     end
     return self
+  end
+
+
+* Chunk name canonicalisation.
+
+This amounts to compressing all whitespace that is not marked as
+monospaced by double brackets.
+
+. [[canonicalise]]
+
+<< Other methods >>:
+  def canonicalise raw_name
+    name = ''
+    raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
+        each_with_index do |part, i|
+      part.gsub! /\s+/, ' ' if i.even?
+      name << part
+    end
+    return name
   end
 
 

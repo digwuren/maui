@@ -1546,16 +1546,6 @@ class << Fabricator
     end
   end
 
-  def canonicalise raw_name
-    name = ''
-    raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
-        each_with_index do |part, i|
-      part.gsub! /\s+/, ' ' if i.even?
-      name << part
-    end
-    return name
-  end
-
   def parse_markup s, suppress_modes = 0
     ps = Fabricator::Pointered_String.new s
     stack = Fabricator::Markup_Parser_Stack.new suppress_modes
@@ -1684,6 +1674,16 @@ class << Fabricator
 
   def markup
     return Fabricator::Markup_Constructor.new
+  end
+
+  def canonicalise raw_name
+    name = ''
+    raw_name.strip.split(/(\[\[.*?\]*\]\])/, -1).
+        each_with_index do |part, i|
+      part.gsub! /\s+/, ' ' if i.even?
+      name << part
+    end
+    return name
   end
 
   # Take a [[results]] record from tangling and construct a
