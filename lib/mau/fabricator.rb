@@ -937,8 +937,7 @@ module Fabricator
         add_plain ' '
 
       when MU_BOLD, MU_ITALIC, MU_UNDERSCORE, MU_MONOSPACE then
-        # FIXME: this table should be a constant
-        styled(Fabricator::MARKUP2CTXT_STYLE[node.type]) do
+        styled Fabricator::MARKUP2CTXT_STYLE[node.type] do
           add_nodes node.content, symbolism: symbolism
         end
 
@@ -967,8 +966,8 @@ module Fabricator
           add_plain '>'
         end
       else
-        # Uh-oh, a bug: the parser has generated a node of a type
-        # unknown to the weaver.
+        # Uh-oh, a bug: the parser has generated a node of a
+        # type unknown to the weaver.
         raise 'invalid node type'
       end
       return
