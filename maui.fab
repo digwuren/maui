@@ -602,8 +602,7 @@ the current divert was not used before, and we'll also point
 
 
 << New chunk header?  Clear diversion >>:
-  # FIXME: this test should be a bit operation
-  if [NT_DIVERT, NT_CHUNK].include? element.type then
+  if element.type & NTF_HAS_HEADER != 0 then
     clear_diversion
   end
 
@@ -1233,8 +1232,8 @@ bit patterns to them.
 . [[NT_INDEX_ANCHOR]]
 
 << in [[Fabricator]] >>:
-  NTF_HAS_HEADER     = 0x0100
-  NTF_HAS_CODE       = 0x0200
+  NTF_HAS_HEADER     = 0x0200
+  NTF_HAS_CODE       = 0x0400
 
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001

@@ -183,8 +183,7 @@ module Fabricator
           element.initial = true if @last_divertee.nil?
           @last_divertee = element
         end
-        # FIXME: this test should be a bit operation
-        if [NT_DIVERT, NT_CHUNK].include? element.type then
+        if element.type & NTF_HAS_HEADER != 0 then
           clear_diversion
         end
         if (@cursec and element.type == NT_RUBRIC) or
@@ -622,8 +621,8 @@ module Fabricator
     attr_reader :section_count
   end
 
-  NTF_HAS_HEADER     = 0x0100
-  NTF_HAS_CODE       = 0x0200
+  NTF_HAS_HEADER     = 0x0200
+  NTF_HAS_CODE       = 0x0400
 
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
