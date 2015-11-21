@@ -2085,8 +2085,7 @@ class << Fabricator
       wr.linebreak
 
     when NT_DIVERT, NT_CHUNK, NT_DIVERTED_CHUNK then
-      # FIXME: this test should be a bit operation
-      if [NT_DIVERT, NT_CHUNK].include? element.type then
+      if element.type & NTF_HAS_HEADER != 0 then
         weave_ctxt_chunk_header element, wr,
             symbolism: symbolism
         weave_ctxt_warning_list element.warnings, wr,
