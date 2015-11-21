@@ -671,17 +671,15 @@ module Fabricator
       return
     end
 
-    def ennode node_type, frame_type
+    def ennode node_type, frame_type, **attr
       while self.last.term_type != frame_type do
         self.unspawn
       end
       top = self.pop
-      node = OpenStruct.new(
-          type: node_type,
+      self.last.content.node node_type,
           content: top.content,
-      )
-      self.last.content.push node
-      return node # for possible further manipulation
+          **attr
+      return
     end
 
     def cancel_link
@@ -1624,8 +1622,9 @@ class << Fabricator
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
         if link_like? target then
-          stack.ennode(NT_LINK,
-              Fabricator::MF::END_LINK).target = target
+          stack.ennode NT_LINK,
+              Fabricator::MF::END_LINK,
+              target: target
           ps.pointer = end_offset + 1
         else
           # False alarm: this is not a link, after all.
