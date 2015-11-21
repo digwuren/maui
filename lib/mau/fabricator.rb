@@ -635,6 +635,7 @@ module Fabricator
   NT_MONOSPACE       = 0x0009
   NT_PARAGRAPH       = 0x000A
   NT_LINK            = 0x000B
+  NT_PLAIN           = 0x000C
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -660,8 +661,11 @@ module Fabricator
     def unspawn
       raise 'assertion failed' unless length >= 2
       top = self.pop
+      # FIXME: Check if [[self.last.content]] is an instance of
+      # [[Markup_Constructor]]; if it is, we can use [[#plain]]
+      # instead of constructing the [[OpenStruct by hand.
       self.last.content.push OpenStruct.new(
-        type: :plain,
+        type: NT_PLAIN,
         data: top.face,
       ), *top.content
       return
@@ -748,7 +752,7 @@ module Fabricator
     end
 
     def plain data
-      return node(:plain, data: data)
+      return node(NT_PLAIN, data: data)
     end
 
     def space data = nil
@@ -757,7 +761,7 @@ module Fabricator
 
     def words s
       s.split(/(\s+)/, -1).each_with_index do |part, i|
-        node(i.even? ? :plain : :space, data: part)
+        node(i.even? ? NT_PLAIN : :space, data: part)
       end
       return self
     end
@@ -924,7 +928,7 @@ module Fabricator
     def add_node node,
         symbolism: Fabricator.default_symbolism
       case node.type
-      when :plain then
+      when NT_PLAIN then
         add_plain node.data
       when :space then
         add_space node.data || ' '
@@ -1435,7 +1439,7 @@ module Fabricator
     def htmlify nodes
       nodes.each do |node|
         case node.type
-        when :plain then
+        when NT_PLAIN then
           @port.print node.data.to_xml
 
         when :space then
@@ -1559,11 +1563,12 @@ class << Fabricator
         while ps[end_offset + 2] == ?] do
           end_offset += 1
         end
+        # FIXME: could we use [[Markup_Constructor]] here?
         monospaced_content = []
         ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
             each_with_index do |part, i|
           monospaced_content.push OpenStruct.new(
-              type: i.even? ? :plain : :space,
+              type: i.even? ? NT_PLAIN : :space,
               data: part
           )
         end
@@ -1630,8 +1635,12 @@ class << Fabricator
         else
           # False alarm: this is not a link, after all.
           stack.cancel_link
+          # FIXME: check if [[stack.last.content]] is a
+          # [[Markup_Constructor]]; if it is, we can use [[#plain]]
+          # instead of constructing the [[OpenStruct]] instance by
+          # hand here
           stack.last.content.push OpenStruct.new(
-            type: :plain,
+            type: NT_PLAIN,
             data: '|',
           )
           ps.pointer += 1
@@ -1649,16 +1658,20 @@ class << Fabricator
               type: NT_LINK,
               implicit_face: true,
               target: target,
+              # FIXME: use [[Markup_Constructor#plain]] here
               content: [OpenStruct.new(
-                type: :plain,
+                type: NT_PLAIN,
                 data: target,
               )],
           )
         else
           # False alarm: this is not a link, after all.
           stack.cancel_link
+          # FIXME: check if [[stack.last.content]] is a
+          # [[Markup_Constructor]]; if it is, we can use [[#plain]]
+          # here instead of constructing the [[OpenStruct]] by hand
           stack.last.content.push OpenStruct.new(
-            type: :plain,
+            type: NT_PLAIN,
             data: '>',
           )
         end
@@ -1680,8 +1693,11 @@ class << Fabricator
         while j < s.length and !" */<>[_|".include? ps[j] do
           j += 1
         end
+        # FIXME: check if [[stack.last.content]] is a
+        # [[Markup_Constructor]]; if it is, we can use [[#plain]]
+        # here instead of constructing the [[OpenStruct]] by hand
         stack.last.content.push OpenStruct.new(
-            type: :plain,
+            type: NT_PLAIN,
             data: String.new(ps[ps.pointer ... j]),
         )
         ps.pointer = j
@@ -2226,12 +2242,12 @@ class << Fabricator
     items.each_with_index do |item, i|
       unless i.zero? then
         unless items.length == 2 then
-          result.push OpenStruct.new(:type => :plain,
+          result.push OpenStruct.new(:type => NT_PLAIN,
               :data => ',')
         end
         result.push OpenStruct.new(:type => :space)
         if i == items.length - 1 then
-          result.push OpenStruct.new(:type => :plain,
+          result.push OpenStruct.new(:type => NT_PLAIN,
               :data => 'and')
           result.push OpenStruct.new(:type => :space)
         end
