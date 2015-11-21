@@ -1567,16 +1567,9 @@ class << Fabricator
         while ps[end_offset + 2] == ?] do
           end_offset += 1
         end
-        monospaced_content = Fabricator.markup
-        # FIXME: check if [[Markup_Constructor]] doesn't have a
-        # ready method for this splitting already
-        ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
-            each_with_index do |part, i|
-          # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
-          monospaced_content.node i & 1, data: part
-        end
         stack.last.content.node NT_MONOSPACE,
-            content: monospaced_content
+            content: Fabricator.markup.
+                words(ps[ps.pointer + 2 ... end_offset].strip)
         ps.pointer = end_offset + 2
 
       elsif stack.last.mode & Fabricator::MF::BOLD != 0 and
