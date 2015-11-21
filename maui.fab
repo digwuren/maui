@@ -833,9 +833,7 @@ or [[NT_DIVERT]]), linked under [[chunks_by_name[...].headers]].
     << Parse the chunk's content >>
   end
 
-  # FIXME: this test should be a bit operation
-  if [NT_CHUNK, NT_DIVERTED_CHUNK, NT_DIVERT].include?(
-      element.type) then
+  if element.type & NTF_FUNCTIONAL != 0 then
     cbn_record =
         @output.chunks_by_name[element.name] ||=
             OpenStruct.new(chunks: [], headers: [])
@@ -1208,8 +1206,12 @@ bit patterns to them.
   operation -- [[i & 1]], and won't have to use branching of any
   sort.
 
+- We reserve two bits for the [[NTF_HAS_HEADER]] and
+  [[NTF_HAS_CODE]] flags.
+
 . [[NTF_HAS_HEADER]]
 . [[NTF_HAS_CODE]]
+. [[NTF_FUNCTIONAL]]
 . [[NT_PLAIN]]
 . [[NT_SPACE]]
 . [[NT_NBSP]]
@@ -1222,16 +1224,17 @@ bit patterns to them.
 . [[NT_RUBRIC]]
 . [[NT_LIST]]
 . [[NT_ITEM]]
-. [[NT_CHUNK]]
+. [[NT_DIVERT]]
 . [[NT_DIVERTED_CHUNK]]
+. [[NT_CHUNK]]
 . [[NT_PARAGRAPH]]
 . [[NT_BLOCK]]
-. [[NT_DIVERT]]
 . [[NT_INDEX_ANCHOR]]
 
 << in [[Fabricator]] >>:
-  NTF_HAS_HEADER     = 0x0200
-  NTF_HAS_CODE       = 0x0400
+  NTF_HAS_HEADER     = 0x0002
+  NTF_HAS_CODE       = 0x0004
+  NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
 
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
@@ -1247,13 +1250,13 @@ bit patterns to them.
   NT_RUBRIC          = 0x0080
   NT_LIST            = 0x0090
   NT_ITEM            = 0x00A0
+  NT_DIVERT          = 0x00B0 | NTF_HAS_HEADER
+  NT_DIVERTED_CHUNK  = 0x00B0 | NTF_HAS_CODE
   NT_CHUNK           = 0x00B0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_DIVERTED_CHUNK  = 0x00C0 | NTF_HAS_CODE
-  NT_PARAGRAPH       = 0x00D0
-  NT_BLOCK           = 0x00E0
-  NT_DIVERT          = 0x00F0 | NTF_HAS_HEADER
+  NT_PARAGRAPH       = 0x00C0
+  NT_BLOCK           = 0x00D0
 
-  NT_INDEX_ANCHOR    = 0x0100
+  NT_INDEX_ANCHOR    = 0x00E0
 
 
 == Horizontal parsing
@@ -2434,7 +2437,6 @@ plain ones.
   # it in the same paragraph.
   starter = element.elements[start_index]
   if starter then
-    # FIXME: this test should be a bit operation
     case starter.type
     when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
       wr.add_space
@@ -3381,6 +3383,7 @@ conventions.
             tag: 'span'
         warnings = subelement.warnings
         start_index += 1
+      # FIXME: also support chunks here
     end
   end
   @port.puts "</p>"

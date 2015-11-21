@@ -328,9 +328,7 @@ module Fabricator
             end
           end
 
-          # FIXME: this test should be a bit operation
-          if [NT_CHUNK, NT_DIVERTED_CHUNK, NT_DIVERT].include?(
-              element.type) then
+          if element.type & NTF_FUNCTIONAL != 0 then
             cbn_record =
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
@@ -619,8 +617,9 @@ module Fabricator
     attr_reader :section_count
   end
 
-  NTF_HAS_HEADER     = 0x0200
-  NTF_HAS_CODE       = 0x0400
+  NTF_HAS_HEADER     = 0x0002
+  NTF_HAS_CODE       = 0x0004
+  NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
 
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
@@ -636,13 +635,13 @@ module Fabricator
   NT_RUBRIC          = 0x0080
   NT_LIST            = 0x0090
   NT_ITEM            = 0x00A0
+  NT_DIVERT          = 0x00B0 | NTF_HAS_HEADER
+  NT_DIVERTED_CHUNK  = 0x00B0 | NTF_HAS_CODE
   NT_CHUNK           = 0x00B0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_DIVERTED_CHUNK  = 0x00C0 | NTF_HAS_CODE
-  NT_PARAGRAPH       = 0x00D0
-  NT_BLOCK           = 0x00E0
-  NT_DIVERT          = 0x00F0 | NTF_HAS_HEADER
+  NT_PARAGRAPH       = 0x00C0
+  NT_BLOCK           = 0x00D0
 
-  NT_INDEX_ANCHOR    = 0x0100
+  NT_INDEX_ANCHOR    = 0x00E0
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1184,6 +1183,7 @@ module Fabricator
                     tag: 'span'
                 warnings = subelement.warnings
                 start_index += 1
+              # FIXME: also support chunks here
             end
           end
           @port.puts "</p>"
@@ -1979,7 +1979,6 @@ class << Fabricator
         # it in the same paragraph.
         starter = element.elements[start_index]
         if starter then
-          # FIXME: this test should be a bit operation
           case starter.type
           when NT_PARAGRAPH, NT_DIVERT, NT_CHUNK then
             wr.add_space
