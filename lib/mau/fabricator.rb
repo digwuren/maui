@@ -933,13 +933,14 @@ module Fabricator
         add_space node.data || ' '
       when MU_NBSP then
         add_plain ' '
-      when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
+      when MU_BOLD, MU_ITALIC, MU_UNDERSCORE,
+          MU_MONOSPACE then
         # FIXME: this table should be a constant
         styled({
-          MU_MONOSPACE => :monospace,
           MU_BOLD => :bold,
           MU_ITALIC => :italic,
           MU_UNDERSCORE => :underscore,
+          MU_MONOSPACE => :monospace,
         }[node.type]) do
           add_nodes node.content, symbolism: symbolism
         end
@@ -1642,7 +1643,8 @@ class << Fabricator
         while j < s.length and !" */<>[_|".include? ps[j] do
           j += 1
         end
-        stack.last.content.plain String.new(ps[ps.pointer ... j])
+        stack.last.content.plain(
+            String.new(ps[ps.pointer ... j]))
         ps.pointer = j
       end
     end
