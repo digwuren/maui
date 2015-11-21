@@ -624,7 +624,11 @@ module Fabricator
 
   NTF_HAS_HEADER     = 0x0100
   NTF_HAS_CODE       = 0x0200
-  NT_ITEM            = 0x0001
+
+  NT_PLAIN           = 0x0000
+  NT_SPACE           = 0x0001
+
+  NT_ITEM            = 0x000F
   NT_RUBRIC          = 0x0002
   NT_LIST            = 0x0003
   NT_CHUNK           = 0x0004 | NTF_HAS_HEADER | NTF_HAS_CODE
@@ -635,8 +639,7 @@ module Fabricator
   NT_MONOSPACE       = 0x0009
   NT_PARAGRAPH       = 0x000A
   NT_LINK            = 0x000B
-  NT_PLAIN           = 0x000C
-  NT_SPACE           = 0x000D
+  NT_NBSP            = 0x000E
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -762,7 +765,8 @@ module Fabricator
 
     def words s
       s.split(/(\s+)/, -1).each_with_index do |part, i|
-        node(i.even? ? NT_PLAIN : NT_SPACE, data: part)
+        # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
+        node(i & 1, data: part)
       end
       return self
     end
@@ -933,7 +937,7 @@ module Fabricator
         add_plain node.data
       when NT_SPACE then
         add_space node.data || ' '
-      when :nbsp then
+      when NT_NBSP then
         add_plain ' '
       when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
         # FIXME: this table should be a constant
@@ -1446,7 +1450,7 @@ module Fabricator
         when NT_SPACE then
           @port.print((node.data || ' ').to_xml)
 
-        when :nbsp then
+        when NT_NBSP then
           @port.print '&nbsp;'
 
         when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
@@ -1568,8 +1572,9 @@ class << Fabricator
         monospaced_content = []
         ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
             each_with_index do |part, i|
+          # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
           monospaced_content.push OpenStruct.new(
-              type: i.even? ? NT_PLAIN : NT_SPACE,
+              type: i & 1,
               data: part
           )
         end
@@ -1686,7 +1691,7 @@ class << Fabricator
         stack.last.content.push OpenStruct.new(type: NT_SPACE)
 
       elsif ps.at? "\u00A0" then
-        stack.last.content.push OpenStruct.new(type: :nbsp)
+        stack.last.content.push OpenStruct.new(type: NT_NBSP)
         ps.pointer += 1
 
       else
