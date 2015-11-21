@@ -410,8 +410,7 @@ module Fabricator
 
     def freeform_index_record name
       identifier = Fabricator.canonicalise(name)
-      markup = Fabricator.parse_markup name,
-              Fabricator::MF::LINK
+      markup = Fabricator.parse_markup name, PF_LINK
       return _index_record identifier, markup
     end
 
@@ -646,7 +645,7 @@ module Fabricator
       super()
       push OpenStruct.new(
           content: Fabricator.markup,
-          mode: Fabricator::MF::DEFAULTS & ~suppress_modes,
+          mode: PF_DEFAULTS & ~suppress_modes,
           term_type: 0,
         )
       return
@@ -686,26 +685,25 @@ module Fabricator
       i = self.length
       begin
         i -= 1
-        self[i].mode &= ~Fabricator::MF::END_LINK
-        self[i].mode |= Fabricator::MF::LINK
-      end until self[i].term_type == Fabricator::MF::END_LINK
+        self[i].mode &= ~PF_END_LINK
+        self[i].mode |= PF_LINK
+      end until self[i].term_type == PF_END_LINK
       self[i].term_type = 0
       return
     end
   end
 
-  module MF
-    BOLD            = 0x01
-    END_BOLD        = 0x02
-    ITALIC          = 0x04
-    END_ITALIC      = 0x08
-    UNDERSCORE      = 0x10
-    END_UNDERSCORE  = 0x20
-    LINK            = 0x40
-    END_LINK        = 0x80
+  PF_BOLD            = 0x01
+  PF_END_BOLD        = 0x02
+  PF_ITALIC          = 0x04
+  PF_END_ITALIC      = 0x08
+  PF_UNDERSCORE      = 0x10
+  PF_END_UNDERSCORE  = 0x20
+  PF_LINK            = 0x40
+  PF_END_LINK        = 0x80
 
-    DEFAULTS = BOLD | ITALIC | UNDERSCORE | LINK
-  end
+  PF_DEFAULTS = PF_BOLD | PF_ITALIC | PF_UNDERSCORE |
+      PF_LINK
 
   class Pointered_String < String
     def initialize value
@@ -945,8 +943,7 @@ module Fabricator
         end
       when MU_MENTION_CHUNK then
         add_plain symbolism.chunk_name_delim.begin
-        add_nodes Fabricator.parse_markup(node.name,
-                Fabricator::MF::LINK),
+        add_nodes Fabricator.parse_markup(node.name, PF_LINK),
             symbolism: symbolism
         add_plain symbolism.chunk_name_delim.end
       when MU_LINK then
@@ -1323,8 +1320,7 @@ module Fabricator
       if element.root_type then
         @port.print "<u>%s</u> " % element.root_type.to_xml
       end
-      htmlify Fabricator.parse_markup(element.name,
-          Fabricator::MF::LINK)
+      htmlify Fabricator.parse_markup(element.name, PF_LINK)
       @port.print @symbolism.chunk_name_delim.end + ":"
       @port.print "</#{tag}>"
       # Note that we won't output a trailing linebreak here.
@@ -1345,9 +1341,7 @@ module Fabricator
           if node.clearindent then
             @port.print ".clearindent "
           end
-          htmlify(
-              Fabricator.parse_markup(node.name,
-                  Fabricator::MF::LINK))
+          htmlify Fabricator.parse_markup(node.name, PF_LINK)
           if node.vertical_separation then
             @port.print " " + node.vertical_separation.to_xml
           end
@@ -1459,8 +1453,7 @@ module Fabricator
         when MU_MENTION_CHUNK then
           @port.print "<span class='maui-chunk-mention'>"
           @port.print @symbolism.chunk_name_delim.begin
-          htmlify Fabricator.parse_markup(node.name,
-              Fabricator::MF::LINK)
+          htmlify Fabricator.parse_markup(node.name, PF_LINK)
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
 
@@ -1560,60 +1553,49 @@ class << Fabricator
                 words(ps[ps.pointer + 2 ... end_offset].strip)
         ps.pointer = end_offset + 2
 
-      elsif stack.last.mode & Fabricator::MF::BOLD != 0 and
+      elsif stack.last.mode & PF_BOLD != 0 and
           ps.biu_starter? ?* then
-        stack.spawn '*',
-            Fabricator::MF::BOLD,
-            Fabricator::MF::END_BOLD
+        stack.spawn '*', PF_BOLD, PF_END_BOLD
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::ITALIC != 0 and
+      elsif stack.last.mode & PF_ITALIC != 0 and
           ps.biu_starter? ?/ then
-        stack.spawn '/',
-            Fabricator::MF::ITALIC,
-            Fabricator::MF::END_ITALIC
+        stack.spawn '/', PF_ITALIC, PF_END_ITALIC
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::UNDERSCORE \
+      elsif stack.last.mode & PF_UNDERSCORE \
               != 0 and
           ps.biu_starter? ?_ then
-        stack.spawn '_',
-            Fabricator::MF::UNDERSCORE,
-            Fabricator::MF::END_UNDERSCORE
+        stack.spawn '_', PF_UNDERSCORE, PF_END_UNDERSCORE
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::END_BOLD != 0 and
+      elsif stack.last.mode & PF_END_BOLD != 0 and
           ps.biu_terminator? ?* then
-        stack.ennode MU_BOLD, Fabricator::MF::END_BOLD
+        stack.ennode MU_BOLD, PF_END_BOLD
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::END_ITALIC \
-              != 0 and
+      elsif stack.last.mode & PF_END_ITALIC != 0 and
           ps.biu_terminator? ?/ then
-        stack.ennode MU_ITALIC, Fabricator::MF::END_ITALIC
+        stack.ennode MU_ITALIC, PF_END_ITALIC
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::END_UNDERSCORE \
-              != 0 and
+      elsif stack.last.mode & PF_END_UNDERSCORE != 0 and
           ps.biu_terminator? ?_ then
-        stack.ennode MU_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
+        stack.ennode MU_UNDERSCORE, PF_END_UNDERSCORE
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::LINK != 0 and
+      elsif stack.last.mode & PF_LINK != 0 and
           ps.biu_starter? ?< then
-        stack.spawn '<',
-            Fabricator::MF::LINK,
-            Fabricator::MF::END_LINK
+        stack.spawn '<', PF_LINK, PF_END_LINK
         stack.last.start_offset = ps.pointer
         ps.pointer += 1
 
-      elsif stack.last.mode & Fabricator::MF::END_LINK != 0 and
+      elsif stack.last.mode & PF_END_LINK != 0 and
           ps.at? '|' and
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
         if link_like? target then
-          stack.ennode MU_LINK,
-              Fabricator::MF::END_LINK,
+          stack.ennode MU_LINK, PF_END_LINK,
               target: target
           ps.pointer = end_offset + 1
         else
@@ -1623,10 +1605,10 @@ class << Fabricator
           ps.pointer += 1
         end
 
-      elsif stack.last.mode & Fabricator::MF::END_LINK != 0 and
+      elsif stack.last.mode & PF_END_LINK != 0 and
           ps.at? '>' then
         j = stack.rindex do |x|
-          x.term_type == Fabricator::MF::END_LINK
+          x.term_type == PF_END_LINK
         end
         target = ps[stack[j].start_offset + 1 ... ps.pointer]
         if link_like? target then
@@ -1832,7 +1814,7 @@ class << Fabricator
             type: OL_TITLE,
             level: $1.length - 1,
             loc: element_location)
-          mode_flags_to_suppress |= Fabricator::MF::LINK
+          mode_flags_to_suppress |= PF_LINK
 
         when /^\*\s+/ then
           lines[0] = $'
@@ -2107,7 +2089,7 @@ class << Fabricator
         wr.add_space
       end
       wr.add_nodes Fabricator.parse_markup(element.name,
-              Fabricator::MF::LINK),
+              PF_LINK),
           symbolism: symbolism
       wr.add_plain symbolism.chunk_name_delim.end
       wr.add_plain ":"
@@ -2136,8 +2118,7 @@ class << Fabricator
       if node.clearindent then
         wr.add_plain ".clearindent "
       end
-      wr.add_nodes Fabricator.parse_markup(node.name,
-              Fabricator::MF::LINK),
+      wr.add_nodes Fabricator.parse_markup(node.name, PF_LINK),
           symbolism: symbolism
       if node.vertical_separation then
         wr.add_plain " " + node.vertical_separation
