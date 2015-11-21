@@ -631,6 +631,7 @@ module Fabricator
   NT_DIVERTED_CHUNK  = 0x0005 | NTF_HAS_CODE
   NT_BOLD            = 0x0006
   NT_ITALIC          = 0x0007
+  NT_UNDERSCORE      = 0x0008
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -926,12 +927,12 @@ module Fabricator
         add_space node.data || ' '
       when :nbsp then
         add_plain ' '
-      when :monospace, NT_BOLD, NT_ITALIC, :underscore then
+      when :monospace, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
         styled({
           :monospace => :monospace,
           NT_BOLD => :bold,
           NT_ITALIC => :italic,
-          :underscore => :underscore,
+          NT_UNDERSCORE => :underscore,
         }[node.type]) do
           add_nodes node.content, symbolism: symbolism
         end
@@ -1439,7 +1440,7 @@ module Fabricator
         when :nbsp then
           @port.print '&nbsp;'
 
-        when :monospace, NT_BOLD, NT_ITALIC, :underscore then
+        when :monospace, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
           htmlify node.content
@@ -1479,7 +1480,7 @@ module Fabricator
     :monospace => 'code',
     NT_BOLD => 'b',
     NT_ITALIC => 'i',
-    :underscore => 'u',
+    NT_UNDERSCORE => 'u',
   }
 end
 
@@ -1603,7 +1604,7 @@ class << Fabricator
       elsif stack.last.mode & Fabricator::MF::END_UNDERSCORE \
               != 0 and
           ps.biu_terminator? ?_ then
-        stack.ennode :underscore, Fabricator::MF::END_UNDERSCORE
+        stack.ennode NT_UNDERSCORE, Fabricator::MF::END_UNDERSCORE
         ps.pointer += 1
 
       elsif stack.last.mode & Fabricator::MF::LINK != 0 and
