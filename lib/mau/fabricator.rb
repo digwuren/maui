@@ -261,7 +261,7 @@ module Fabricator
           # The list structure has been prepared.  Append the
           # new element to the innermost list in progress.
           @list_stack.last.items.push element
-        elsif element.type == :index_anchor then
+        elsif element.type == NT_INDEX_ANCHOR then
           freeform_index_record(element.name).refs.push [
               @cursec.section_number, :manual]
         else
@@ -644,6 +644,8 @@ module Fabricator
   NT_PARAGRAPH       = 0x00D0
   NT_BLOCK           = 0x00E0
   NT_DIVERT          = 0x00F0 | NTF_HAS_HEADER
+
+  NT_INDEX_ANCHOR    = 0x0100
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1861,7 +1863,7 @@ class << Fabricator
       when /^\.\s+/ then
         name = $'
         element = OpenStruct.new(
-            type: :index_anchor,
+            type: NT_INDEX_ANCHOR,
             name: name)
         vp.get_line
 

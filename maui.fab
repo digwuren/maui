@@ -181,7 +181,7 @@ Next, let's consider top-level bullets.
       loc: element_location)
 
 
-. [[:index_anchor]]
+. [[NT_INDEX_ANCHOR]]
 
 A line starting with a period and whitespace is an index
 reference anchor.  This is a line-level, not paragraph-level,
@@ -193,7 +193,7 @@ short.
   when /^\.\s+/ then
     name = $'
     element = OpenStruct.new(
-        type: :index_anchor,
+        type: NT_INDEX_ANCHOR,
         name: name)
     vp.get_line
 
@@ -559,7 +559,7 @@ addition to [[presentation]] collected into [[toc]].
 
   if element.type == NT_ITEM then
     << Integrate the list item >>
-  elsif element.type == :index_anchor then
+  elsif element.type == NT_INDEX_ANCHOR then
     << Add [[manual]] index entry >>
   else
     @list_stack = nil
@@ -719,7 +719,7 @@ section break in the form of two adjacent blank lines.
 
 
 Integrating an index anchor only involves adding an entry to the
-index; the [[index_anchor]] element won't be appended into the
+index; the [[NT_INDEX_ANCHOR]] node won't be appended into the
 body of the containing [[section]].
 
 << Add [[manual]] index entry >>:
@@ -1222,7 +1222,6 @@ bit patterns to them.
 . [[NT_MONOSPACE]]
 . [[NT_LINK]]
 . [[NT_MENTION_CHUNK]]
-
 . [[NT_RUBRIC]]
 . [[NT_LIST]]
 . [[NT_ITEM]]
@@ -1231,6 +1230,7 @@ bit patterns to them.
 . [[NT_PARAGRAPH]]
 . [[NT_BLOCK]]
 . [[NT_DIVERT]]
+. [[NT_INDEX_ANCHOR]]
 
 << in [[Fabricator]] >>:
   NTF_HAS_HEADER     = 0x0100
@@ -1255,6 +1255,8 @@ bit patterns to them.
   NT_PARAGRAPH       = 0x00D0
   NT_BLOCK           = 0x00E0
   NT_DIVERT          = 0x00F0 | NTF_HAS_HEADER
+
+  NT_INDEX_ANCHOR    = 0x0100
 
 
 == Horizontal parsing
