@@ -222,7 +222,7 @@ an ordinary paragraph, a title, or a rubric.
   when /^(==+)(\s+)/ then
     lines[0] = $2 + $'
     element = OpenStruct.new(
-      type: :title,
+      type: OL_TITLE,
       level: $1.length - 1,
       loc: element_location)
     mode_flags_to_suppress |= Fabricator::MF::LINK
@@ -418,7 +418,7 @@ construct.
 
 The /content/ of the fabric will be stored in the integrator
 output under the key of [[presentation]].  In its immediate
-form, it's a Ruby [[Array]] containing the [[title]] and
+form, it's a Ruby [[Array]] containing the [[OL_TITLE]] and
 [[section]] nodes, in order; both of these kinds can contain
 further, lower-level, structure.
 
@@ -426,10 +426,10 @@ further, lower-level, structure.
 
 
 In order to simplify generating the table of content of the
-fabric, we'll furthermore gather the [[title]] and [[OL_RUBRIC]]
-nodes into the integrator's output under the key of [[toc]].
-It's a flat list; however, [[title]] nodes will define a
-hierarchical structure by their [[level]] fields.
+fabric, we'll furthermore gather the [[OL_TITLE]] and
+[[OL_RUBRIC]] nodes into the integrator's output under the key
+of [[toc]].  It's a flat list; however, [[OL_TITLE]] nodes will
+define a hierarchical structure by their [[level]] fields.
 
   toc: [], # list of titles and rubrics.
 
@@ -508,8 +508,8 @@ The integrator's main entry point.
 . [[integrate]]
 
   def integrate element
-    if element.type == :title then
-      << Integrate the [[title]] element >>
+    if element.type == OL_TITLE then
+      << Integrate the title >>
     else
       << Integrate the sub-[[section]] element >>
     end
@@ -523,7 +523,7 @@ addition to [[presentation]] collected into [[toc]].
 
 . "title level too deep" (warning)
 
-<< Integrate the [[title]] element >>:
+<< Integrate the title >>:
   # Check the title's level restriction
   if element.level > @last_title_level + 1 then
     warn element.loc, "title level too deep"
@@ -1238,15 +1238,16 @@ Now, we can enumerate the node types.
 . [[OL_CHUNK]]
 . [[OL_INDEX_ANCHOR]]
 
-  OL_RUBRIC          = 0x10 | OLF_NARRATIVE
-  OL_ITEM            = 0x20 | OLF_NARRATIVE
-  OL_LIST            = 0x30 | OLF_NARRATIVE
-  OL_PARAGRAPH       = 0x40 | OLF_NARRATIVE
-  OL_BLOCK           = 0x50 | OLF_NARRATIVE
-  OL_DIVERT          = 0x60 | OLF_HAS_HEADER
+  OL_TITLE           = 0x10
+  OL_RUBRIC          = 0x20 | OLF_NARRATIVE
+  OL_ITEM            = 0x30 | OLF_NARRATIVE
+  OL_LIST            = 0x40 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x50 | OLF_NARRATIVE
+  OL_BLOCK           = 0x60 | OLF_NARRATIVE
+  OL_DIVERT          = 0x70 | OLF_HAS_HEADER
   OL_DIVERTED_CHUNK  = 0x70 | OLF_HAS_CODE
-  OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
-  OL_INDEX_ANCHOR    = 0x90
+  OL_CHUNK           = 0x70 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x80
 
 
 Next, we'll consider the markup nodes.  First, in
@@ -2365,16 +2366,16 @@ to an empty list.
   toc_generated = false
   fabric.presentation.each do |element|
     case element.type
-    when :title then
-      << Weave the [[title]] node (ctxt) >>
+    when OL_TITLE then
+      << Weave the title (ctxt) >>
     when :section then
-      << Weave the [[section]] (ctxt) >>
+      << Weave the section (ctxt) >>
     else raise 'data structure error'
     end
   end
 
 
-<< Weave the [[section]] (ctxt) >>:
+<< Weave the section (ctxt) >>:
   # [[element.elements]] can be empty if a section
   # contains index anchor(s) but no content.  This is a
   # pathological case, to be sure, but it can happen, so
@@ -2721,7 +2722,7 @@ nodes, with appropriate joiners interspersed.
 
 * Weaving other narrative elements.
 
-<< Weave the [[title]] node (ctxt) >>:
+<< Weave the title (ctxt) >>:
   if !toc_generated then
     weave_ctxt_toc fabric.toc, wr,
         symbolism: symbolism
@@ -2790,7 +2791,7 @@ nodes, with appropriate joiners interspersed.
 
 << Weave the TOC entry (ctxt) >>:
   case entry.type
-  when :title then
+  when OL_TITLE then
     rubric_level = entry.level - 1 + 1
     wr.add_plain '  ' * (entry.level - 1)
     wr.add_plain entry.number + '.'
@@ -3300,10 +3301,10 @@ conventions.
     toc_generated = false
     @fabric.presentation.each do |element|
       case element.type
-      when :title then
-        << Weave the [[title]] node (HTML) >>
+      when OL_TITLE then
+        << Weave the title (HTML) >>
       when :section then
-        << Weave the [[section]] (HTML) >>
+        << Weave the section (HTML) >>
       else raise 'data structure error'
       end
       @port.puts
@@ -3311,7 +3312,7 @@ conventions.
     return
   end
 
-<< Weave the [[title]] node (HTML) >>:
+<< Weave the title (HTML) >>:
   if !toc_generated then
     html_toc
     toc_generated = true
@@ -3325,7 +3326,7 @@ conventions.
 
 . [[.maui-section]] (CSS class)
 
-<< Weave the [[section]] (HTML) >>:
+<< Weave the section (HTML) >>:
   rubricated = !element.elements.empty? &&
       element.elements[0].type == OL_RUBRIC
   # If we're encountering the first rubric/title, output
@@ -3339,7 +3340,7 @@ conventions.
   @port.puts "<section class='maui-section' id='%s'>" %
       "S.#{element.section_number}"
   @port.puts
-  << Weave the [[section]]'s lead (HTML) >>
+  << Weave the section's lead (HTML) >>
   @port.puts
   element.elements[start_index .. -1].each do |child|
     html_section_part child
@@ -3348,7 +3349,7 @@ conventions.
   << Weave the section's top-level warnings, if any (HTML) >>
   @port.puts "</section>"
 
-<< Weave the [[section]]'s lead (HTML) >>:
+<< Weave the section's lead (HTML) >>:
   @port.print "<p>"
   << Weave section's number and rubric (HTML) >>
   subelement = element.elements[start_index]
@@ -3510,7 +3511,7 @@ into a local link, either in the [[#T.foo]] form for titles or
 
 << Weave the TOC entry (HTML) >>:
   case entry.type
-  when :title then
+  when OL_TITLE then
     @port.print "#{entry.number}. "
     @port.print "<a href='#T.#{entry.number}'>"
     htmlify entry.content

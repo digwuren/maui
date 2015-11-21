@@ -149,7 +149,7 @@ module Fabricator
     end
 
     def integrate element
-      if element.type == :title then
+      if element.type == OL_TITLE then
         # Check the title's level restriction
         if element.level > @last_title_level + 1 then
           warn element.loc, "title level too deep"
@@ -619,15 +619,16 @@ module Fabricator
 
   OLF_NARRATIVE      = 0x08
 
-  OL_RUBRIC          = 0x10 | OLF_NARRATIVE
-  OL_ITEM            = 0x20 | OLF_NARRATIVE
-  OL_LIST            = 0x30 | OLF_NARRATIVE
-  OL_PARAGRAPH       = 0x40 | OLF_NARRATIVE
-  OL_BLOCK           = 0x50 | OLF_NARRATIVE
-  OL_DIVERT          = 0x60 | OLF_HAS_HEADER
+  OL_TITLE           = 0x10
+  OL_RUBRIC          = 0x20 | OLF_NARRATIVE
+  OL_ITEM            = 0x30 | OLF_NARRATIVE
+  OL_LIST            = 0x40 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x50 | OLF_NARRATIVE
+  OL_BLOCK           = 0x60 | OLF_NARRATIVE
+  OL_DIVERT          = 0x70 | OLF_HAS_HEADER
   OL_DIVERTED_CHUNK  = 0x70 | OLF_HAS_CODE
-  OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
-  OL_INDEX_ANCHOR    = 0x90
+  OL_CHUNK           = 0x70 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x80
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -1121,7 +1122,7 @@ module Fabricator
       toc_generated = false
       @fabric.presentation.each do |element|
         case element.type
-        when :title then
+        when OL_TITLE then
           if !toc_generated then
             html_toc
             toc_generated = true
@@ -1274,7 +1275,7 @@ module Fabricator
                 "\n<li>"
           end
           case entry.type
-          when :title then
+          when OL_TITLE then
             @port.print "#{entry.number}. "
             @port.print "<a href='#T.#{entry.number}'>"
             htmlify entry.content
@@ -1827,7 +1828,7 @@ class << Fabricator
         when /^(==+)(\s+)/ then
           lines[0] = $2 + $'
           element = OpenStruct.new(
-            type: :title,
+            type: OL_TITLE,
             level: $1.length - 1,
             loc: element_location)
           mode_flags_to_suppress |= Fabricator::MF::LINK
@@ -1877,7 +1878,7 @@ class << Fabricator
     toc_generated = false
     fabric.presentation.each do |element|
       case element.type
-      when :title then
+      when OL_TITLE then
         if !toc_generated then
           weave_ctxt_toc fabric.toc, wr,
               symbolism: symbolism
@@ -2256,7 +2257,7 @@ class << Fabricator
       rubric_level = 0
       toc.each do |entry|
         case entry.type
-        when :title then
+        when OL_TITLE then
           rubric_level = entry.level - 1 + 1
           wr.add_plain '  ' * (entry.level - 1)
           wr.add_plain entry.number + '.'
