@@ -1650,13 +1650,7 @@ class << Fabricator
         else
           # False alarm: this is not a link, after all.
           stack.cancel_link
-          # FIXME: check if [[stack.last.content]] is a
-          # [[Markup_Constructor]]; if it is, we can use [[#plain]]
-          # here instead of constructing the [[OpenStruct]] by hand
-          stack.last.content.push OpenStruct.new(
-            type: NT_PLAIN,
-            data: '>',
-          )
+          stack.last.content.plain '>'
         end
         ps.pointer += 1
 
@@ -1665,12 +1659,10 @@ class << Fabricator
         while ps.at? ' ' do
           ps.pointer += 1
         end
-        # FIXME: use [[Markup_Constructor.space]] instead
-        stack.last.content.push OpenStruct.new(type: NT_SPACE)
+        stack.last.content.space
 
       elsif ps.at? "\u00A0" then
-        # FIXME: use [[Markup_Constructor.node]] instead
-        stack.last.content.push OpenStruct.new(type: NT_NBSP)
+        stack.last.content.node NT_NBSP
         ps.pointer += 1
 
       else
@@ -1678,13 +1670,7 @@ class << Fabricator
         while j < s.length and !" */<>[_|".include? ps[j] do
           j += 1
         end
-        # FIXME: check if [[stack.last.content]] is a
-        # [[Markup_Constructor]]; if it is, we can use [[#plain]]
-        # here instead of constructing the [[OpenStruct]] by hand
-        stack.last.content.push OpenStruct.new(
-            type: NT_PLAIN,
-            data: String.new(ps[ps.pointer ... j]),
-        )
+        stack.last.content.plain String.new(ps[ps.pointer ... j])
         ps.pointer = j
       end
     end
