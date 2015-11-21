@@ -929,25 +929,25 @@ module Fabricator
       case node.type
       when MU_PLAIN then
         add_plain node.data
+
       when MU_SPACE then
         add_space node.data || ' '
+
       when MU_NBSP then
         add_plain ' '
+
       when MU_BOLD, MU_ITALIC, MU_UNDERSCORE, MU_MONOSPACE then
         # FIXME: this table should be a constant
-        styled({
-          MU_BOLD => :bold,
-          MU_ITALIC => :italic,
-          MU_UNDERSCORE => :underscore,
-          MU_MONOSPACE => :monospace,
-        }[node.type]) do
+        styled(Fabricator::MARKUP2CTXT_STYLE[node.type]) do
           add_nodes node.content, symbolism: symbolism
         end
+
       when MU_MENTION_CHUNK then
         add_plain symbolism.chunk_name_delim.begin
         add_nodes Fabricator.parse_markup(node.name, PF_LINK),
             symbolism: symbolism
         add_plain symbolism.chunk_name_delim.end
+
       when MU_LINK then
         if node.implicit_face then
           styled :link do
@@ -967,7 +967,7 @@ module Fabricator
           add_plain '>'
         end
       else
-        # Uh-oh, a bug: the parser generated a node of a type
+        # Uh-oh, a bug: the parser has generated a node of a type
         # unknown to the weaver.
         raise 'invalid node type'
       end
@@ -1022,6 +1022,13 @@ module Fabricator
       return
     end
   end
+
+  MARKUP2CTXT_STYLE = { # node type tag => ctxt style name
+    MU_BOLD => :bold,
+    MU_ITALIC => :italic,
+    MU_UNDERSCORE => :underscore,
+    MU_MONOSPACE => :monospace,
+  }
 
   UNICODE_PSEUDOGRAPHICS = OpenStruct.new(
     bullet: [0x2022].pack('U*'),
