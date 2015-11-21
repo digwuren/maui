@@ -120,9 +120,9 @@ module Fabricator
 
         chunks_by_name: {},
             # canonical_name => OpenStruct
-            #   root_type: String,
-            #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes,
-            #   headers: list of OL_CHUNK/OL_DIVERT records,
+            #   root_type: String
+            #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes
+            #   headers: list of OL_CHUNK/OL_DIVERT records
 
         roots: [], # list of canonical names
 
@@ -186,8 +186,10 @@ module Fabricator
         if element.type & OLF_HAS_HEADER != 0 then
           clear_diversion
         end
-        if (@cursec and element.type == OL_RUBRIC) or
-            (@in_code and element.type & OLF_NARRATIVE != 0) then
+        if (@cursec and
+                element.type == OL_RUBRIC) or
+            (@in_code and
+                element.type & OLF_NARRATIVE != 0) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
                   "silent section break",

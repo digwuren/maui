@@ -441,9 +441,9 @@ output structure under the key of [[chunks_by_name]].  (See also
 
   chunks_by_name: {},
       # canonical_name => OpenStruct
-      #   root_type: String,
-      #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes,
-      #   headers: list of OL_CHUNK/OL_DIVERT records,
+      #   root_type: String
+      #   chunks: list of OL_CHUNK/OL_DIVERTED_CHUNK nodes
+      #   headers: list of OL_CHUNK/OL_DIVERT records
 
 
 Also, we'll collect the (canonicalised) names of the root
@@ -622,8 +622,10 @@ section break in the form of two adjacent blank lines.
 . "silent section break" (warning)
 
 << ? Break section and warn >>:
-  if (@cursec and element.type == OL_RUBRIC) or
-      (@in_code and element.type & OLF_NARRATIVE != 0) then
+  if (@cursec and
+          element.type == OL_RUBRIC) or
+      (@in_code and
+          element.type & OLF_NARRATIVE != 0) then
     (@cursec.warnings ||= []).push \
         warn(element.loc,
             "silent section break",
