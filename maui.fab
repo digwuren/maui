@@ -419,7 +419,7 @@ construct.
 The /content/ of the fabric will be stored in the integrator
 output under the key of [[presentation]].  In its immediate
 form, it's a Ruby [[Array]] containing the [[OL_TITLE]] and
-[[section]] nodes, in order; both of these kinds can contain
+[[OL_SECTION]] nodes, in order; both of these kinds can contain
 further, lower-level, structure.
 
   presentation: [], # list of titles and sections
@@ -511,7 +511,7 @@ The integrator's main entry point.
     if element.type == OL_TITLE then
       << Integrate the title >>
     else
-      << Integrate the sub-[[section]] element >>
+      << Integrate the part of section >>
     end
     return
   end
@@ -550,7 +550,7 @@ addition to [[presentation]] collected into [[toc]].
   clear_diversion
 
 
-<< Integrate the sub-[[section]] element >>:
+<< Integrate the part of section >>:
   << [[OL_BLOCK]] and diverting?  Upgrade to [[OL_DIVERTED_CHUNK]] >>
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
@@ -635,7 +635,7 @@ section break in the form of two adjacent blank lines.
 << ? Begin new section >>:
   if @cursec.nil? then
     @cursec = OpenStruct.new(
-      type: :section,
+      type: OL_SECTION,
       section_number: @first_section_number +
           @section_count,
       elements: [],
@@ -716,7 +716,7 @@ section break in the form of two adjacent blank lines.
 
 Integrating an index anchor only involves adding an entry to the
 index; the [[OL_INDEX_ANCHOR]] node won't be appended into the
-body of the containing [[section]].
+body of the containing [[OL_SECTION]] node.
 
 << Add [[manual]] index entry >>:
   freeform_index_record(element.name).refs.push [
@@ -1073,7 +1073,7 @@ it needs to ask the integrator.
   def check_chunk_sizes limit
     return unless limit
     @output.presentation.each do |node|
-      next unless node.type == :section
+      next unless node.type == OL_SECTION
       node.elements.each do |element|
         next unless element.type == OL_CHUNK
         if element.lines.length > limit then
@@ -1239,15 +1239,16 @@ Now, we can enumerate the node types.
 . [[OL_INDEX_ANCHOR]]
 
   OL_TITLE           = 0x10
-  OL_RUBRIC          = 0x20 | OLF_NARRATIVE
-  OL_ITEM            = 0x30 | OLF_NARRATIVE
-  OL_LIST            = 0x40 | OLF_NARRATIVE
-  OL_PARAGRAPH       = 0x50 | OLF_NARRATIVE
-  OL_BLOCK           = 0x60 | OLF_NARRATIVE
-  OL_DIVERT          = 0x70 | OLF_HAS_HEADER
-  OL_DIVERTED_CHUNK  = 0x70 | OLF_HAS_CODE
-  OL_CHUNK           = 0x70 | OLF_HAS_HEADER | OLF_HAS_CODE
-  OL_INDEX_ANCHOR    = 0x80
+  OL_SECTION         = 0x20
+  OL_RUBRIC          = 0x30 | OLF_NARRATIVE
+  OL_ITEM            = 0x40 | OLF_NARRATIVE
+  OL_LIST            = 0x50 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x60 | OLF_NARRATIVE
+  OL_BLOCK           = 0x70 | OLF_NARRATIVE
+  OL_DIVERT          = 0x80 | OLF_HAS_HEADER
+  OL_DIVERTED_CHUNK  = 0x80 | OLF_HAS_CODE
+  OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x90
 
 
 Next, we'll consider the markup nodes.  First, in
@@ -2368,7 +2369,7 @@ to an empty list.
     case element.type
     when OL_TITLE then
       << Weave the title (ctxt) >>
-    when :section then
+    when OL_SECTION then
       << Weave the section (ctxt) >>
     else raise 'data structure error'
     end
@@ -2398,11 +2399,11 @@ to an empty list.
 
 
 Weaving a section is a bit tricky, for we want to pretend that
-both the section number, which is a field of a [[section]] node,
-and the rubric (if any), which is optionally the first child of
-it, comprise the section's title.  Furthermore, following
-Knuth's practice, we'll want both to precede the first regular
-paragraph, if any, without a separating paragraph break.
+both the section number, which is a field of an [[OL_SECTION]]
+node, and the rubric (if any), which is optionally the first
+child of it, comprise the section's title.  Furthermore,
+following Knuth's practice, we'll want both to precede the first
+regular paragraph, if any, without a separating paragraph break.
 
 If the section has a rubric, we'll paint both the section number
 and the rubric red (style [[:rubric]])  If there's no rubric,
@@ -3303,7 +3304,7 @@ conventions.
       case element.type
       when OL_TITLE then
         << Weave the title (HTML) >>
-      when :section then
+      when OL_SECTION then
         << Weave the section (HTML) >>
       else raise 'data structure error'
       end

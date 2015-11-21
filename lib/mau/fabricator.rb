@@ -196,7 +196,7 @@ module Fabricator
         end
         if @cursec.nil? then
           @cursec = OpenStruct.new(
-            type: :section,
+            type: OL_SECTION,
             section_number: @first_section_number +
                 @section_count,
             elements: [],
@@ -472,7 +472,7 @@ module Fabricator
     def check_chunk_sizes limit
       return unless limit
       @output.presentation.each do |node|
-        next unless node.type == :section
+        next unless node.type == OL_SECTION
         node.elements.each do |element|
           next unless element.type == OL_CHUNK
           if element.lines.length > limit then
@@ -620,15 +620,16 @@ module Fabricator
   OLF_NARRATIVE      = 0x08
 
   OL_TITLE           = 0x10
-  OL_RUBRIC          = 0x20 | OLF_NARRATIVE
-  OL_ITEM            = 0x30 | OLF_NARRATIVE
-  OL_LIST            = 0x40 | OLF_NARRATIVE
-  OL_PARAGRAPH       = 0x50 | OLF_NARRATIVE
-  OL_BLOCK           = 0x60 | OLF_NARRATIVE
-  OL_DIVERT          = 0x70 | OLF_HAS_HEADER
-  OL_DIVERTED_CHUNK  = 0x70 | OLF_HAS_CODE
-  OL_CHUNK           = 0x70 | OLF_HAS_HEADER | OLF_HAS_CODE
-  OL_INDEX_ANCHOR    = 0x80
+  OL_SECTION         = 0x20
+  OL_RUBRIC          = 0x30 | OLF_NARRATIVE
+  OL_ITEM            = 0x40 | OLF_NARRATIVE
+  OL_LIST            = 0x50 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x60 | OLF_NARRATIVE
+  OL_BLOCK           = 0x70 | OLF_NARRATIVE
+  OL_DIVERT          = 0x80 | OLF_HAS_HEADER
+  OL_DIVERTED_CHUNK  = 0x80 | OLF_HAS_CODE
+  OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x90
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -1133,7 +1134,7 @@ module Fabricator
           @port.print "#{element.number}. "
           htmlify element.content
           @port.puts '</h%i>' % (element.level + 1)
-        when :section then
+        when OL_SECTION then
           rubricated = !element.elements.empty? &&
               element.elements[0].type == OL_RUBRIC
           # If we're encountering the first rubric/title, output
@@ -1893,7 +1894,7 @@ class << Fabricator
         end
         wr.linebreak
         wr.linebreak
-      when :section then
+      when OL_SECTION then
         # [[element.elements]] can be empty if a section
         # contains index anchor(s) but no content.  This is a
         # pathological case, to be sure, but it can happen, so
