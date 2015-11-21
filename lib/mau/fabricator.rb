@@ -634,6 +634,7 @@ module Fabricator
   NT_UNDERSCORE      = 0x0008
   NT_MONOSPACE       = 0x0009
   NT_PARAGRAPH       = 0x000A
+  NT_LINK            = 0x000B
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -930,6 +931,7 @@ module Fabricator
       when :nbsp then
         add_plain ' '
       when NT_MONOSPACE, NT_BOLD, NT_ITALIC, NT_UNDERSCORE then
+        # FIXME: this table should be a constant
         styled({
           NT_MONOSPACE => :monospace,
           NT_BOLD => :bold,
@@ -944,7 +946,7 @@ module Fabricator
                 Fabricator::MF::LINK),
             symbolism: symbolism
         add_plain symbolism.chunk_name_delim.end
-      when :link then
+      when NT_LINK then
         if node.implicit_face then
           styled :link do
             add_plain '<'
@@ -1456,7 +1458,7 @@ module Fabricator
           @port.print @symbolism.chunk_name_delim.end
           @port.print "</span>"
 
-        when :link then
+        when NT_LINK then
           target = node.target
           if @link_processor then
             target, *classes = @link_processor.call target
@@ -1622,7 +1624,7 @@ class << Fabricator
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
         if link_like? target then
-          stack.ennode(:link,
+          stack.ennode(NT_LINK,
               Fabricator::MF::END_LINK).target = target
           ps.pointer = end_offset + 1
         else
@@ -1644,7 +1646,7 @@ class << Fabricator
         if link_like? target then
           stack[j .. -1] = []
           stack.last.content.push OpenStruct.new(
-              type: :link,
+              type: NT_LINK,
               implicit_face: true,
               target: target,
               content: [OpenStruct.new(
@@ -2187,7 +2189,7 @@ class << Fabricator
               node(:mention_chunk, name: ref.name).
               space.
               plain("(").
-              node(:link,
+              node(NT_LINK,
                 content: markup.
                     plain(symbolism.section_prefix +
                         ref.section_number.to_s),
