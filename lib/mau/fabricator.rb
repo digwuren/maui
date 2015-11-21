@@ -264,72 +264,11 @@ module Fabricator
         else
           @list_stack = nil
           @cursec.elements.push element
-          if element.type & OLF_HAS_CODE != 0 then
-            element.section_number = @cursec.section_number
-            element.content = []
-            element.lines.each_with_index do
-                |line, lineno_in_chunk|
-              unless lineno_in_chunk.zero? then
-                element.content.push \
-                    OpenStruct.new(type: :newline)
-              end
-              column = 1 + element.indent
-              line.split(/(<<\s*
-                  (?:
-                   \[\[.*?\]*\]\]
-                   | .
-                  )+?
-                  \s*>>)/x, -1).each_with_index do
-                    |raw_piece, piece_index|
-                node = nil
-                if piece_index.odd? then
-                  name = raw_piece[2 ... -2].strip
-                      # discard the surrounding double brokets
-                      # together with adjacent whitespace
-                  node = OpenStruct.new(type: :use,
-                      name: nil,
-                          # for ordering; will be replaced below
-                      raw: raw_piece,
-                      loc: OpenStruct.new(
-                          filename: element.body_loc.filename,
-                          line: element.body_loc.line +
-                              lineno_in_chunk,
-                          column: column)
-                  )
-                  if name =~ /(?:^|\s+)(\|[\w>-]+)$/ and
-                      Fabricator::POSTPROCESSES.has_key? $1 then
-                    node.postprocess = $1; name = $`
-                  end
-                  if name =~ /(?:^|\s+)(\.dense)$/ then
-                    node.vertical_separation = $1; name = $`
-                  end
-                  if name =~ /^(\.clearindent)(?:\s+|$)/ then
-                    node.clearindent = true; name = $'
-                  end
-                  if !name.empty? then
-                    node.name =
-                        Fabricator.canonicalise(name)
-                  else
-                    # not a proper reference, after all
-                    node = nil
-                  end
-                  # If failed, [[node]] is still [[nil]].
-                end
-                if node.nil? and !raw_piece.empty? then
-                  node = OpenStruct.new(
-                    type: :verbatim,
-                    data: raw_piece)
-                end
-                element.content.push node if node
-                column += raw_piece.length
-              end
-            end
-          end
-
           if element.type & OLF_FUNCTIONAL != 0 then
-            cbn_record =
-                @output.chunks_by_name[element.name] ||=
-                    OpenStruct.new(chunks: [], headers: [])
+            element.section_number = @cursec.section_number
+
+            cbn_record = @output.chunks_by_name[element.name] ||=
+                OpenStruct.new(chunks: [], headers: [])
 
             if element.type & OLF_HAS_HEADER != 0 then
               cbn_record.headers.push element
@@ -377,9 +316,66 @@ module Fabricator
                 raise 'assertion failed'
             end
 
-            # Do we have a chunk body?
             if element.type & OLF_HAS_CODE != 0 then
               cbn_record.chunks.push element
+              element.content = []
+              element.lines.each_with_index do
+                  |line, lineno_in_chunk|
+                unless lineno_in_chunk.zero? then
+                  element.content.push \
+                      OpenStruct.new(type: :newline)
+                end
+                column = 1 + element.indent
+                line.split(/(<<\s*
+                    (?:
+                     \[\[.*?\]*\]\]
+                     | .
+                    )+?
+                    \s*>>)/x, -1).each_with_index do
+                      |raw_piece, piece_index|
+                  node = nil
+                  if piece_index.odd? then
+                    name = raw_piece[2 ... -2].strip
+                        # discard the surrounding double brokets
+                        # together with adjacent whitespace
+                    node = OpenStruct.new(type: :use,
+                        name: nil,
+                            # for ordering; will be replaced below
+                        raw: raw_piece,
+                        loc: OpenStruct.new(
+                            filename: element.body_loc.filename,
+                            line: element.body_loc.line +
+                                lineno_in_chunk,
+                            column: column)
+                    )
+                    if name =~ /(?:^|\s+)(\|[\w>-]+)$/ and
+                        Fabricator::POSTPROCESSES.has_key? $1 then
+                      node.postprocess = $1; name = $`
+                    end
+                    if name =~ /(?:^|\s+)(\.dense)$/ then
+                      node.vertical_separation = $1; name = $`
+                    end
+                    if name =~ /^(\.clearindent)(?:\s+|$)/ then
+                      node.clearindent = true; name = $'
+                    end
+                    if !name.empty? then
+                      node.name =
+                          Fabricator.canonicalise(name)
+                    else
+                      # not a proper reference, after all
+                      node = nil
+                    end
+                    # If failed, [[node]] is still [[nil]].
+                  end
+                  if node.nil? and !raw_piece.empty? then
+                    node = OpenStruct.new(
+                      type: :verbatim,
+                      data: raw_piece)
+                  end
+                  element.content.push node if node
+                  column += raw_piece.length
+                end
+              end
               element.content.each do |node|
                 next unless node.type == :use
                 chunk_index_record(node.name).refs.push [

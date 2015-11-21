@@ -827,15 +827,11 @@ We'll keep separate track of chunk bodies ([[OL_CHUNK]] or
 or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
 << Chunk or divert?  Parse and cross-reference >>:
-  if element.type & OLF_HAS_CODE != 0 then
-    element.section_number = @cursec.section_number
-    << Parse the chunk's content >>
-  end
-
   if element.type & OLF_FUNCTIONAL != 0 then
-    cbn_record =
-        @output.chunks_by_name[element.name] ||=
-            OpenStruct.new(chunks: [], headers: [])
+    element.section_number = @cursec.section_number
+
+    cbn_record = @output.chunks_by_name[element.name] ||=
+        OpenStruct.new(chunks: [], headers: [])
 
     if element.type & OLF_HAS_HEADER != 0 then
       cbn_record.headers.push element
@@ -849,9 +845,9 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
         raise 'assertion failed'
     end
 
-    # Do we have a chunk body?
     if element.type & OLF_HAS_CODE != 0 then
       cbn_record.chunks.push element
+      << Parse the chunk's content >>
       << Create [[transclusion]] index entries >>
     end
   end
@@ -3057,7 +3053,6 @@ Process a whole list of nodes.
       add_plain '>'
     end
 
-<< in [[Text_Wrapper]] >>:
 
 . hanging indentation
 . indentation, hanging
@@ -3066,6 +3061,8 @@ Hanging indentation.  Used, for example, in the table of content
 and in lists.  The content is to be fed into the
 [[Text_Wrapper]] by the block supplied by the caller.
 Optionally, the column to be used can be set explicitly.
+
+<< in [[Text_Wrapper]] >>:
 
 . [[hang]] (method of [[Text_Wrapper]])
 
