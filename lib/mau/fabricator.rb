@@ -665,13 +665,9 @@ module Fabricator
     def unspawn
       raise 'assertion failed' unless length >= 2
       top = self.pop
-      # FIXME: Check if [[self.last.content]] is an instance of
-      # [[Markup_Constructor]]; if it is, we can use [[#plain]]
-      # instead of constructing the [[OpenStruct by hand.
-      self.last.content.push OpenStruct.new(
-        type: NT_PLAIN,
-        data: top.face,
-      ), *top.content
+      self.last.content.
+          plain(top.face).
+          concat(top.content)
       return
     end
 
@@ -1579,13 +1575,8 @@ class << Fabricator
           # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
           monospaced_content.node i & 1, data: part
         end
-        # FIXME: check if [[stack.last.content]] is a
-        # [[Markup_Constructor]]; if it is, we can use [[#node]]
-        # instead of constructing the [[OpenStruct]] instance by
-        # hand here
-        stack.last.content.push OpenStruct.new(
-            type: NT_MONOSPACE,
-            content: monospaced_content)
+        stack.last.content.node NT_MONOSPACE,
+            content: monospaced_content
         ps.pointer = end_offset + 2
 
       elsif stack.last.mode & Fabricator::MF::BOLD != 0 and
@@ -1646,14 +1637,7 @@ class << Fabricator
         else
           # False alarm: this is not a link, after all.
           stack.cancel_link
-          # FIXME: check if [[stack.last.content]] is a
-          # [[Markup_Constructor]]; if it is, we can use [[#plain]]
-          # instead of constructing the [[OpenStruct]] instance by
-          # hand here
-          stack.last.content.push OpenStruct.new(
-            type: NT_PLAIN,
-            data: '|',
-          )
+          stack.last.content.plain '|'
           ps.pointer += 1
         end
 
