@@ -335,9 +335,7 @@ module Fabricator
                 @output.chunks_by_name[element.name] ||=
                     OpenStruct.new(chunks: [], headers: [])
 
-            # Do we have an explicit chunk header?
-            # FIXME: this test should be a bit operation
-            if [NT_CHUNK, NT_DIVERT].include? element.type then
+            if element.type & NTF_HAS_HEADER != 0 then
               cbn_record.headers.push element
               if element.root_type then
                 if !Fabricator.filename_sane? element.name then

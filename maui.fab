@@ -840,9 +840,7 @@ or [[NT_DIVERT]]), linked under [[chunks_by_name[...].headers]].
         @output.chunks_by_name[element.name] ||=
             OpenStruct.new(chunks: [], headers: [])
 
-    # Do we have an explicit chunk header?
-    # FIXME: this test should be a bit operation
-    if [NT_CHUNK, NT_DIVERT].include? element.type then
+    if element.type & NTF_HAS_HEADER != 0 then
       cbn_record.headers.push element
       << Root?  Check the filename for sanity >>
       << Update [[cbn_record.root_type]] from [[element]] >>
