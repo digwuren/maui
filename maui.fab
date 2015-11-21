@@ -733,21 +733,26 @@ integrator.  (It can't be done in the parser because it can't
 tell apart sample code from true chunks if the latter have no
 headers.)
 
-Chunk parsing is done by scanning the [[lines]] field of the
-chunk node and constructing a new field, [[content]], along it.
-[[content]] is not line-oriented; rather, it has [[newline]]
-nodes to separate lines.  This makes the tangling loop a bit
-easier.
+Chunk parsing is done in [[parse_chunk_content]] by scanning the
+[[lines]] field of the chunk node and constructing a new field,
+[[content]], besides it.  [[content]] is not line-oriented;
+rather, it has [[newline]] nodes to separate lines.  This makes
+the tangling loop a bit simpler.
 
-<< Parse the chunk's content >>:
-  element.content = []
-  element.lines.each_with_index do
-      |line, lineno_in_chunk|
-    unless lineno_in_chunk.zero? then
-      element.content.push \
-          OpenStruct.new(type: :newline)
+. [[parse_chunk_content]]
+
+<< in [[Integrator]] >>:
+  def parse_chunk_content element
+    element.content = []
+    element.lines.each_with_index do
+        |line, lineno_in_chunk|
+      unless lineno_in_chunk.zero? then
+        element.content.push \
+            OpenStruct.new(type: :newline)
+      end
+      << Parse a line of chunk content >>
     end
-    << Parse a line of chunk content >>
+    return
   end
 
 
@@ -849,7 +854,7 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
     if element.type & OLF_HAS_CODE != 0 then
       cbn_record.chunks.push element
-      << Parse the chunk's content >>
+      parse_chunk_content element
       << Create [[transclusion]] index entries >>
     end
   end
