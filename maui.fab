@@ -92,7 +92,7 @@ blocks.
 << Parse indented block >>:
   body_location = vp.location_ahead
   element = vp.get_indented_lines_with_skip
-  element.type = :block
+  element.type = NT_BLOCK
   element.body_loc = element_location
 
 
@@ -552,7 +552,7 @@ addition to [[presentation]] collected into [[toc]].
 
 
 << Integrate the sub-[[section]] element >>:
-  << [[block]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>
+  << [[NT_BLOCK]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
@@ -584,7 +584,7 @@ just shown in the woven output, or a headerless code chunk,
 which needs to be tangled, also.  Whether it's one or the other
 depends on whether a diversion is in effect; a piece of context
 that the parser does not track.  Accordingly, we'll upgrade
-[[block]] nodes to [[NT_DIVERTED_CHUNK]] nodes in the integrator
+[[NT_BLOCK]] nodes to [[NT_DIVERTED_CHUNK]] nodes in the integrator
 when a diversion is in effect.
 
 This is also a convenient place to keep track of the chains of
@@ -593,8 +593,8 @@ the current divert was not used before, and we'll also point
 [[@last_divertee]] to the diverted block so that we can set the
 [[final]] flag on it later.
 
-<< [[block]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>:
-  if element.type == :block and @curdivert then
+<< [[NT_BLOCK]] and diverting?  Upgrade to [[NT_DIVERTED_CHUNK]] >>:
+  if element.type == NT_BLOCK and @curdivert then
     element.type = NT_DIVERTED_CHUNK
     element.name = @curdivert.name
     element.divert = @curdivert
@@ -626,7 +626,9 @@ section break in the form of two adjacent blank lines.
 << ? Break section and warn >>:
   if (@cursec and element.type == NT_RUBRIC) or
       (@in_code and
-          [NT_PARAGRAPH, :block, NT_ITEM].include?(
+          # FIXME: through clever type tag encoding, this test
+          # should be doable by a simple bit operation
+          [NT_PARAGRAPH, NT_BLOCK, NT_ITEM].include?(
               element.type)) then
     (@cursec.warnings ||= []).push \
         warn(element.loc,
@@ -1247,6 +1249,7 @@ Many of these values are chosen arbitrarily.  Some have special bit patterns to 
   NT_LINK            = 0x000C
   NT_NBSP            = 0x000D
   NT_MENTION_CHUNK   = 0x000E
+  NT_BLOCK           = 0x000F
 
 
 == Horizontal parsing
@@ -2519,7 +2522,7 @@ plain ones.
         symbolism: symbolism
 
 
-  when :block then
+  when NT_BLOCK then
     weave_ctxt_block element, wr
 
 
@@ -3462,7 +3465,7 @@ conventions.
 
 . [[.maui-block]] (CSS class)
 
-  when :block then
+  when NT_BLOCK then
     @port.print "<pre class='maui-block'>"
     element.lines.each_with_index do |line, i|
       @port.puts unless i.zero?

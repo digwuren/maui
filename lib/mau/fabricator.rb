@@ -175,7 +175,7 @@ module Fabricator
         # Enforce (sub(sub))chapter-locality of diversions
         clear_diversion
       else
-        if element.type == :block and @curdivert then
+        if element.type == NT_BLOCK and @curdivert then
           element.type = NT_DIVERTED_CHUNK
           element.name = @curdivert.name
           element.divert = @curdivert
@@ -188,7 +188,9 @@ module Fabricator
         end
         if (@cursec and element.type == NT_RUBRIC) or
             (@in_code and
-                [NT_PARAGRAPH, :block, NT_ITEM].include?(
+                # FIXME: through clever type tag encoding, this test
+                # should be doable by a simple bit operation
+                [NT_PARAGRAPH, NT_BLOCK, NT_ITEM].include?(
                     element.type)) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
@@ -641,6 +643,7 @@ module Fabricator
   NT_LINK            = 0x000C
   NT_NBSP            = 0x000D
   NT_MENTION_CHUNK   = 0x000E
+  NT_BLOCK           = 0x000F
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1242,7 +1245,7 @@ module Fabricator
         end
         @port.puts "</div>"
 
-      when :block then
+      when NT_BLOCK then
         @port.print "<pre class='maui-block'>"
         element.lines.each_with_index do |line, i|
           @port.puts unless i.zero?
@@ -1796,7 +1799,7 @@ class << Fabricator
                 /x then
           body_location = vp.location_ahead
           element = vp.get_indented_lines_with_skip
-          element.type = :block
+          element.type = NT_BLOCK
           element.body_loc = element_location
         else
           margin = $~['margin']
@@ -2132,7 +2135,7 @@ class << Fabricator
       _weave_ctxt_list element.items, wr,
           symbolism: symbolism
 
-    when :block then
+    when NT_BLOCK then
       weave_ctxt_block element, wr
     else
       raise 'data structure error'
