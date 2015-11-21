@@ -645,7 +645,7 @@ module Fabricator
     def initialize suppress_modes = 0
       super()
       push OpenStruct.new(
-          content: [],
+          content: Fabricator.markup,
           mode: Fabricator::MF::DEFAULTS & ~suppress_modes,
           term_type: 0,
         )
@@ -655,7 +655,7 @@ module Fabricator
     def spawn face, start_flag, end_flag
       self.push OpenStruct.new(
         face: face,
-        content: [],
+        content: Fabricator.markup,
         mode: self.last.mode & ~start_flag | end_flag,
         term_type: end_flag,
       )
@@ -1571,15 +1571,13 @@ class << Fabricator
         while ps[end_offset + 2] == ?] do
           end_offset += 1
         end
-        # FIXME: could we use [[Markup_Constructor]] here?
-        monospaced_content = []
+        monospaced_content = Fabricator.markup
+        # FIXME: check if [[Markup_Constructor]] doesn't have a
+        # ready method for this splitting already
         ps[ps.pointer + 2 ... end_offset].split(/(\s+)/).
             each_with_index do |part, i|
           # Note that 0 is [[NT_PLAIN]] and 1 is [[NT_SPACE]].
-          monospaced_content.push OpenStruct.new(
-              type: i & 1,
-              data: part
-          )
+          monospaced_content.node i & 1, data: part
         end
         # FIXME: check if [[stack.last.content]] is a
         # [[Markup_Constructor]]; if it is, we can use [[#node]]
@@ -1671,12 +1669,7 @@ class << Fabricator
               type: NT_LINK,
               implicit_face: true,
               target: target,
-              # FIXME: use [[Markup_Constructor#plain]] here
-              content: [OpenStruct.new(
-                type: NT_PLAIN,
-                data: target,
-              )],
-          )
+              content: Fabricator.markup.plain(target))
         else
           # False alarm: this is not a link, after all.
           stack.cancel_link
@@ -1695,9 +1688,11 @@ class << Fabricator
         while ps.at? ' ' do
           ps.pointer += 1
         end
+        # FIXME: use [[Markup_Constructor.space]] instead
         stack.last.content.push OpenStruct.new(type: NT_SPACE)
 
       elsif ps.at? "\u00A0" then
+        # FIXME: use [[Markup_Constructor.node]] instead
         stack.last.content.push OpenStruct.new(type: NT_NBSP)
         ps.pointer += 1
 
