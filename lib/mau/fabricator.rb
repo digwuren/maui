@@ -933,8 +933,7 @@ module Fabricator
         add_space node.data || ' '
       when MU_NBSP then
         add_plain ' '
-      when MU_BOLD, MU_ITALIC, MU_UNDERSCORE,
-          MU_MONOSPACE then
+      when MU_BOLD, MU_ITALIC, MU_UNDERSCORE, MU_MONOSPACE then
         # FIXME: this table should be a constant
         styled({
           MU_BOLD => :bold,
@@ -1447,7 +1446,8 @@ module Fabricator
         when MU_NBSP then
           @port.print '&nbsp;'
 
-        when MU_MONOSPACE, MU_BOLD, MU_ITALIC, MU_UNDERSCORE then
+        when MU_BOLD, MU_ITALIC, MU_UNDERSCORE,
+            MU_MONOSPACE then
           html_tag = Fabricator::MARKUP2HTML[node.type]
           @port.print "<%s>" % html_tag
           htmlify node.content
