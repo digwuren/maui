@@ -386,10 +386,10 @@ module Fabricator
             end
           end
 
-          # If a chunk body is followed by a narrative-type element,
-          # we'll want to generate an automatic section break.  To
-          # that end, we'll set the [[@in_code]] flag when we
-          # encounter a node with a chunk body.
+          # If a chunk body is followed by a narrative-type
+          # element, we'll want to generate an automatic section
+          # break.  To that end, we'll set the [[@in_code]] flag
+          # when we encounter a node with a chunk body.
           if element.type & OLF_HAS_CODE != 0 then
             @in_code = true
           end

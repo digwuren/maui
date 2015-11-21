@@ -551,7 +551,7 @@ addition to [[presentation]] collected into [[toc]].
 
 
 << Integrate the part of section >>:
-  << [[OL_BLOCK]] and diverting?  Upgrade to [[OL_DIVERTED_CHUNK]] >>
+  << ? Upgrade [[OL_BLOCK]] -> [[OL_DIVERTED_CHUNK]] >>
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
@@ -567,10 +567,10 @@ addition to [[presentation]] collected into [[toc]].
     @cursec.elements.push element
     << Chunk or divert?  Parse and cross-reference >>
 
-    # If a chunk body is followed by a narrative-type element,
-    # we'll want to generate an automatic section break.  To
-    # that end, we'll set the [[@in_code]] flag when we
-    # encounter a node with a chunk body.
+    # If a chunk body is followed by a narrative-type
+    # element, we'll want to generate an automatic section
+    # break.  To that end, we'll set the [[@in_code]] flag
+    # when we encounter a node with a chunk body.
     if element.type & OLF_HAS_CODE != 0 then
       @in_code = true
     end
@@ -591,7 +591,7 @@ the current divert was not used before, and we'll also point
 [[@last_divertee]] to the diverted block so that we can set the
 [[final]] flag on it later.
 
-<< [[OL_BLOCK]] and diverting?  Upgrade to [[OL_DIVERTED_CHUNK]] >>:
+<< ? Upgrade [[OL_BLOCK]] -> [[OL_DIVERTED_CHUNK]] >>:
   if element.type == OL_BLOCK and @curdivert then
     element.type = OL_DIVERTED_CHUNK
     element.name = @curdivert.name
