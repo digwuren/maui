@@ -267,9 +267,7 @@ module Fabricator
         else
           @list_stack = nil
           @cursec.elements.push element
-          # FIXME: take the type check out once [[element.type]] is
-          # always an [[Integer]]
-          if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
+          if element.type & NTF_HAS_CODE != 0 then
             element.section_number = @cursec.section_number
             element.content = []
             element.lines.each_with_index do
@@ -387,9 +385,7 @@ module Fabricator
             end
 
             # Do we have a chunk body?
-            # FIXME: take the type check out once [[element.type]] is
-            # always an [[Integer]]
-            if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
+            if element.type & NTF_HAS_CODE != 0 then
               cbn_record.chunks.push element
               element.content.each do |node|
                 next unless node.type == :use
@@ -399,12 +395,11 @@ module Fabricator
             end
           end
 
-          # If a chunk body is followed by a narrative-type
-          # element, we'll want to generate an automatic section
-          # break.
-          # FIXME: take the type check out once [[element.type]] is
-          # always an [[Integer]]
-          if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
+          # If a chunk body is followed by a narrative-type element,
+          # we'll want to generate an automatic section break.  To
+          # that end, we'll set the [[@in_code]] flag when we
+          # encounter a node with a chunk body.
+          if element.type & NTF_HAS_CODE != 0 then
             @in_code = true
           end
         end
@@ -633,21 +628,22 @@ module Fabricator
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
 
-  NT_ITEM            = 0x0002
-  NT_RUBRIC          = 0x0003
-  NT_LIST            = 0x0004
-  NT_CHUNK           = 0x0005 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_DIVERTED_CHUNK  = 0x0006 | NTF_HAS_CODE
-  NT_BOLD            = 0x0007
-  NT_ITALIC          = 0x0008
-  NT_UNDERSCORE      = 0x0009
-  NT_MONOSPACE       = 0x000A
-  NT_PARAGRAPH       = 0x000B
-  NT_LINK            = 0x000C
-  NT_NBSP            = 0x000D
-  NT_MENTION_CHUNK   = 0x000E
-  NT_BLOCK           = 0x000F
-  NT_DIVERT          = 0x0010 | NTF_HAS_HEADER
+  NT_NBSP            = 0x0010
+  NT_BOLD            = 0x0020
+  NT_ITALIC          = 0x0030
+  NT_UNDERSCORE      = 0x0040
+  NT_MONOSPACE       = 0x0050
+  NT_LINK            = 0x0060
+  NT_MENTION_CHUNK   = 0x0070
+
+  NT_RUBRIC          = 0x0080
+  NT_LIST            = 0x0090
+  NT_ITEM            = 0x00A0
+  NT_CHUNK           = 0x00B0 | NTF_HAS_HEADER | NTF_HAS_CODE
+  NT_DIVERTED_CHUNK  = 0x00C0 | NTF_HAS_CODE
+  NT_PARAGRAPH       = 0x00D0
+  NT_BLOCK           = 0x00E0
+  NT_DIVERT          = 0x00F0 | NTF_HAS_HEADER
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -2095,9 +2091,7 @@ class << Fabricator
         weave_ctxt_warning_list element.warnings, wr,
             inline: true
       end
-      # FIXME: take the type check out once [[element.type]] is
-      # always an [[Integer]]
-      if element.type.is_a? Integer and element.type & NTF_HAS_CODE != 0 then
+      if element.type & NTF_HAS_CODE != 0 then
         wr.styled :chunk_frame do
           wr.add_pseudographics element.initial ?
             :initial_chunk_margin :
