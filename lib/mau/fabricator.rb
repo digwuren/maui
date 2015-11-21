@@ -188,7 +188,7 @@ module Fabricator
         end
         if (@cursec and element.type == NT_RUBRIC) or
             (@in_code and
-                [:paragraph, :block, NT_ITEM].include?(
+                [NT_PARAGRAPH, :block, NT_ITEM].include?(
                     element.type)) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
@@ -633,6 +633,7 @@ module Fabricator
   NT_ITALIC          = 0x0007
   NT_UNDERSCORE      = 0x0008
   NT_MONOSPACE       = 0x0009
+  NT_PARAGRAPH       = 0x000A
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -1158,7 +1159,7 @@ module Fabricator
           subelement = element.elements[start_index]
           warnings = nil
           case subelement && subelement.type
-            when :paragraph then
+            when NT_PARAGRAPH then
               @port.print " "
               htmlify subelement.content
               start_index += 1
@@ -1192,7 +1193,7 @@ module Fabricator
 
     def html_section_part element
       case element.type
-      when :paragraph then
+      when NT_PARAGRAPH then
         @port.print "<p>"
         htmlify element.content
         @port.puts "</p>"
@@ -1854,7 +1855,7 @@ class << Fabricator
 
         else
           element = OpenStruct.new(
-              type: :paragraph,
+              type: NT_PARAGRAPH,
               loc: element_location)
         end
         element.lines = lines
@@ -1946,7 +1947,7 @@ class << Fabricator
         starter = element.elements[start_index]
         if starter then
           case starter.type
-          when :paragraph, :divert, NT_CHUNK then
+          when NT_PARAGRAPH, :divert, NT_CHUNK then
             wr.add_space
             weave_ctxt_section_part starter, fabric, wr,
                 symbolism: symbolism
@@ -2043,7 +2044,7 @@ class << Fabricator
   def weave_ctxt_section_part element, fabric, wr,
       symbolism: default_symbolism
     case element.type
-    when :paragraph then
+    when NT_PARAGRAPH then
       wr.add_nodes element.content, symbolism: symbolism
       wr.linebreak
 
