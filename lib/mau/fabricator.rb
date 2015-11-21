@@ -187,11 +187,7 @@ module Fabricator
           clear_diversion
         end
         if (@cursec and element.type == NT_RUBRIC) or
-            (@in_code and
-                # FIXME: through clever type tag encoding, this test
-                # should be doable by a simple bit operation
-                [NT_PARAGRAPH, NT_BLOCK, NT_ITEM].include?(
-                    element.type)) then
+            (@in_code and element.type & NTF_NARRATIVE != 0) then
           (@cursec.warnings ||= []).push \
               warn(element.loc,
                   "silent section break",
@@ -617,13 +613,15 @@ module Fabricator
     attr_reader :section_count
   end
 
+  # Flags
   NTF_HAS_HEADER     = 0x0002
   NTF_HAS_CODE       = 0x0004
   NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
+  NTF_NARRATIVE      = 0x0008
 
+  # Inline nodes
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
-
   NT_NBSP            = 0x0010
   NT_BOLD            = 0x0020
   NT_ITALIC          = 0x0030
@@ -632,15 +630,15 @@ module Fabricator
   NT_LINK            = 0x0060
   NT_MENTION_CHUNK   = 0x0070
 
-  NT_RUBRIC          = 0x0080
-  NT_LIST            = 0x0090
-  NT_ITEM            = 0x00A0
-  NT_DIVERT          = 0x00B0 | NTF_HAS_HEADER
-  NT_DIVERTED_CHUNK  = 0x00B0 | NTF_HAS_CODE
-  NT_CHUNK           = 0x00B0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_PARAGRAPH       = 0x00C0
-  NT_BLOCK           = 0x00D0
-
+  # Major nodes
+  NT_RUBRIC          = 0x0080 | NTF_NARRATIVE
+  NT_ITEM            = 0x0090 | NTF_NARRATIVE
+  NT_LIST            = 0x00A0 | NTF_NARRATIVE
+  NT_PARAGRAPH       = 0x00B0 | NTF_NARRATIVE
+  NT_BLOCK           = 0x00C0 | NTF_NARRATIVE
+  NT_DIVERT          = 0x00D0 | NTF_HAS_HEADER
+  NT_DIVERTED_CHUNK  = 0x00D0 | NTF_HAS_CODE
+  NT_CHUNK           = 0x00D0 | NTF_HAS_HEADER | NTF_HAS_CODE
   NT_INDEX_ANCHOR    = 0x00E0
 
   class Markup_Parser_Stack < Array

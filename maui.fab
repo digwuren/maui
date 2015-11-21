@@ -10,7 +10,7 @@ programming tool with wiki-like notation.
 
 == Parsing
 
-* Parser's frontend.
+* Parser's front-end.
 
 For the parser, [[input]] will be an open [[IO]] instance.  For
 parsing ease (most crucially, in order to support blank lines in
@@ -241,9 +241,10 @@ an ordinary paragraph, a title, or a rubric.
         loc: element_location)
 
 
-Now, let's go back to the main parsing loop.  Seeing two (or
-more) consecutive blank lines in front our element triggers an
-explicit section break.
+Now, let's go back to the main parsing loop.
+
+Seeing two (or more) consecutive blank lines in front our
+element triggers an explicit section break.
 
 << Handle explicit section break >>:
   if parser_state.vertical_separation >= 2 then
@@ -254,7 +255,7 @@ explicit section break.
 The integrator checks sections for emptiness (this would mean
 that an explicitly delimited section contains only index
 anchors), adds the [[[final]] tag to a diverted chunk chain's
-last chunk and checks whether a diversion actually applies to
+last chunk, and checks whether a diversion actually applies to
 any chunks when the chain ends.  Inside a fabric, this happens
 by the appearance of certain types of elements -- chunks,
 diversions, titles -- but when the fabric is over, we'll have to
@@ -622,11 +623,7 @@ section break in the form of two adjacent blank lines.
 
 << ? Break section and warn >>:
   if (@cursec and element.type == NT_RUBRIC) or
-      (@in_code and
-          # FIXME: through clever type tag encoding, this test
-          # should be doable by a simple bit operation
-          [NT_PARAGRAPH, NT_BLOCK, NT_ITEM].include?(
-              element.type)) then
+      (@in_code and element.type & NTF_NARRATIVE != 0) then
     (@cursec.warnings ||= []).push \
         warn(element.loc,
             "silent section break",
@@ -1209,6 +1206,17 @@ bit patterns to them.
 - We reserve two bits for the [[NTF_HAS_HEADER]] and
   [[NTF_HAS_CODE]] flags.
 
+- We reserve one bit for the [[NTF_NARRATIVE]] flag.  When the
+  parser (front-end) sees a node with this flag set, it'll force
+  a section break and warn.  There's no strict need to attach
+  this flag to [[NT_LIST]], because it's checked by the parser
+  front-end which sees only items, not lists (as list containers
+  are built from separate items by the parser's back-end,
+  [[Integrator]]), nor to [[NT_RUBRIC]], because a rubric
+  element starts a new section explicitly, but we'll do it
+  anyway in order to slightly simplify the flag's conceptual
+  semantics: it marks major narrative nodes.
+
 . [[NTF_HAS_HEADER]]
 . [[NTF_HAS_CODE]]
 . [[NTF_FUNCTIONAL]]
@@ -1222,23 +1230,25 @@ bit patterns to them.
 . [[NT_LINK]]
 . [[NT_MENTION_CHUNK]]
 . [[NT_RUBRIC]]
-. [[NT_LIST]]
 . [[NT_ITEM]]
+. [[NT_LIST]]
+. [[NT_PARAGRAPH]]
+. [[NT_BLOCK]]
 . [[NT_DIVERT]]
 . [[NT_DIVERTED_CHUNK]]
 . [[NT_CHUNK]]
-. [[NT_PARAGRAPH]]
-. [[NT_BLOCK]]
 . [[NT_INDEX_ANCHOR]]
 
 << in [[Fabricator]] >>:
+  # Flags
   NTF_HAS_HEADER     = 0x0002
   NTF_HAS_CODE       = 0x0004
   NTF_FUNCTIONAL     = NTF_HAS_HEADER | NTF_HAS_CODE
+  NTF_NARRATIVE      = 0x0008
 
+  # Inline nodes
   NT_PLAIN           = 0x0000
   NT_SPACE           = 0x0001
-
   NT_NBSP            = 0x0010
   NT_BOLD            = 0x0020
   NT_ITALIC          = 0x0030
@@ -1247,15 +1257,15 @@ bit patterns to them.
   NT_LINK            = 0x0060
   NT_MENTION_CHUNK   = 0x0070
 
-  NT_RUBRIC          = 0x0080
-  NT_LIST            = 0x0090
-  NT_ITEM            = 0x00A0
-  NT_DIVERT          = 0x00B0 | NTF_HAS_HEADER
-  NT_DIVERTED_CHUNK  = 0x00B0 | NTF_HAS_CODE
-  NT_CHUNK           = 0x00B0 | NTF_HAS_HEADER | NTF_HAS_CODE
-  NT_PARAGRAPH       = 0x00C0
-  NT_BLOCK           = 0x00D0
-
+  # Major nodes
+  NT_RUBRIC          = 0x0080 | NTF_NARRATIVE
+  NT_ITEM            = 0x0090 | NTF_NARRATIVE
+  NT_LIST            = 0x00A0 | NTF_NARRATIVE
+  NT_PARAGRAPH       = 0x00B0 | NTF_NARRATIVE
+  NT_BLOCK           = 0x00C0 | NTF_NARRATIVE
+  NT_DIVERT          = 0x00D0 | NTF_HAS_HEADER
+  NT_DIVERTED_CHUNK  = 0x00D0 | NTF_HAS_CODE
+  NT_CHUNK           = 0x00D0 | NTF_HAS_HEADER | NTF_HAS_CODE
   NT_INDEX_ANCHOR    = 0x00E0
 
 
@@ -2119,7 +2129,7 @@ latter is done through the [[writeout_plan]] abstraction layer.
 
 * The tangling sink.
 
-The tangling sink serves as a backend to the tangling loop,
+The tangling sink serves as a back-end to the tangling loop,
 taking care of indentation, right-stripping the generated lines,
 and keeping track of the output location so as to permit
 cross-referencing chunks with where they appear in the generated
