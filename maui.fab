@@ -790,7 +790,8 @@ capturing regex.
       # together with adjacent whitespace
   node = OpenStruct.new(type: :use,
       name: nil,
-          # for ordering; will be replaced below
+          # for ordering of the [[OpenStruct]]
+          # fields; will be set below
       raw: raw_piece,
       loc: OpenStruct.new(
           filename: element.body_loc.filename,
