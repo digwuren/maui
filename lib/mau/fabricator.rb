@@ -613,33 +613,31 @@ module Fabricator
     attr_reader :section_count
   end
 
-  # Flags
-  OLF_HAS_HEADER     = 0x0002
-  OLF_HAS_CODE       = 0x0004
+  OLF_HAS_HEADER     = 0x01
+  OLF_HAS_CODE       = 0x02
   OLF_FUNCTIONAL     = OLF_HAS_HEADER | OLF_HAS_CODE
-  OLF_NARRATIVE      = 0x0008
 
-  # Markup nodes
-  MU_PLAIN           = 0x0000
-  MU_SPACE           = 0x0001
-  MU_NBSP            = 0x0010
-  MU_BOLD            = 0x0020
-  MU_ITALIC          = 0x0030
-  MU_UNDERSCORE      = 0x0040
-  MU_MONOSPACE       = 0x0050
-  MU_LINK            = 0x0060
-  MU_MENTION_CHUNK   = 0x0070
+  OLF_NARRATIVE      = 0x08
 
-  # Outline nodes
-  OL_RUBRIC          = 0x0080 | OLF_NARRATIVE
-  OL_ITEM            = 0x0090 | OLF_NARRATIVE
-  OL_LIST            = 0x00A0 | OLF_NARRATIVE
-  OL_PARAGRAPH       = 0x00B0 | OLF_NARRATIVE
-  OL_BLOCK           = 0x00C0 | OLF_NARRATIVE
-  OL_DIVERT          = 0x00D0 | OLF_HAS_HEADER
-  OL_DIVERTED_CHUNK  = 0x00D0 | OLF_HAS_CODE
-  OL_CHUNK           = 0x00D0 | OLF_HAS_HEADER | OLF_HAS_CODE
-  OL_INDEX_ANCHOR    = 0x00E0
+  OL_RUBRIC          = 0x10 | OLF_NARRATIVE
+  OL_ITEM            = 0x20 | OLF_NARRATIVE
+  OL_LIST            = 0x30 | OLF_NARRATIVE
+  OL_PARAGRAPH       = 0x40 | OLF_NARRATIVE
+  OL_BLOCK           = 0x50 | OLF_NARRATIVE
+  OL_DIVERT          = 0x60 | OLF_HAS_HEADER
+  OL_DIVERTED_CHUNK  = 0x70 | OLF_HAS_CODE
+  OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
+  OL_INDEX_ANCHOR    = 0x90
+
+  MU_PLAIN           = 0x00
+  MU_SPACE           = 0x01
+  MU_NBSP            = 0x02
+  MU_BOLD            = 0x03
+  MU_ITALIC          = 0x04
+  MU_UNDERSCORE      = 0x05
+  MU_MONOSPACE       = 0x06
+  MU_LINK            = 0x07
+  MU_MENTION_CHUNK   = 0x08
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
