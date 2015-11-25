@@ -313,8 +313,7 @@ module Fabricator
                 prev_range = @curdivert.index_ref[0]
                 @curdivert.index_ref[0] = prev_range.begin ..
                     @cursec.section_number
-              else
-                raise 'assertion failed'
+              else raise 'assertion failed'
             end
 
             if element.type & OLF_HAS_CODE != 0 then

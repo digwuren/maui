@@ -612,12 +612,10 @@ As Knuth's original WEB did, we'll generally follow the
 rubric-narrative-code structure in our sections, with the main
 difference being that multiple chunks can appear in a single
 section.  A transition from code to narrative thus causes a
-section break.
+section break, as does any appearance of an [[OL_RUBRIC]] node.
 
-Also, a [[OL_RUBRIC]] node causes a section break.
-
-In both cases, we'll warn the user if there wasn't an explicit
-section break in the form of two adjacent blank lines.
+In both cases, we'll warn the user if the section break is not
+explicitly marked, usually by two adjacent blank lines.
 
 . "silent section break" (warning)
 
@@ -848,8 +846,7 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
     case element.type
       << [[case]] clauses to index a [[definition]] >>
-      else
-        raise 'assertion failed'
+      else raise 'assertion failed'
     end
 
     if element.type & OLF_HAS_CODE != 0 then
