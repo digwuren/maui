@@ -105,7 +105,7 @@ Report bugs to: <dig@mirky.net>"
       exit 0
 
     when '--version' then
-      puts "Mau Independent Fabricator 3.1.0
+      puts "Mau Independent Fabricator 3.2.1
 Copyright (C) 2003-2014 Andres Soolo
 Copyright (C) 2013-2014 Knitten Development Ltd.
 

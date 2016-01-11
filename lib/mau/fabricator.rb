@@ -178,6 +178,7 @@ module Fabricator
         if element.type == OL_BLOCK and @curdivert then
           element.type = OL_DIVERTED_CHUNK
           element.name = @curdivert.name
+          element.seq = @curdivert.seq
           element.divert = @curdivert
 
           element.initial = true if @last_divertee.nil?
@@ -509,7 +510,11 @@ module Fabricator
 
     def tangle_chunks cbn_entry, sink, trace, vsep = 2
       chain_start_loc = nil
-      cbn_entry.chunks.each_with_index do |chunk, i|
+      chunks = cbn_entry.chunks.sort_by do |c|
+        [c.seq || 1000, c.section_number]
+      end
+
+      chunks.each_with_index do |chunk, i|
         vsep.times{sink.newline} unless i.zero?
         if chunk.divert and chunk.initial then
           raise 'assertion failed' if chain_start_loc
@@ -1054,6 +1059,7 @@ module Fabricator
     italic: "\e[3m",
     underscore: "\e[4m",
     root_type: "\e[4m",
+    seq_no: "\e[3m",
     chunk_frame: "\e[38;5;59m",
     block_frame: "",
     chunk_xref: "\e[38;5;59;3m",
@@ -1331,6 +1337,13 @@ module Fabricator
         @port.print "<u>%s</u> " % element.root_type.to_xml
       end
       htmlify Fabricator.parse_markup(element.name, PF_LINK)
+      if element.seq then
+        @port.print " "
+        @port.print "<span class='maui-chunk-seq'>"
+        @port.print "#"
+        @port.print element.seq.to_s
+        @port.print "</span>"
+      end
       @port.print @symbolism.chunk_name_delim.end + ":"
       @port.print "</#{tag}>"
       # Note that we won't output a trailing linebreak here.
@@ -1768,8 +1781,9 @@ class << Fabricator
         end
 
       when /^<<\s*
-          (?: (?<root-type> \.file|\.script)\s+ )?
+          (?: (?<root-type> \.file|\.script) \s+ )?
           (?<raw-name> [^\s].*?)
+          (?: \s* \# (?<seq> \d+) )?
           \s*>>:$/x then
         name = canonicalise $~['raw-name']
         vp.get_line
@@ -1777,6 +1791,7 @@ class << Fabricator
           type: OL_DIVERT,
           root_type: $~['root-type'],
           name: name,
+          seq: $~['seq'] && $~['seq'].to_i,
           header_loc: element_location)
 
         body_location = vp.location_ahead
@@ -2103,6 +2118,13 @@ class << Fabricator
       wr.add_nodes Fabricator.parse_markup(element.name,
               PF_LINK),
           symbolism: symbolism
+      if element.seq then
+        wr.add_space
+        wr.styled :seq_no do
+          wr.add_plain '#'
+          wr.add_plain element.seq.to_s
+        end
+      end
       wr.add_plain symbolism.chunk_name_delim.end
       wr.add_plain ":"
     end

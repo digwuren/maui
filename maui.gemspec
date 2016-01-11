@@ -3,7 +3,7 @@
 
 Gem::Specification.new do |s|
   s.name = 'maui'
-  s.version = '3.1.0'
+  s.version = '3.2.1'
   s.date = '2014-09-23'
   s.homepage = 'https://github.com/digwuren/maui'
   s.summary = 'A wiki-style literate programming engine'
