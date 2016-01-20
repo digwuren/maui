@@ -137,6 +137,14 @@ module Fabricator
       @cursec = nil # The current section if started
       @first_section_number = first_section
       @section_count = 0 # The number of last section
+      # We'll issue all chunks 'ord' numbers in the order they
+      # appear, so that we can use these as a fall-back sort key
+      # when sorting chunks by optional sequence numbers.  (Recall
+      # that Ruby's [[sort]] is not stable.) Intuitively, we could
+      # just use section numbers, but this fails when we'll
+      # preload a 'base' fabric before the main fabric without
+      # assigning the base fabric any section numbers.
+      @chunk_ord_counter = 0
       @title_counters = [0]
       @curdivert = nil # The current diversion if active
       @last_divertee = nil
@@ -268,9 +276,8 @@ module Fabricator
           if element.type & OLF_FUNCTIONAL != 0 then
             element.section_number = @cursec.section_number
 
-            cbn_record =
-                @output.chunks_by_name[element.name] ||=
-                    OpenStruct.new(chunks: [], headers: [])
+            cbn_record = @output.chunks_by_name[element.name] ||=
+                OpenStruct.new(chunks: [], headers: [])
 
             if element.type & OLF_HAS_HEADER != 0 then
               cbn_record.headers.push element
@@ -319,6 +326,7 @@ module Fabricator
 
             if element.type & OLF_HAS_CODE != 0 then
               cbn_record.chunks.push element
+              element.ord = (@chunk_ord_counter += 1)
               parse_chunk_content element
               element.content.each do |node|
                 next unless node.type == :use
@@ -511,7 +519,7 @@ module Fabricator
     def tangle_chunks cbn_entry, sink, trace, vsep = 2
       chain_start_loc = nil
       chunks = cbn_entry.chunks.sort_by do |c|
-        [c.seq || 1000, c.section_number]
+        [c.seq || 1000, c.ord]
       end
 
       chunks.each_with_index do |chunk, i|
