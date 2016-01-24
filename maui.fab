@@ -21,10 +21,9 @@ order, and feed them into [[Integrator]] that will take care of
 establishing a proper document tree, collecting the chunks for
 later tangling, and preparing the cross-references.
 
-<< Parse fabric from [[input]] >>:
+<< Parse fabric from [[input]] to [[integrator]] >>:
 
   vp = Fabricator::Vertical_Peeker.new input
-  integrator = Fabricator::Integrator.new
 
 
 . space-dash-space ambiguity
@@ -2268,7 +2267,8 @@ integration, and tangling of a fabric into a single procedure.
 
 << Other methods >>:
   def load_fabric input, chunk_size_limit: 24
-    << Parse fabric from [[input]] >>
+    integrator = Fabricator::Integrator.new
+    << Parse fabric from [[input]] to [[integrator]] >>
     << Tangle all roots >>
     return integrator.output
   end

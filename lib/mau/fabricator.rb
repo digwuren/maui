@@ -1737,8 +1737,8 @@ class << Fabricator
   end
 
   def load_fabric input, chunk_size_limit: 24
-    vp = Fabricator::Vertical_Peeker.new input
     integrator = Fabricator::Integrator.new
+    vp = Fabricator::Vertical_Peeker.new input
 
     parser_state = OpenStruct.new(
         vertical_separation: nil,
