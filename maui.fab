@@ -21,6 +21,13 @@ order, and feed them into [[Integrator]] that will take care of
 establishing a proper document tree, collecting the chunks for
 later tangling, and preparing the cross-references.
 
+<< Other methods >>:
+  def parse_fabric_file input, integrator
+    << Parse fabric from [[input]] to [[integrator]] >>
+    return
+  end
+
+
 << Parse fabric from [[input]] to [[integrator]] >>:
 
   vp = Fabricator::Vertical_Peeker.new input
@@ -51,10 +58,10 @@ higher-level list has already been established.
     integrator.integrate element
   end
   << Handle the end of fabric >>
-  integrator.check_chunk_sizes(chunk_size_limit)
 
 
 . "more than two consecutive blank lines" (warning)
+  integrator = Fabricator::Integrator.new
 
 << Pass and count blank lines >>:
   parser_state.vertical_separation = 0
@@ -2268,8 +2275,9 @@ integration, and tangling of a fabric into a single procedure.
 << Other methods >>:
   def load_fabric input, chunk_size_limit: 24
     integrator = Fabricator::Integrator.new
-    << Parse fabric from [[input]] to [[integrator]] >>
+    parse_fabric_file input, integrator
     << Tangle all roots >>
+    integrator.check_chunk_sizes(chunk_size_limit)
     return integrator.output
   end
 

@@ -1521,6 +1521,146 @@ end
 
 class << Fabricator
   include Fabricator
+  def parse_fabric_file input, integrator
+    vp = Fabricator::Vertical_Peeker.new input
+
+    parser_state = OpenStruct.new(
+        vertical_separation: nil,
+            # the number of blank lines immediately preceding
+            # the element currently being parsed
+    )
+    loop do
+      parser_state.vertical_separation = 0
+      while vp.peek_line == '' do
+        if parser_state.vertical_separation == 2 then
+          integrator.warn vp.location_ahead,
+              "more than two consecutive blank lines"
+        end
+        parser_state.vertical_separation += 1
+        vp.get_line
+      end
+      break if vp.eof?
+      if parser_state.vertical_separation >= 2 then
+        integrator.force_section_break
+      end
+      element_location = vp.location_ahead
+      case vp.peek_line
+      when /^\s+/ then
+        if !integrator.in_list? or
+            vp.peek_line !~ /^
+                (?<margin> \s+ )
+                - (?<separator> \s+ )
+                /x then
+          body_location = vp.location_ahead
+          element = vp.get_indented_lines_with_skip
+          element.type = OL_BLOCK
+          element.body_loc = element_location
+        else
+          margin = $~['margin']
+          lines = [$~['separator'] + $']
+          vp.get_line
+          while !vp.eof? and
+              vp.peek_line.start_with? margin and
+              vp.peek_line !~ /^\s*-\s/ do
+            lines.push vp.get_line[margin.length .. -1]
+          end
+          element = OpenStruct.new(
+            type: OL_ITEM,
+            lines: lines,
+            content: parse_markup(lines.map(&:strip).join ' '),
+            indent: margin.length,
+            loc: element_location)
+        end
+
+      when /^<<\s*
+          (?: (?<root-type> \.file|\.script) \s+ )?
+          (?<raw-name> [^\s].*?)
+          (?: \s* \# (?<seq> \d+) )?
+          \s*>>:$/x then
+        name = canonicalise $~['raw-name']
+        vp.get_line
+        element = OpenStruct.new(
+          type: OL_DIVERT,
+          root_type: $~['root-type'],
+          name: name,
+          seq: $~['seq'] && $~['seq'].to_i,
+          header_loc: element_location)
+
+        body_location = vp.location_ahead
+        body = vp.get_indented_lines_with_skip
+        if body then
+          element.type = OL_CHUNK
+          element.lines = body.lines
+          element.indent = body.indent
+          element.body_loc = body_location
+          element.initial = element.final = true
+        end
+
+      when /^-\s/ then
+        # We'll discard the leading dash but save the following
+        # whitespace.
+        lines = [vp.get_line[1 .. -1]]
+        while !vp.eof? and
+            vp.peek_line != '' and
+            vp.peek_line !~ /^\s*-\s/ do
+          lines.push vp.get_line
+        end
+        element = OpenStruct.new(
+          type: OL_ITEM,
+          lines: lines,
+          content: parse_markup(lines.map(&:strip).join ' '),
+          indent: 0,
+          loc: element_location)
+
+      when /^\.\s+/ then
+        name = $'
+        element = OpenStruct.new(
+            type: OL_INDEX_ANCHOR,
+            name: name)
+        vp.get_line
+
+      when /^[^\s]/ then
+        lines = []
+        while vp.peek_line =~ /^[^\s]/ and
+            vp.peek_line !~ /^-\s/ do
+          lines.push vp.get_line
+        end
+        mode_flags_to_suppress = 0
+        case lines[0]
+        when /^(==+)(\s+)/ then
+          lines[0] = $2 + $'
+          element = OpenStruct.new(
+            type: OL_TITLE,
+            level: $1.length - 1,
+            loc: element_location)
+          mode_flags_to_suppress |= PF_LINK
+
+        when /^\*\s+/ then
+          lines[0] = $'
+          element = OpenStruct.new(
+              type: OL_RUBRIC,
+              loc: element_location)
+
+        else
+          element = OpenStruct.new(
+              type: OL_PARAGRAPH,
+              loc: element_location)
+        end
+        element.lines = lines
+        element.content =
+            parse_markup(lines.map(&:strip).join(' '),
+            mode_flags_to_suppress)
+      else raise 'assertion failed'
+      end
+      integrator.integrate element
+    end
+    integrator.force_section_break
+    integrator.clear_diversion
+
+    integrator = Fabricator::Integrator.new
+    return
+  end
+
   def filename_sane? name
     parts = name.split '/', -1
     return false if parts.empty?
@@ -1738,142 +1878,9 @@ class << Fabricator
 
   def load_fabric input, chunk_size_limit: 24
     integrator = Fabricator::Integrator.new
-    vp = Fabricator::Vertical_Peeker.new input
-
-    parser_state = OpenStruct.new(
-        vertical_separation: nil,
-            # the number of blank lines immediately preceding
-            # the element currently being parsed
-    )
-    loop do
-      parser_state.vertical_separation = 0
-      while vp.peek_line == '' do
-        if parser_state.vertical_separation == 2 then
-          integrator.warn vp.location_ahead,
-              "more than two consecutive blank lines"
-        end
-        parser_state.vertical_separation += 1
-        vp.get_line
-      end
-      break if vp.eof?
-      if parser_state.vertical_separation >= 2 then
-        integrator.force_section_break
-      end
-      element_location = vp.location_ahead
-      case vp.peek_line
-      when /^\s+/ then
-        if !integrator.in_list? or
-            vp.peek_line !~ /^
-                (?<margin> \s+ )
-                - (?<separator> \s+ )
-                /x then
-          body_location = vp.location_ahead
-          element = vp.get_indented_lines_with_skip
-          element.type = OL_BLOCK
-          element.body_loc = element_location
-        else
-          margin = $~['margin']
-          lines = [$~['separator'] + $']
-          vp.get_line
-          while !vp.eof? and
-              vp.peek_line.start_with? margin and
-              vp.peek_line !~ /^\s*-\s/ do
-            lines.push vp.get_line[margin.length .. -1]
-          end
-          element = OpenStruct.new(
-            type: OL_ITEM,
-            lines: lines,
-            content: parse_markup(lines.map(&:strip).join ' '),
-            indent: margin.length,
-            loc: element_location)
-        end
-
-      when /^<<\s*
-          (?: (?<root-type> \.file|\.script) \s+ )?
-          (?<raw-name> [^\s].*?)
-          (?: \s* \# (?<seq> \d+) )?
-          \s*>>:$/x then
-        name = canonicalise $~['raw-name']
-        vp.get_line
-        element = OpenStruct.new(
-          type: OL_DIVERT,
-          root_type: $~['root-type'],
-          name: name,
-          seq: $~['seq'] && $~['seq'].to_i,
-          header_loc: element_location)
-
-        body_location = vp.location_ahead
-        body = vp.get_indented_lines_with_skip
-        if body then
-          element.type = OL_CHUNK
-          element.lines = body.lines
-          element.indent = body.indent
-          element.body_loc = body_location
-          element.initial = element.final = true
-        end
-
-      when /^-\s/ then
-        # We'll discard the leading dash but save the following
-        # whitespace.
-        lines = [vp.get_line[1 .. -1]]
-        while !vp.eof? and
-            vp.peek_line != '' and
-            vp.peek_line !~ /^\s*-\s/ do
-          lines.push vp.get_line
-        end
-        element = OpenStruct.new(
-          type: OL_ITEM,
-          lines: lines,
-          content: parse_markup(lines.map(&:strip).join ' '),
-          indent: 0,
-          loc: element_location)
-
-      when /^\.\s+/ then
-        name = $'
-        element = OpenStruct.new(
-            type: OL_INDEX_ANCHOR,
-            name: name)
-        vp.get_line
-
-      when /^[^\s]/ then
-        lines = []
-        while vp.peek_line =~ /^[^\s]/ and
-            vp.peek_line !~ /^-\s/ do
-          lines.push vp.get_line
-        end
-        mode_flags_to_suppress = 0
-        case lines[0]
-        when /^(==+)(\s+)/ then
-          lines[0] = $2 + $'
-          element = OpenStruct.new(
-            type: OL_TITLE,
-            level: $1.length - 1,
-            loc: element_location)
-          mode_flags_to_suppress |= PF_LINK
-
-        when /^\*\s+/ then
-          lines[0] = $'
-          element = OpenStruct.new(
-              type: OL_RUBRIC,
-              loc: element_location)
-
-        else
-          element = OpenStruct.new(
-              type: OL_PARAGRAPH,
-              loc: element_location)
-        end
-        element.lines = lines
-        element.content =
-            parse_markup(lines.map(&:strip).join(' '),
-            mode_flags_to_suppress)
-      else raise 'assertion failed'
-      end
-      integrator.integrate element
-    end
-    integrator.force_section_break
-    integrator.clear_diversion
-    integrator.check_chunk_sizes(chunk_size_limit)
+    parse_fabric_file input, integrator
     integrator.tangle_roots
+    integrator.check_chunk_sizes(chunk_size_limit)
     return integrator.output
   end
 
