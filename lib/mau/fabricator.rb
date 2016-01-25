@@ -156,7 +156,8 @@ module Fabricator
       return
     end
 
-    def integrate element
+    def integrate element,
+        suppress_indexing: false
       if element.type == OL_TITLE then
         # Check the title's level restriction
         if element.level > @last_title_level + 1 then
@@ -268,8 +269,10 @@ module Fabricator
           # new element to the innermost list in progress.
           @list_stack.last.items.push element
         elsif element.type == OL_INDEX_ANCHOR then
-          freeform_index_record(element.name).refs.push [
-              @cursec.section_number, :manual]
+          unless suppress_indexing then
+            freeform_index_record(element.name).refs.push [
+                @cursec.section_number, :manual]
+          end
         else
           @list_stack = nil
           @cursec.elements.push element
@@ -300,38 +303,42 @@ module Fabricator
               end
             end
 
-            case element.type
-              when OL_CHUNK then
-                chunk_index_record(element.name).refs.push [
-                    @cursec.section_number, :definition]
+            unless suppress_indexing then
+              case element.type
+                when OL_CHUNK then
+                  chunk_index_record(element.name).refs.push [
+                      @cursec.section_number, :definition]
 
-              when OL_DIVERT then
-                index_ref = [@cursec.section_number ..
-                    @cursec.section_number, :definition]
-                chunk_index_record(element.name).refs.push(
-                    index_ref)
-                # We'll add a pointer to this reference entry
-                # into [[@curdivert]] so we can replace the
-                # range later to cover all the sections in which
-                # headerless chunks collected by this divert are
-                # present.
-                @curdivert.index_ref = index_ref
+                when OL_DIVERT then
+                  index_ref = [@cursec.section_number ..
+                      @cursec.section_number, :definition]
+                  chunk_index_record(element.name).refs.push(
+                      index_ref)
+                  # We'll add a pointer to this reference entry
+                  # into [[@curdivert]] so we can replace the
+                  # range later to cover all the sections in which
+                  # headerless chunks collected by this divert are
+                  # present.
+                  @curdivert.index_ref = index_ref
 
-              when OL_DIVERTED_CHUNK then
-                prev_range = @curdivert.index_ref[0]
-                @curdivert.index_ref[0] = prev_range.begin ..
-                    @cursec.section_number
-              else raise 'assertion failed'
+                when OL_DIVERTED_CHUNK then
+                  prev_range = @curdivert.index_ref[0]
+                  @curdivert.index_ref[0] = prev_range.begin ..
+                      @cursec.section_number
+                else raise 'assertion failed'
+              end
             end
 
             if element.type & OLF_HAS_CODE != 0 then
               cbn_record.chunks.push element
               element.ord = (@chunk_ord_counter += 1)
               parse_chunk_content element
-              element.content.each do |node|
-                next unless node.type == :use
-                chunk_index_record(node.name).refs.push [
-                    @cursec.section_number, :transclusion]
+              unless suppress_indexing then
+                element.content.each do |node|
+                  next unless node.type == :use
+                  chunk_index_record(node.name).refs.push [
+                      @cursec.section_number, :transclusion]
+                end
               end
             end
           end
@@ -1521,7 +1528,8 @@ end
 
 class << Fabricator
   include Fabricator
-  def parse_fabric_file input, integrator
+  def parse_fabric_file input, integrator,
+      suppress_indexing: false
     vp = Fabricator::Vertical_Peeker.new input
 
     parser_state = OpenStruct.new(
@@ -1652,7 +1660,8 @@ class << Fabricator
             mode_flags_to_suppress)
       else raise 'assertion failed'
       end
-      integrator.integrate element
+      integrator.integrate element,
+          suppress_indexing: suppress_indexing
     end
     integrator.force_section_break
     integrator.clear_diversion

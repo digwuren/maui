@@ -22,7 +22,8 @@ establishing a proper document tree, collecting the chunks for
 later tangling, and preparing the cross-references.
 
 << Other methods >>:
-  def parse_fabric_file input, integrator
+  def parse_fabric_file input, integrator,
+      suppress_indexing: false
     << Parse fabric from [[input]] to [[integrator]] >>
     return
   end
@@ -55,7 +56,8 @@ higher-level list has already been established.
     << Vertical elements' parsing rules >>
     else raise 'assertion failed'
     end
-    integrator.integrate element
+    integrator.integrate element,
+        suppress_indexing: suppress_indexing
   end
   << Handle the end of fabric >>
 
@@ -523,7 +525,8 @@ The integrator's main entry point.
 
 . [[integrate]]
 
-  def integrate element
+  def integrate element,
+      suppress_indexing: false
     if element.type == OL_TITLE then
       << Integrate the title >>
     else
@@ -736,8 +739,10 @@ index; the [[OL_INDEX_ANCHOR]] node won't be appended into the
 body of the containing [[OL_SECTION]] node.
 
 << Add [[manual]] index entry >>:
-  freeform_index_record(element.name).refs.push [
-      @cursec.section_number, :manual]
+  unless suppress_indexing then
+    freeform_index_record(element.name).refs.push [
+        @cursec.section_number, :manual]
+  end
 
 
 Chunks come out of the parser as series of lines.  For
@@ -860,16 +865,17 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
       << Update [[cbn_record.root_type]] from [[element]] >>
     end
 
-    case element.type
-      << [[case]] clauses to index a [[definition]] >>
-      else raise 'assertion failed'
+    unless suppress_indexing then
+      << Index the definition >>
     end
 
     if element.type & OLF_HAS_CODE != 0 then
       cbn_record.chunks.push element
       element.ord = (@chunk_ord_counter += 1)
       parse_chunk_content element
-      << Create [[transclusion]] index entries >>
+      unless suppress_indexing then
+        << Create [[transclusion]] index entries >>
+      end
     end
   end
 
@@ -914,6 +920,13 @@ for chunks of this name, with the order defined as [[nil]] <
   end
   if element.root_type == '.script' then
     cbn_record.root_type = element.root_type
+  end
+
+
+<< Index the definition >>:
+  case element.type
+    << [[case]] clauses to index a [[definition]] >>
+    else raise 'assertion failed'
   end
 
 
