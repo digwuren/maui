@@ -2230,19 +2230,23 @@ class << Fabricator
     if transcluders then
       xref.words "transcluded by "
       xref.push *commatise_oxfordly(
-          transcluders.map{|ref| markup.
-              node(MU_MENTION_CHUNK, name: ref.name).
-              # FIXME: [[ref.section_number]] can be [[nil]];
-              # then, the space and parenthesised section number
-              # should be skipped
-              space.
-              plain("(").
-              node(MU_LINK,
-                content: markup.
-                    plain(symbolism.section_prefix +
-                        ref.section_number.to_s),
-                target: "#S.#{ref.section_number}").
-              plain(")")
+          transcluders.map{|ref|
+            m = markup
+            m.node(MU_MENTION_CHUNK, name: ref.name)
+            # [[ref.section_number]] can be [[nil]] if the
+            # transcluder belongs to a unwoven fabric file as
+            # unwoven sections are not numbered.
+            unless ref.section_number.nil? then
+              m.space.
+                  plain("(").
+                  node(MU_LINK,
+                    content: markup.
+                        plain(symbolism.section_prefix +
+                            ref.section_number.to_s),
+                    target: "#S.#{ref.section_number}").
+                  plain(")")
+            end
+            m
           })
     else
       if cbn_entry.root_type then
