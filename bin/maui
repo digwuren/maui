@@ -77,7 +77,7 @@ narrative into both HTML and coloured text.
 
 --base=FILENAME
     Load fabric base from this file.  Code defined there will
-    be tangled together with the main fabric, but not weaved.
+    be tangled together with the main fabric, but not woven.
 
 --section-prefix=STRING
     Use this string rather than § as the section prefix.

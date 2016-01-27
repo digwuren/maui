@@ -4136,7 +4136,7 @@ Finally, this rule tells pre-HTML5 browsers that [[section]] is
 
 === Symbolism
 
-Several of the symbols Maui uses in its weaved representation of
+Several of the symbols Maui uses in its woven representation of
 fabrics are customisable.  To that end, many weaving subroutines
 accept, and pass on, [[OpenStruct]] instances with the preferred
 symbols.  Here are the defaults.
@@ -4362,7 +4362,7 @@ symbols.  Here are the defaults.
 << Option summary >>:
   --base=FILENAME
       Load fabric base from this file.  Code defined there will
-      be tangled together with the main fabric, but not weaved.
+      be tangled together with the main fabric, but not woven.
 
 << Option declarations >>:
   ['--base', '-b', GetoptLong::REQUIRED_ARGUMENT],
