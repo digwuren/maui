@@ -289,8 +289,9 @@ module Fabricator
             element.section_number = @cursec.section_number \
                 unless suppress_narrative
 
-            cbn_record = @output.chunks_by_name[element.name] ||=
-                OpenStruct.new(chunks: [], headers: [])
+            cbn_record =
+                @output.chunks_by_name[element.name] ||=
+                    OpenStruct.new(chunks: [], headers: [])
 
             if element.type & OLF_HAS_HEADER != 0 then
               cbn_record.headers.push element
@@ -326,9 +327,9 @@ module Fabricator
                       index_ref)
                   # We'll add a pointer to this reference entry
                   # into [[@curdivert]] so we can replace the
-                  # range later to cover all the sections in which
-                  # headerless chunks collected by this divert are
-                  # present.
+                  # range later to cover all the sections in
+                  # which headerless chunks collected by this
+                  # divert are present.
                   @curdivert.index_ref = index_ref
 
                 when OL_DIVERTED_CHUNK then
