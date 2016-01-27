@@ -23,7 +23,8 @@ later tangling, and preparing the cross-references.
 
 << Other methods >>:
   def parse_fabric_file input, integrator,
-      suppress_indexing: false
+      suppress_indexing: false,
+      suppress_narrative: false
     << Parse fabric from [[input]] to [[integrator]] >>
     return
   end
@@ -57,7 +58,8 @@ higher-level list has already been established.
     else raise 'assertion failed'
     end
     integrator.integrate element,
-        suppress_indexing: suppress_indexing
+        suppress_indexing: suppress_indexing,
+        suppress_narrative: suppress_narrative
   end
   << Handle the end of fabric >>
 
@@ -526,7 +528,8 @@ The integrator's main entry point.
 . [[integrate]]
 
   def integrate element,
-      suppress_indexing: false
+      suppress_indexing: false,
+      suppress_narrative: false
     if element.type == OL_TITLE then
       << Integrate the title >>
     else
@@ -543,6 +546,10 @@ addition to [[presentation]] collected into [[toc]].
 . "title level too deep" (warning)
 
 << Integrate the title >>:
+  force_section_break
+  # Enforce (sub(sub))chapter-locality of diversions
+  clear_diversion
+
   # Check the title's level restriction
   if element.level > @last_title_level + 1 then
     warn element.loc, "title level too deep"
@@ -550,23 +557,21 @@ addition to [[presentation]] collected into [[toc]].
   end
   @last_title_level = element.level
 
-  # Number the title
-  while @title_counters.length > element.level do
-    @title_counters.pop
-  end
-  if @title_counters.length < element.level then
-    @title_counters.push 0
-  end
-  @title_counters[-1] += 1
-  element.number = @title_counters.join '.'
+  unless suppress_narrative then
+    # Number the title
+    while @title_counters.length > element.level do
+      @title_counters.pop
+    end
+    if @title_counters.length < element.level then
+      @title_counters.push 0
+    end
+    @title_counters[-1] += 1
+    element.number = @title_counters.join '.'
 
-  # Append the node to [[presentation]] and [[toc]]
-  force_section_break
-  @output.presentation.push element
-  @output.toc.push element
-
-  # Enforce (sub(sub))chapter-locality of diversions
-  clear_diversion
+    # Append the node to [[presentation]] and [[toc]]
+    @output.presentation.push element
+    @output.toc.push element
+  end
 
 
 << Integrate the part of section >>:
@@ -574,7 +579,9 @@ addition to [[presentation]] collected into [[toc]].
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
-  << [[OL_RUBRIC]]?  Link to [[toc]] >>
+  unless suppress_narrative then
+    << [[OL_RUBRIC]]?  Link to [[toc]] >>
+  end
   << [[OL_DIVERT]]?  Apply it >>
 
   if element.type == OL_ITEM then
@@ -656,12 +663,15 @@ explicitly marked, usually by two adjacent blank lines.
   if @cursec.nil? then
     @cursec = OpenStruct.new(
       type: OL_SECTION,
-      section_number: @first_section_number +
-          @section_count,
+      section_number: nil,
       elements: [],
       loc: element.loc)
+    unless suppress_narrative then
+      @cursec.section_number =
+          @first_section_number + @section_count
       @section_count += 1
-    @output.presentation.push @cursec
+      @output.presentation.push @cursec
+    end
   end
 
 
@@ -854,7 +864,8 @@ or [[OL_DIVERT]]), linked under [[chunks_by_name[...].headers]].
 
 << Chunk or divert?  Parse and cross-reference >>:
   if element.type & OLF_FUNCTIONAL != 0 then
-    element.section_number = @cursec.section_number
+    element.section_number = @cursec.section_number \
+        unless suppress_narrative
 
     cbn_record = @output.chunks_by_name[element.name] ||=
         OpenStruct.new(chunks: [], headers: [])
@@ -1140,6 +1151,8 @@ available for this.
 
 << in [[Integrator]] >>:
   def warn location, message, inline: false
+    raise 'assertion failed' \
+        if location.nil?
     record = OpenStruct.new(
       loc: location,
       message: message,
@@ -2286,8 +2299,18 @@ integration, and tangling of a fabric into a single procedure.
 . [[load_fabric]]
 
 << Other methods >>:
-  def load_fabric input, chunk_size_limit: 24
+  def load_fabric input, chunk_size_limit: 24,
+      bases: []
     integrator = Fabricator::Integrator.new
+    bases.each do |base|
+      File.open base, 'r' do |port|
+        parse_fabric_file port, integrator,
+            suppress_narrative: true,
+            suppress_indexing: true
+      end
+    end
+    raise 'assertion failed' \
+        unless integrator.section_count.zero?
     parse_fabric_file input, integrator
     << Tangle all roots >>
     integrator.check_chunk_sizes(chunk_size_limit)
@@ -2691,6 +2714,9 @@ which in its regard, are just chunk headers.
     xref.push *commatise_oxfordly(
         transcluders.map{|ref| markup.
             node(MU_MENTION_CHUNK, name: ref.name).
+            # FIXME: [[ref.section_number]] can be [[nil]];
+            # then, the space and parenthesised section number
+            # should be skipped
             space.
             plain("(").
             node(MU_LINK,
@@ -4160,7 +4186,8 @@ symbols.  Here are the defaults.
 
   fabric = open $cmdline.fabric_filename, 'r' do |port|
     Fabricator.load_fabric port,
-        chunk_size_limit: $cmdline.chunk_size_limit
+        chunk_size_limit: $cmdline.chunk_size_limit,
+        bases: $cmdline.bases
   end
 
   << Set up the [[writeout_plan]] >>
@@ -4322,6 +4349,24 @@ symbols.  Here are the defaults.
 
 << Initialise [[$cmdline]] >>:
   $cmdline.symbolism = OpenStruct.new(section_prefix: "§")
+
+
+. [[--base]]
+
+<< Option summary >>:
+  --base=FILENAME
+      Load fabric base from this file.  Code defined there will
+      be tangled together with the main fabric, but not weaved.
+
+<< Option declarations >>:
+  ['--base', '-b', GetoptLong::REQUIRED_ARGUMENT],
+
+<< Initialise [[$cmdline]] >>:
+  $cmdline.bases = []
+
+<< Command line option handlers >>:
+  when '--base' then
+    $cmdline.bases.push arg
 
 
 . [[--section-prefix]]

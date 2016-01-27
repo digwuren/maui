@@ -157,8 +157,13 @@ module Fabricator
     end
 
     def integrate element,
-        suppress_indexing: false
+        suppress_indexing: false,
+        suppress_narrative: false
       if element.type == OL_TITLE then
+        force_section_break
+        # Enforce (sub(sub))chapter-locality of diversions
+        clear_diversion
+
         # Check the title's level restriction
         if element.level > @last_title_level + 1 then
           warn element.loc, "title level too deep"
@@ -166,23 +171,21 @@ module Fabricator
         end
         @last_title_level = element.level
 
-        # Number the title
-        while @title_counters.length > element.level do
-          @title_counters.pop
-        end
-        if @title_counters.length < element.level then
-          @title_counters.push 0
-        end
-        @title_counters[-1] += 1
-        element.number = @title_counters.join '.'
+        unless suppress_narrative then
+          # Number the title
+          while @title_counters.length > element.level do
+            @title_counters.pop
+          end
+          if @title_counters.length < element.level then
+            @title_counters.push 0
+          end
+          @title_counters[-1] += 1
+          element.number = @title_counters.join '.'
 
-        # Append the node to [[presentation]] and [[toc]]
-        force_section_break
-        @output.presentation.push element
-        @output.toc.push element
-
-        # Enforce (sub(sub))chapter-locality of diversions
-        clear_diversion
+          # Append the node to [[presentation]] and [[toc]]
+          @output.presentation.push element
+          @output.toc.push element
+        end
       else
         if element.type == OL_BLOCK and @curdivert then
           element.type = OL_DIVERTED_CHUNK
@@ -209,16 +212,21 @@ module Fabricator
         if @cursec.nil? then
           @cursec = OpenStruct.new(
             type: OL_SECTION,
-            section_number: @first_section_number +
-                @section_count,
+            section_number: nil,
             elements: [],
             loc: element.loc)
+          unless suppress_narrative then
+            @cursec.section_number =
+                @first_section_number + @section_count
             @section_count += 1
-          @output.presentation.push @cursec
+            @output.presentation.push @cursec
+          end
         end
-        if element.type == OL_RUBRIC then
-          element.section_number = @cursec.section_number
-          @output.toc.push element
+        unless suppress_narrative then
+          if element.type == OL_RUBRIC then
+            element.section_number = @cursec.section_number
+            @output.toc.push element
+          end
         end
         if element.type == OL_DIVERT then
           @curdivert = element
@@ -277,7 +285,8 @@ module Fabricator
           @list_stack = nil
           @cursec.elements.push element
           if element.type & OLF_FUNCTIONAL != 0 then
-            element.section_number = @cursec.section_number
+            element.section_number = @cursec.section_number \
+                unless suppress_narrative
 
             cbn_record = @output.chunks_by_name[element.name] ||=
                 OpenStruct.new(chunks: [], headers: [])
@@ -514,6 +523,8 @@ module Fabricator
     end
 
     def warn location, message, inline: false
+      raise 'assertion failed' \
+          if location.nil?
       record = OpenStruct.new(
         loc: location,
         message: message,
@@ -1529,7 +1540,8 @@ end
 class << Fabricator
   include Fabricator
   def parse_fabric_file input, integrator,
-      suppress_indexing: false
+      suppress_indexing: false,
+      suppress_narrative: false
     vp = Fabricator::Vertical_Peeker.new input
 
     parser_state = OpenStruct.new(
@@ -1661,7 +1673,8 @@ class << Fabricator
       else raise 'assertion failed'
       end
       integrator.integrate element,
-          suppress_indexing: suppress_indexing
+          suppress_indexing: suppress_indexing,
+          suppress_narrative: suppress_narrative
     end
     integrator.force_section_break
     integrator.clear_diversion
@@ -1885,8 +1898,18 @@ class << Fabricator
     end
   end
 
-  def load_fabric input, chunk_size_limit: 24
+  def load_fabric input, chunk_size_limit: 24,
+      bases: []
     integrator = Fabricator::Integrator.new
+    bases.each do |base|
+      File.open base, 'r' do |port|
+        parse_fabric_file port, integrator,
+            suppress_narrative: true,
+            suppress_indexing: true
+      end
+    end
+    raise 'assertion failed' \
+        unless integrator.section_count.zero?
     parse_fabric_file input, integrator
     integrator.tangle_roots
     integrator.check_chunk_sizes(chunk_size_limit)
@@ -2209,6 +2232,9 @@ class << Fabricator
       xref.push *commatise_oxfordly(
           transcluders.map{|ref| markup.
               node(MU_MENTION_CHUNK, name: ref.name).
+              # FIXME: [[ref.section_number]] can be [[nil]];
+              # then, the space and parenthesised section number
+              # should be skipped
               space.
               plain("(").
               node(MU_LINK,
