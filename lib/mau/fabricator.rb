@@ -139,11 +139,12 @@ module Fabricator
       @section_count = 0 # The number of last section
       # We'll issue all chunks 'ord' numbers in the order they
       # appear, so that we can use these as a fall-back sort key
-      # when sorting chunks by optional sequence numbers.  (Recall
-      # that Ruby's [[sort]] is not stable.) Intuitively, we could
-      # just use section numbers, but this fails when we'll
-      # preload a 'base' fabric before the main fabric without
-      # assigning the base fabric any section numbers.
+      # when sorting chunks by optional sequence numbers.
+      # (Recall that Ruby's [[sort]] is not stable.)
+      # Intuitively, we could just use section numbers, but this
+      # fails when we'll preload a 'base' fabric before the main
+      # fabric without assigning the base fabric any section
+      # numbers.
       @chunk_ord_counter = 0
       @title_counters = [0]
       @curdivert = nil # The current diversion if active
