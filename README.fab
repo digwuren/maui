@@ -25,6 +25,11 @@ markup elements:
   the order of the aspects of the link matches that commonly
   used in paper encyclopedias rather than that used HTML.
 
+  - Long hyperlinks can be broken between multiple lines by
+    using a percent sign before the linebreak.  The percent
+    together with one or more immediately following newline or
+    whitespace characters will then be ignored by Mau.
+
 
 == Narrative structure
 

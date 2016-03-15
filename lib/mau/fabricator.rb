@@ -1790,6 +1790,8 @@ class << Fabricator
           ps.at? '|' and
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
+        # Remove the 'soft hyphenation' for URLs
+        target = target.gsub(/%\s+/, '')
         if link_like? target then
           stack.ennode MU_LINK, PF_END_LINK,
               target: target
@@ -1807,11 +1809,14 @@ class << Fabricator
           x.term_type == PF_END_LINK
         end
         target = ps[stack[j].start_offset + 1 ... ps.pointer]
-        if link_like? target then
+        # Remove the URL's 'soft hyphenation' but keep it for the
+        # link's face
+        solidified_target = target.gsub(/%\s+/, '')
+        if link_like? solidified_target then
           stack[j .. -1] = []
           stack.last.content.node MU_LINK,
               implicit_face: true,
-              target: target,
+              target: solidified_target,
               content: Fabricator.markup.plain(target)
         else
           # False alarm: this is not a link, after all.
@@ -2245,7 +2250,8 @@ class << Fabricator
                     content: markup.
                         plain(symbolism.section_prefix +
                             ref.section_number.to_s),
-                    target: "#S.#{ref.section_number}").
+                    target: "#S.#{ref.section_number}",
+                    implicit_face: true).
                   plain(")")
             end
             m
