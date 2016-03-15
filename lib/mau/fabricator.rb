@@ -504,7 +504,7 @@ module Fabricator
       @output.presentation.each do |node|
         next unless node.type == OL_SECTION
         node.elements.each do |element|
-          next unless element.type == OL_CHUNK
+          next unless (element.type & OLF_HAS_CODE) != 0
           if element.lines.length > limit then
             if element.lines.length > limit * 2 then
               assessment, factor = "very long chunk", 2
