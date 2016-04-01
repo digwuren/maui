@@ -929,6 +929,7 @@ module Fabricator
         @curpos = @hangindent + @curword.width
       end
       @curword.prepared_output << data
+      @curword.width += data.length
       @curpos += data.length
       return
     end
