@@ -135,6 +135,10 @@ There is NO WARRANTY, to the extent permitted by law."
     $stderr.puts "maui: no fabric filename given"
     exit 1
   end
+  if ARGV.first.start_with? '+' then
+    $stderr.puts "maui: the main fabric must not be an add-on"
+    exit 1
+  end
   $cmdline.fabric_filename = ARGV.shift
 rescue GetoptLong::Error => e
   # no need to display; it has already been reported
