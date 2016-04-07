@@ -1124,7 +1124,7 @@ module Fabricator
       @port.puts '<html>'
       html_head
       @port.puts '<body>'
-      @port.puts
+      @port.puts '<main>'
       @port.puts "<h1>#{@title.to_xml}</h1>"
       unless @fabric.warnings.empty? then
         @port.puts "<h2>Warnings</h2>"
@@ -1136,6 +1136,7 @@ module Fabricator
       unless @fabric.index.empty? then
         html_index
       end
+      @port.puts '</main>'
       @port.puts '</body>'
       @port.puts '</html>'
       return
