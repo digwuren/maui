@@ -4133,12 +4133,12 @@ to chunks, except without the running vertical rule.
     margin-left: $chunk-indent + $chunk-rule + $chunk-rule-sep
 
 
-Finally, this rule tells pre-HTML5 browsers that [[section]] is
-[[div]]-like, not [[span]]-like:
+Finally, this rule tells pre-HTML5 browsers that [[main]],
+[[article], and [[section]] are [[div]]-like, not [[span]]-like:
 
 << Sass rules >>:
   /* Backwards compatibility with pre-HTML5 browsers */
-  section
+  main, article, section
     display: block
 
 
