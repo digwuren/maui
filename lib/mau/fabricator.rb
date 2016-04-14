@@ -669,13 +669,18 @@ module Fabricator
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
-  MU_NBSP            = 0x02
   MU_BOLD            = 0x03
   MU_ITALIC          = 0x04
   MU_UNDERSCORE      = 0x05
   MU_MONOSPACE       = 0x06
   MU_LINK            = 0x07
   MU_MENTION_CHUNK   = 0x08
+  MU_SPECIAL_ATOM    = 0x09
+
+  SA_NBSP      = 0x01
+  SA_NDASH     = 0x02
+  SA_MDASH     = 0x03
+  SA_ELLIPSIS  = 0x04
 
   class Markup_Parser_Stack < Array
     def initialize suppress_modes = 0
@@ -969,8 +974,14 @@ module Fabricator
       when MU_SPACE then
         add_space node.data || ' '
 
-      when MU_NBSP then
-        add_plain ' '
+      when MU_SPECIAL_ATOM then
+        case node.subtype
+          when SA_NBSP then add_plain ' '
+          when SA_NDASH then add_plain '-'
+          when SA_MDASH then add_plain '--'
+          when SA_ELLIPSIS then add_plain '...'
+          else raise 'assertion faile'
+        end
 
       when MU_BOLD, MU_ITALIC, MU_UNDERSCORE, MU_MONOSPACE then
         styled Fabricator::MARKUP2CTXT_STYLE[node.type] do
@@ -1494,8 +1505,14 @@ module Fabricator
         when MU_SPACE then
           @port.print((node.data || ' ').to_xml)
 
-        when MU_NBSP then
-          @port.print '&nbsp;'
+        when MU_SPECIAL_ATOM then
+          case node.subtype
+            when SA_NBSP then @port.print '&nbsp;'
+            when SA_NDASH then @port.print '&ndash;'
+            when SA_MDASH then @port.print '&mdash;'
+            when SA_ELLIPSIS then @port.print '&hellip;'
+            else raise 'assertion failed'
+          end
 
         when MU_BOLD, MU_ITALIC, MU_UNDERSCORE,
             MU_MONOSPACE then
@@ -1811,8 +1828,8 @@ class << Fabricator
           x.term_type == PF_END_LINK
         end
         target = ps[stack[j].start_offset + 1 ... ps.pointer]
-        # Remove the URL's 'soft hyphenation' but keep it for the
-        # link's face
+        # Remove the URL's 'soft hyphenation' but keep it for
+        # the link's face
         solidified_target = target.gsub(/%\s+/, '')
         if link_like? solidified_target then
           stack[j .. -1] = []
@@ -1833,14 +1850,31 @@ class << Fabricator
           ps.pointer += 1
         end
         stack.last.content.space
+        if ps.at? '- ' then
+          stack.last.content.node MU_SPECIAL_ATOM,
+              subtype: SA_NDASH
+          ps.pointer += 1 # leave the following space in place
+        end
 
       elsif ps.at? "\u00A0" then
-        stack.last.content.node MU_NBSP
+        stack.last.content.node MU_SPECIAL_ATOM,
+            subtype: SA_NBSP
         ps.pointer += 1
+
+      elsif ps.at? "--" then
+        stack.last.content.node MU_SPECIAL_ATOM,
+            subtype: SA_MDASH
+        ps.pointer += 2
+
+      elsif ps.at? "..." then
+        stack.last.content.node MU_SPECIAL_ATOM,
+            subtype: SA_ELLIPSIS
+        ps.pointer += 3
 
       else
         j = ps.pointer + 1
-        while j < s.length and !" */<>[_|".include? ps[j] do
+        while j < s.length and
+            !" *-./<>[_|\u00A0".include? ps[j] do
           j += 1
         end
         stack.last.content.plain(

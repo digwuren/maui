@@ -1236,7 +1236,7 @@ A parsed fabric's internal representation is, for the most part,
 a tree consisting of three layers of different nodes: /outline/
 nodes such as titles and paragraphs, /markup/ nodes, and
 /sub-chunk/ nodes.  The following constants are used to encode
-the types of nodes generated as a fabric is being parsed. 
+the types of nodes generated as a fabric is being parsed.
 
 Many of these values are chosen arbitrarily.  Some have special
 bit patterns to them.
@@ -1312,23 +1312,36 @@ to use branching of any sort.
 
 . [[MU_PLAIN]]
 . [[MU_SPACE]]
-. [[MU_NBSP]]
 . [[MU_BOLD]]
 . [[MU_ITALIC]]
 . [[MU_UNDERSCORE]]
 . [[MU_MONOSPACE]]
 . [[MU_LINK]]
 . [[MU_MENTION_CHUNK]]
+. [[MU_SPECIAL_ATOM]]
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
-  MU_NBSP            = 0x02
   MU_BOLD            = 0x03
   MU_ITALIC          = 0x04
   MU_UNDERSCORE      = 0x05
   MU_MONOSPACE       = 0x06
   MU_LINK            = 0x07
   MU_MENTION_CHUNK   = 0x08
+  MU_SPECIAL_ATOM    = 0x09
+
+
+Finally, the special atoms.
+
+. [[SA_NBSP]]
+. [[SA_NDASH]]
+. [[SA_MDASH]]
+. [[SA_ELLIPSIS]]
+
+  SA_NBSP      = 0x01
+  SA_NDASH     = 0x02
+  SA_MDASH     = 0x03
+  SA_ELLIPSIS  = 0x04
 
 
 == Horizontal parsing
@@ -1631,8 +1644,8 @@ construct a simple link node.
       x.term_type == PF_END_LINK
     end
     target = ps[stack[j].start_offset + 1 ... ps.pointer]
-    # Remove the URL's 'soft hyphenation' but keep it for the
-    # link's face
+    # Remove the URL's 'soft hyphenation' but keep it for
+    # the link's face
     solidified_target = target.gsub(/%\s+/, '')
     if link_like? solidified_target then
       stack[j .. -1] = []
@@ -1690,25 +1703,55 @@ yet but will end later.
 
 Because whitespace has meaning for Maui markup --- it indicates
 places suitable for linebreaks when word-wrapping ---, we'll
-parse it as a kind of special node.
+parse it as a kind of special node.  Because en-dash necessarily
+follows whitespace, we'll also check this here.
 
 << Parse a bit of markup >>:
+
   elsif ps.at? ' ' then
     ps.pointer += 1
     while ps.at? ' ' do
       ps.pointer += 1
     end
     stack.last.content.space
+    << Parse a bit of markup after whitespace >>
 
 
-We'll consider the [[U+00A0 NO-BREAK SPACE]] a form of markup.
-Each such character will be a node of the type [[MU_NBSP]], with
-no attributes.
+We'll consider the [[U+00A0 NO-BREAK SPACE]] a form of markup --
+namely, a special atom.  Each such character will be a node of
+the type [[MU_SPECIAL_ATOM]], with a [[subtype]] attribute of
+[[SA_NBSP]].
 
-<< Parse a bit of markup >>:
   elsif ps.at? "\u00A0" then
-    stack.last.content.node MU_NBSP
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_NBSP
     ps.pointer += 1
+
+
+The same approach works on the em-dash and the ellipsis.
+
+  elsif ps.at? "--" then
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_MDASH
+    ps.pointer += 2
+
+
+  elsif ps.at? "..." then
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_ELLIPSIS
+    ps.pointer += 3
+
+
+The en-dash is slightly more complicated.  It necessarily has to
+follow whitespace and be followed by whitespace, so we'll check
+for this in the aftermath of parsing ordinary whitespace.
+
+<< Parse a bit of markup after whitespace >>:
+  if ps.at? '- ' then
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_NDASH
+    ps.pointer += 1 # leave the following space in place
+  end
 
 
 Finally, if none of the rules matched, we'll pick the following
@@ -1721,7 +1764,8 @@ construct a new [[String]] instance with its content.
 << Parse a bit of markup >>:
   else
     j = ps.pointer + 1
-    while j < s.length and !" */<>[_|".include? ps[j] do
+    while j < s.length and
+        !" *-./<>[_|\u00A0".include? ps[j] do
       j += 1
     end
     stack.last.content.plain(
@@ -3090,8 +3134,14 @@ Process a whole list of nodes.
     add_space node.data || ' '
 
 
-  when MU_NBSP then
-    add_plain ' '
+  when MU_SPECIAL_ATOM then
+    case node.subtype
+      when SA_NBSP then add_plain ' '
+      when SA_NDASH then add_plain '-'
+      when SA_MDASH then add_plain '--'
+      when SA_ELLIPSIS then add_plain '...'
+      else raise 'assertion faile'
+    end
 
 
   when MU_BOLD, MU_ITALIC, MU_UNDERSCORE, MU_MONOSPACE then
@@ -3862,8 +3912,14 @@ into a local link, either in the [[#T.foo]] form for titles or
     @port.print((node.data || ' ').to_xml)
 
 
-  when MU_NBSP then
-    @port.print '&nbsp;'
+  when MU_SPECIAL_ATOM then
+    case node.subtype
+      when SA_NBSP then @port.print '&nbsp;'
+      when SA_NDASH then @port.print '&ndash;'
+      when SA_MDASH then @port.print '&mdash;'
+      when SA_ELLIPSIS then @port.print '&hellip;'
+      else raise 'assertion failed'
+    end
 
 
   when MU_BOLD, MU_ITALIC, MU_UNDERSCORE,

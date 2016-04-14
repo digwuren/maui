@@ -94,7 +94,8 @@ main, article, section {
 
 <h2>Contents</h2>
 
-<ul><li>1. <a href='#T.1'>Inline markup</a></li>
+<ul><li>1. <a href='#T.1'>Inline markup</a>
+<ul><li>1.1. <a href='#T.1.1'>Typography of special glyphs</a></li></ul>
 <li>2. <a href='#T.2'>Narrative structure</a></li>
 <li>3. <a href='#T.3'>Chunks and transclusion</a></li>
 <li>4. <a href='#T.4'>Postprocessing</a></li>
@@ -119,23 +120,38 @@ main, article, section {
 
 </section>
 
-<h2 id='T.2'>2. Narrative structure</h2>
+<h3 id='T.1.1'>1.1. Typography of special glyphs</h3>
 
 <section class='maui-section' id='S.3'>
 
-<p><b class='maui-section-number'>§3.</b> <i>Paragraphs</i> are separated from each other and other input by blank lines.</p>
+<p><b class='maui-section-number'>§3.</b></p>
+
+<ul>
+<li>Three immediately adjacent periods &hellip; make an ellipsis.</li>
+<li>Two immediately adjacent dashes make an em-dash &mdash; like this.</li>
+<li>One dash makes an en-dash if it&apos;s surrounded on both sides by whitespace, as in &quot;3 &ndash; 4&quot;. (A soft mid-paragraph linebreak may follow such a dash but not precede it, for then the dash would be a bullet point.)</li>
+<li>Unicode&apos;s non-breakable space, U+00A0, is&nbsp;supported.</li>
+</ul>
 
 </section>
 
+<h2 id='T.2'>2. Narrative structure</h2>
+
 <section class='maui-section' id='S.4'>
 
-<p><b class='maui-section-number'>§4.</b> Two adjacent blank lines separate <i>sections</i>.</p>
+<p><b class='maui-section-number'>§4.</b> <i>Paragraphs</i> are separated from each other and other input by blank lines.</p>
 
 </section>
 
 <section class='maui-section' id='S.5'>
 
-<p><b class='maui-section-number'>§5.</b> An indented block of text will be treated as a piece of <i>sample code</i>, like this:</p>
+<p><b class='maui-section-number'>§5.</b> Two adjacent blank lines separate <i>sections</i>.</p>
+
+</section>
+
+<section class='maui-section' id='S.6'>
+
+<p><b class='maui-section-number'>§6.</b> An indented block of text will be treated as a piece of <i>sample code</i>, like this:</p>
 
 <pre class='maui-block'>These lines were indented.  Note that a block can contain
 blank lines,
@@ -146,17 +162,17 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.6'>
+<section class='maui-section' id='S.7'>
 
-<p><b class='maui-section-number'>§6.</b></p>
+<p><b class='maui-section-number'>§7.</b></p>
 
 <pre class='maui-block'>Like this.</pre>
 
 </section>
 
-<section class='maui-section' id='S.7'>
+<section class='maui-section' id='S.8'>
 
-<p><b class='maui-section-number'>§7.</b> Items in a <i>bullet list</i> are marked by leading dash and space, and can be nested:</p>
+<p><b class='maui-section-number'>§8.</b> Items in a <i>bullet list</i> are marked by leading dash and space, and can be nested:</p>
 
 <pre class='maui-block'>- 1
   - 1.1
@@ -182,9 +198,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.8'>
+<section class='maui-section' id='S.9'>
 
-<p><b class='maui-section-number'>§8.</b> A document can be divided into <i>chapters</i>, <i>subchapters</i>, and <i>subsubchapters</i> by <i>titles</i>. A title should be separated with preceding and following with a blank line and is marked, correspondingly, with a leading <code>==</code>, <code>===</code>, or <code>====</code> together with a following separating space.</p>
+<p><b class='maui-section-number'>§9.</b> A document can be divided into <i>chapters</i>, <i>subchapters</i>, and <i>subsubchapters</i> by <i>titles</i>. A title should be separated with preceding and following with a blank line and is marked, correspondingly, with a leading <code>==</code>, <code>===</code>, or <code>====</code> together with a following separating space.</p>
 
 <p>Furthermore, the document structure can be presented with the use of <i>rubrics</i>, which correspond to Knuth WEB&apos;s <i>starred chunks</i>. A rubric is marked similarly to a title except with a leading <code>*</code> instead of equal signs. The star must be separated from the rubric&apos;s name with a space lest the parser think it&apos;s just a bold text marker. Because rubrics are, if a paragraph follows, embedded into the paragraph by Fabricator&apos;s weaving subsystem, it&apos;s a good idea to formulate rubric names as full sentences, together with a trailing period or other punctuation.</p>
 
@@ -192,9 +208,9 @@ new block.</pre>
 
 <h2 id='T.3'>3. Chunks and transclusion</h2>
 
-<section class='maui-section' id='S.9'>
+<section class='maui-section' id='S.10'>
 
-<p><b class='maui-section-number'>§9.</b> Each section can contain one or more <i>chunks</i>, with the following notation:</p>
+<p><b class='maui-section-number'>§10.</b> Each section can contain one or more <i>chunks</i>, with the following notation:</p>
 
 <pre class='maui-block'>&lt;&lt; Chunk name &gt;&gt;:
   Chunk content, possibly on many lines,
@@ -206,9 +222,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.10'>
+<section class='maui-section' id='S.11'>
 
-<p><b class='maui-section-number'>§10.</b> A chunk can be marked as a <i>root</i> chunk by applying a <code>.file</code> or <code>.script</code> directive, like this:</p>
+<p><b class='maui-section-number'>§11.</b> A chunk can be marked as a <i>root</i> chunk by applying a <code>.file</code> or <code>.script</code> directive, like this:</p>
 
 <pre class='maui-block'>&lt;&lt; .script hello.rb &gt;&gt;:
   #! /usr/bin/ruby -rubygems
@@ -219,9 +235,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.11'>
+<section class='maui-section' id='S.12'>
 
-<p><b class='maui-section-number'>§11.</b> The (mechanical) power of literate programming comes from <i>transclusion</i>, which is notated by adding the target chunk&apos;s name into another chunk, as seen above.</p>
+<p><b class='maui-section-number'>§12.</b> The (mechanical) power of literate programming comes from <i>transclusion</i>, which is notated by adding the target chunk&apos;s name into another chunk, as seen above.</p>
 
 <pre class='maui-block'>&lt;&lt; Friendly, familiar greeting &gt;&gt;:
   Hello, world!</pre>
@@ -234,9 +250,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.12'>
+<section class='maui-section' id='S.13'>
 
-<p><b class='maui-section-number'>§12.</b> Normally, Fabricator obeys indentation in a nested manner. In certain cases --- most importantly, the &apos;here-documents&apos; in shell scripts and languages borrowing their notation ---, you may want to suppress this. This is achieved by the <code>.clearindent</code> directive:</p>
+<p><b class='maui-section-number'>§13.</b> Normally, Fabricator obeys indentation in a nested manner. In certain cases &mdash;- most importantly, the &apos;here-documents&apos; in shell scripts and languages borrowing their notation &mdash;-, you may want to suppress this. This is achieved by the <code>.clearindent</code> directive:</p>
 
 <pre class='maui-block'>&lt;&lt; ... &gt;&gt;:
   module Beast
@@ -260,17 +276,17 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.13'>
+<section class='maui-section' id='S.14'>
 
-<p><b class='maui-section-number'>§13.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks --- which would otherwise be interpreted as blocks of example code --- are then treated as chunks of this name. A diversion is in effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
+<p><b class='maui-section-number'>§14.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks &mdash;- which would otherwise be interpreted as blocks of example code &mdash;- are then treated as chunks of this name. A diversion is in effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
 
 </section>
 
 <h2 id='T.4'>4. Postprocessing</h2>
 
-<section class='maui-section' id='S.14'>
+<section class='maui-section' id='S.15'>
 
-<p><b class='maui-section-number'>§14.</b> Fabricator provides experimental support for <i>postprocessing</i> text constructed using the standard LP transclusion mechanism. The notation for this is subject to change in future versions, and the available postprocessors are environment-dependent.</p>
+<p><b class='maui-section-number'>§15.</b> Fabricator provides experimental support for <i>postprocessing</i> text constructed using the standard LP transclusion mechanism. The notation for this is subject to change in future versions, and the available postprocessors are environment-dependent.</p>
 
 <p>In the current version, Maui defines two postprocessors related to <a href='http://sass-lang.com'>Sass</a>, the preprocessor for CSS. These are <code>|scss-&gt;css</code> and <code>|sass-&gt;css</code>, and they are invoked by attaching their names to the transclusion notation like this:</p>
 
@@ -293,9 +309,9 @@ new block.</pre>
 
 <h2 id='T.5'>5. Invocation</h2>
 
-<section class='maui-section' id='S.15'>
+<section class='maui-section' id='S.16'>
 
-<p><b class='maui-section-number'>§15.</b> Last but not least, the way to run <code>maui</code> goes like this:</p>
+<p><b class='maui-section-number'>§16.</b> Last but not least, the way to run <code>maui</code> goes like this:</p>
 
 <pre class='maui-block'>$ maui foo.fab</pre>
 

@@ -31,6 +31,20 @@ markup elements:
     whitespace characters will then be ignored by Mau.
 
 
+=== Typography of special glyphs
+
+- Three immediately adjacent periods ... make an ellipsis.
+
+- Two immediately adjacent dashes make an em-dash -- like this.
+
+- One dash makes an en-dash if it's surrounded on both sides by
+  whitespace, as in "3 - 4".  (A soft mid-paragraph linebreak
+  may follow such a dash but not precede it, for then the dash
+  would be a bullet point.)
+
+- Unicode's non-breakable space, U+00A0, is supported.
+
+
 == Narrative structure
 
 /Paragraphs/ are separated from each other and other input by
