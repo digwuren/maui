@@ -103,6 +103,17 @@ weaving subsystem, it's a good idea to formulate rubric names as
 full sentences, together with a trailing period or other
 punctuation.
 
+---
+
+Thematic breaks are notated in a way resembling MarkDown's: a
+line consisting of three or more dashes, stars, or underscores.
+Unlike MarkDown, the line must not be indented -- otherwise, it
+would belong to an indented block or a chunk's body --, but
+whitespace is permitted between stars or underscores.
+Whitespace is not permitted between dashes, lest some valid
+dash-breaks also be valid bulleted items -- an ambiguity that
+would benefit nobody.
+
 
 == Chunks and transclusion
 
@@ -155,10 +166,10 @@ be suppressed by the [[.dense]] directive:
 
 
 Normally, Fabricator obeys indentation in a nested manner.  In
-certain cases --- most importantly, the 'here-documents' in
-shell scripts and languages borrowing their notation ---, you
-may want to suppress this.  This is achieved by the
-[[.clearindent]] directive:
+certain cases -- most importantly, the 'here-documents' in shell
+scripts and languages borrowing their notation --, you may want
+to suppress this.  This is achieved by the [[.clearindent]]
+directive:
 
   << ... >>:
     module Beast

@@ -187,6 +187,12 @@ module Fabricator
           @output.presentation.push element
           @output.toc.push element
         end
+      elsif element.type == OL_THEMBREAK then
+        force_section_break
+        # but won't clear diversion
+        unless suppress_narrative then
+          @output.presentation.push element
+        end
       else
         if element.type == OL_BLOCK and @curdivert then
           element.type = OL_DIVERTED_CHUNK
@@ -666,6 +672,7 @@ module Fabricator
   OL_DIVERTED_CHUNK  = 0x80 | OLF_HAS_CODE
   OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
   OL_INDEX_ANCHOR    = 0x90
+  OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -906,6 +913,8 @@ module Fabricator
   end
 
   class Text_Wrapper
+    attr_reader :width
+
     def initialize port = $stdout,
         width: 80,
         pseudographics: UNICODE_PSEUDOGRAPHICS,
@@ -1246,6 +1255,8 @@ module Fabricator
             @port.puts
           end
           @port.puts "</section>"
+        when OL_THEMBREAK then
+          @port.puts "<hr />"
         else raise 'data structure error'
         end
         @port.puts
@@ -1636,6 +1647,10 @@ class << Fabricator
           element.body_loc = body_location
           element.initial = element.final = true
         end
+
+      when /^---+$/, /^(\*\s*){3,}$/, /^(_\s*){3,}$/ then
+        vp.get_line
+        element = OpenStruct.new type: OL_THEMBREAK
 
       when /^-\s/ then
         # We'll discard the leading dash but save the following
@@ -2058,6 +2073,10 @@ class << Fabricator
               inline: true, indent: false
           wr.linebreak
         end
+      when OL_THEMBREAK then
+        # FIXME: use pseudographics instead of a dash
+        wr.add_plain '-' * wr.width
+        wr.linebreak
       else raise 'data structure error'
       end
     end

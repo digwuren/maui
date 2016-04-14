@@ -174,6 +174,21 @@ it's followed by an indented block, it's a chunk.
     end
 
 
+. thematic break, parsing
+
+Our thematic break notation is inspired by MarkDown.  The basic
+detection criterion is three or more stars, dashes, or
+underscores alone on a line.  Unlike MarkDown, we only recognise
+this notation unindented.  Whitespace can be used between stars
+or underscores but not dashes, for that might greate complex
+ambiguities with other dash-based syntaxes, most importantly
+bullets but also n-dashes and m-dashes.
+
+  when /^---+$/, /^(\*\s*){3,}$/, /^(_\s*){3,}$/ then
+    vp.get_line
+    element = OpenStruct.new type: OL_THEMBREAK
+
+
 Next, let's consider top-level bullets.
 
   when /^-\s/ then
@@ -430,9 +445,9 @@ construct.
 
 The /content/ of the fabric will be stored in the integrator
 output under the key of [[presentation]].  In its immediate
-form, it's a Ruby [[Array]] containing the [[OL_TITLE]] and
-[[OL_SECTION]] nodes, in order; both of these kinds can contain
-further, lower-level, structure.
+form, it's a Ruby [[Array]] containing the [[OL_TITLE]],
+[[OL_SECTION]], and [[OL_THEMBREAK]] nodes, in order; the first
+two kinds of these can contain further, lower-level, structure.
 
   presentation: [], # list of titles and sections
 
@@ -533,6 +548,8 @@ The integrator's main entry point.
       suppress_narrative: false
     if element.type == OL_TITLE then
       << Integrate the title >>
+    elsif element.type == OL_THEMBREAK then
+      << Integrate the thematic break >>
     else
       << Integrate the part of section >>
     end
@@ -572,6 +589,14 @@ addition to [[presentation]] collected into [[toc]].
     # Append the node to [[presentation]] and [[toc]]
     @output.presentation.push element
     @output.toc.push element
+  end
+
+
+<< Integrate the thematic break >>:
+  force_section_break
+  # but won't clear diversion
+  unless suppress_narrative then
+    @output.presentation.push element
   end
 
 
@@ -1283,6 +1308,7 @@ Now, we can enumerate the node types.
 . [[OL_DIVERTED_CHUNK]]
 . [[OL_CHUNK]]
 . [[OL_INDEX_ANCHOR]]
+. [[OL_THEMBREAK]]
 
   OL_TITLE           = 0x10
   OL_SECTION         = 0x20
@@ -1295,6 +1321,7 @@ Now, we can enumerate the node types.
   OL_DIVERTED_CHUNK  = 0x80 | OLF_HAS_CODE
   OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
   OL_INDEX_ANCHOR    = 0x90
+  OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
 
 
 Next, we'll consider the markup nodes.  First, in
@@ -2471,6 +2498,10 @@ to an empty list.
       << Weave the title (ctxt) >>
     when OL_SECTION then
       << Weave the section (ctxt) >>
+    when OL_THEMBREAK then
+      # FIXME: use pseudographics instead of a dash
+      wr.add_plain '-' * wr.width
+      wr.linebreak
     else raise 'data structure error'
     end
   end
@@ -3006,9 +3037,12 @@ escape sequences for colours, mainly by considering that their
 width, for word-wrapping purposes, is zero.
 
 . [[Text_Wrapper]]
+. [[width]] (method of [[Text_Wrapper]])
 
 << in [[Fabricator]] >>:
   class Text_Wrapper
+    attr_reader :width
+
     def initialize port = $stdout,
         width: 80,
         pseudographics: UNICODE_PSEUDOGRAPHICS,
@@ -3452,6 +3486,8 @@ conventions.
         << Weave the title (HTML) >>
       when OL_SECTION then
         << Weave the section (HTML) >>
+      when OL_THEMBREAK then
+        @port.puts "<hr />"
       else raise 'data structure error'
       end
       @port.puts
