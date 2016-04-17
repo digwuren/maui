@@ -1573,7 +1573,8 @@ class << Fabricator
   include Fabricator
   def parse_fabric_file input, integrator,
       suppress_indexing: false,
-      suppress_narrative: false
+      suppress_narrative: false,
+      blockquote_mode: false
     vp = Fabricator::Vertical_Peeker.new input
 
     parser_state = OpenStruct.new(
@@ -1593,7 +1594,12 @@ class << Fabricator
       end
       break if vp.eof?
       if parser_state.vertical_separation >= 2 then
-        integrator.force_section_break
+        if !blockquote_mode then
+          integrator.force_section_break
+        else
+          # FIXME: generate a warning about ignoring the section
+          # break because of blockquote mode
+        end
       end
       element_location = vp.location_ahead
       line = vp.peek_line
@@ -1624,7 +1630,7 @@ class << Fabricator
             loc: element_location)
         end
 
-      elsif line =~ /^<<\s*
+      elsif !blockquote_mode and line =~ /^<<\s*
           (?: (?<root-type> \.file|\.script) \s+ )?
           (?<raw-name> [^\s].*?)
           (?: \s* \# (?<seq> \d+) )?
@@ -1669,7 +1675,7 @@ class << Fabricator
           indent: 0,
           loc: element_location)
 
-      elsif line =~ /^\.\s+/ then
+      elsif !blockquote_mode and line =~ /^\.\s+/ then
         name = $'
         element = OpenStruct.new(
             type: OL_INDEX_ANCHOR,
@@ -1683,7 +1689,7 @@ class << Fabricator
           lines.push vp.get_line
         end
         mode_flags_to_suppress = 0
-        if lines[0] =~ /^(==+)(\s+)/ then
+        if !blockquote_mode and lines[0] =~ /^(==+)(\s+)/ then
           lines[0] = $2 + $'
           element = OpenStruct.new(
             type: OL_TITLE,
@@ -1691,7 +1697,7 @@ class << Fabricator
             loc: element_location)
           mode_flags_to_suppress |= PF_LINK
 
-        elsif lines[0] =~ /^\*\s+/ then
+        elsif !blockquote_mode and lines[0] =~ /^\*\s+/ then
           lines[0] = $'
           element = OpenStruct.new(
               type: OL_RUBRIC,
