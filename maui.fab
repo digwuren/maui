@@ -53,9 +53,8 @@ higher-level list has already been established.
     break if vp.eof?
     << Handle explicit section break >>
     element_location = vp.location_ahead
-    case vp.peek_line
+    line = vp.peek_line
     << Vertical elements' parsing rules >>
-    else raise 'assertion failed'
     end
     integrator.integrate element,
         suppress_indexing: suppress_indexing,
@@ -80,7 +79,7 @@ higher-level list has already been established.
 
 
 << Vertical elements' parsing rules >>:
-  when /^\s+/ then
+  if line =~ /^\s+/ then
     if !integrator.in_list? or
         vp.peek_line !~ /^
             (?<margin> \s+ )
@@ -149,7 +148,7 @@ it's followed by an indented block, it's a chunk.
 
 << Vertical elements' parsing rules >>:
 
-  when /^<<\s*
+  elsif line =~ /^<<\s*
       (?: (?<root-type> \.file|\.script) \s+ )?
       (?<raw-name> [^\s].*?)
       (?: \s* \# (?<seq> \d+) )?
@@ -184,14 +183,15 @@ or underscores but not dashes, for that might greate complex
 ambiguities with other dash-based syntaxes, most importantly
 bullets but also n-dashes and m-dashes.
 
-  when /^---+$/, /^(\*\s*){3,}$/, /^(_\s*){3,}$/ then
+  elsif line =~ /^---+$/ or line =~ /^(\*\s*){3,}$/ or
+      line =~ /^(_\s*){3,}$/ then
     vp.get_line
     element = OpenStruct.new type: OL_THEMBREAK
 
 
 Next, let's consider top-level bullets.
 
-  when /^-\s/ then
+  elsif line =~ /^-\s/ then
     # We'll discard the leading dash but save the following
     # whitespace.
     lines = [vp.get_line[1 .. -1]]
@@ -217,7 +217,7 @@ each other without the need for intervening whitespace.
 Luckily, index keywords (or -phrases) are normally reasonably
 short.
 
-  when /^\.\s+/ then
+  elsif line =~ /^\.\s+/ then
     name = $'
     element = OpenStruct.new(
         type: OL_INDEX_ANCHOR,
@@ -228,14 +228,13 @@ short.
 Finally, a line starting with a non-whitespace character starts
 an ordinary paragraph, a title, or a rubric.
 
-  when /^[^\s]/ then
+  elsif line =~ /^[^\s]/ then
     lines = []
     while vp.peek_line =~ /^[^\s]/ and
         vp.peek_line !~ /^-\s/ do
       lines.push vp.get_line
     end
     mode_flags_to_suppress = 0
-    case lines[0]
     << Rules for interpreting a paragraph-like element >>
     end
     element.lines = lines
@@ -246,7 +245,7 @@ an ordinary paragraph, a title, or a rubric.
 
 << Rules for interpreting a paragraph-like element >>:
 
-  when /^(==+)(\s+)/ then
+  if lines[0] =~ /^(==+)(\s+)/ then
     lines[0] = $2 + $'
     element = OpenStruct.new(
       type: OL_TITLE,
@@ -255,7 +254,7 @@ an ordinary paragraph, a title, or a rubric.
     mode_flags_to_suppress |= PF_LINK
 
 
-  when /^\*\s+/ then
+  elsif lines[0] =~ /^\*\s+/ then
     lines[0] = $'
     element = OpenStruct.new(
         type: OL_RUBRIC,

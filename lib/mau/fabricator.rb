@@ -1596,8 +1596,8 @@ class << Fabricator
         integrator.force_section_break
       end
       element_location = vp.location_ahead
-      case vp.peek_line
-      when /^\s+/ then
+      line = vp.peek_line
+      if line =~ /^\s+/ then
         if !integrator.in_list? or
             vp.peek_line !~ /^
                 (?<margin> \s+ )
@@ -1624,7 +1624,7 @@ class << Fabricator
             loc: element_location)
         end
 
-      when /^<<\s*
+      elsif line =~ /^<<\s*
           (?: (?<root-type> \.file|\.script) \s+ )?
           (?<raw-name> [^\s].*?)
           (?: \s* \# (?<seq> \d+) )?
@@ -1648,11 +1648,12 @@ class << Fabricator
           element.initial = element.final = true
         end
 
-      when /^---+$/, /^(\*\s*){3,}$/, /^(_\s*){3,}$/ then
+      elsif line =~ /^---+$/ or line =~ /^(\*\s*){3,}$/ or
+          line =~ /^(_\s*){3,}$/ then
         vp.get_line
         element = OpenStruct.new type: OL_THEMBREAK
 
-      when /^-\s/ then
+      elsif line =~ /^-\s/ then
         # We'll discard the leading dash but save the following
         # whitespace.
         lines = [vp.get_line[1 .. -1]]
@@ -1668,22 +1669,21 @@ class << Fabricator
           indent: 0,
           loc: element_location)
 
-      when /^\.\s+/ then
+      elsif line =~ /^\.\s+/ then
         name = $'
         element = OpenStruct.new(
             type: OL_INDEX_ANCHOR,
             name: name)
         vp.get_line
 
-      when /^[^\s]/ then
+      elsif line =~ /^[^\s]/ then
         lines = []
         while vp.peek_line =~ /^[^\s]/ and
             vp.peek_line !~ /^-\s/ do
           lines.push vp.get_line
         end
         mode_flags_to_suppress = 0
-        case lines[0]
-        when /^(==+)(\s+)/ then
+        if lines[0] =~ /^(==+)(\s+)/ then
           lines[0] = $2 + $'
           element = OpenStruct.new(
             type: OL_TITLE,
@@ -1691,7 +1691,7 @@ class << Fabricator
             loc: element_location)
           mode_flags_to_suppress |= PF_LINK
 
-        when /^\*\s+/ then
+        elsif lines[0] =~ /^\*\s+/ then
           lines[0] = $'
           element = OpenStruct.new(
               type: OL_RUBRIC,
@@ -1706,7 +1706,6 @@ class << Fabricator
         element.content =
             parse_markup(lines.map(&:strip).join(' '),
             mode_flags_to_suppress)
-      else raise 'assertion failed'
       end
       integrator.integrate element,
           suppress_indexing: suppress_indexing,
