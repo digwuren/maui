@@ -1744,6 +1744,10 @@ follows whitespace, we'll also check this here.
     << Parse a bit of markup after whitespace >>
 
 
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_NBSP]]
+. non-breakable space, parsing
+
 We'll consider the [[U+00A0 NO-BREAK SPACE]] a form of markup --
 namely, a special atom.  Each such character will be a node of
 the type [[MU_SPECIAL_ATOM]], with a [[subtype]] attribute of
@@ -1755,7 +1759,14 @@ the type [[MU_SPECIAL_ATOM]], with a [[subtype]] attribute of
     ps.pointer += 1
 
 
-The same approach works on the em-dash and the ellipsis.
+The same approach works on the em-dash, including its ASCII
+representation, the ellipsis, and the Unicode representation of the
+en-dash.
+
+
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_MDASH]]
+. em-dash, parsing, ASCII representation
 
   elsif ps.at? "--" then
     stack.last.content.node MU_SPECIAL_ATOM,
@@ -1763,15 +1774,44 @@ The same approach works on the em-dash and the ellipsis.
     ps.pointer += 2
 
 
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_MDASH]]
+. em-dash, parsing, Unicode representation
+
+  elsif ps.at? "\u2014" then
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_MDASH
+    ps.pointer += 1
+
+
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_ELLIPSIS]]
+. ellipsis, parsing, ASCII representation
+
   elsif ps.at? "..." then
     stack.last.content.node MU_SPECIAL_ATOM,
         subtype: SA_ELLIPSIS
     ps.pointer += 3
 
 
-The en-dash is slightly more complicated.  It necessarily has to
-follow whitespace and be followed by whitespace, so we'll check
-for this in the aftermath of parsing ordinary whitespace.
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_NDASH]]
+. en-dash, parsing, Unicode representation
+
+  elsif ps.at? "\u2013" then
+    stack.last.content.node MU_SPECIAL_ATOM,
+        subtype: SA_NDASH
+    ps.pointer += 1
+
+
+. [[MU_SPECIAL_ATOM]], construction
+. [[SA_NDASH]]
+. en-dash, parsing, ASCII representation
+
+The ASCII representation of the en-dash is slightly more
+complicated.  It necessarily has to follow whitespace and be
+followed by whitespace, so we'll check for this in the aftermath
+of parsing ordinary whitespace.
 
 << Parse a bit of markup after whitespace >>:
   if ps.at? '- ' then
@@ -1792,7 +1832,7 @@ construct a new [[String]] instance with its content.
   else
     j = ps.pointer + 1
     while j < s.length and
-        !" *-./<>[_|\u00A0".include? ps[j] do
+        !" *-./<>[_|\u00A0\u2013\u2014".include? ps[j] do
       j += 1
     end
     stack.last.content.plain(

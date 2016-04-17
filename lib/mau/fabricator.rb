@@ -1881,15 +1881,25 @@ class << Fabricator
             subtype: SA_MDASH
         ps.pointer += 2
 
+      elsif ps.at? "\u2014" then
+        stack.last.content.node MU_SPECIAL_ATOM,
+            subtype: SA_MDASH
+        ps.pointer += 1
+
       elsif ps.at? "..." then
         stack.last.content.node MU_SPECIAL_ATOM,
             subtype: SA_ELLIPSIS
         ps.pointer += 3
 
+      elsif ps.at? "\u2013" then
+        stack.last.content.node MU_SPECIAL_ATOM,
+            subtype: SA_NDASH
+        ps.pointer += 1
+
       else
         j = ps.pointer + 1
         while j < s.length and
-            !" *-./<>[_|\u00A0".include? ps[j] do
+            !" *-./<>[_|\u00A0\u2013\u2014".include? ps[j] do
           j += 1
         end
         stack.last.content.plain(
