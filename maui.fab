@@ -32,11 +32,19 @@ definitions before the main file gets loaded.)  If
 a blockquote are not recognised.  (FIXME: actually implement
 support for blockquote syntax.)
 
+The [[filename]] and [[first_line]] parameters, if given, are
+passed on to [[Vertical_Peeker#initialize]] and used for
+location calculations.  This allows a part of a file to be
+parsed using the main parsing mechanism but still reporting
+errors accurately.
+
 << Other methods >>:
   def parse_fabric_file input, integrator,
       suppress_indexing: false,
       suppress_narrative: false,
-      blockquote_mode: false
+      blockquote_mode: false,
+      filename: nil,
+      first_line: 1
     << Parse fabric from [[input]] to [[integrator]] >>
     return
   end
@@ -44,7 +52,9 @@ support for blockquote syntax.)
 
 << Parse fabric from [[input]] to [[integrator]] >>:
 
-  vp = Fabricator::Vertical_Peeker.new input
+  vp = Fabricator::Vertical_Peeker.new input,
+      filename: filename,
+      first_line: first_line
 
 
 . space-dash-space ambiguity

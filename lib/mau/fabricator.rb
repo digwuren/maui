@@ -1579,8 +1579,12 @@ class << Fabricator
   def parse_fabric_file input, integrator,
       suppress_indexing: false,
       suppress_narrative: false,
-      blockquote_mode: false
-    vp = Fabricator::Vertical_Peeker.new input
+      blockquote_mode: false,
+      filename: nil,
+      first_line: 1
+    vp = Fabricator::Vertical_Peeker.new input,
+        filename: filename,
+        first_line: first_line
 
     parser_state = OpenStruct.new(
         vertical_separation: nil,
