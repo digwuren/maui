@@ -972,17 +972,23 @@ module Fabricator
         content: '',
         width: 0)
       @curpos = 0
+      # If [[@curspace]] is set or [[@curword.content]] is not
+      # empty, we say the wrapper is in a /pending word/ state.
+      # This is mutually exclusive with [[@pending_hang]].
       @curspace = nil
       @curword = OpenStruct.new(
         content: '',
         width: 0)
+      @pending_hang = false
       @curmode = @palette.null
       return
     end
 
     def add_plain data
+      _execute_pending_hang
+      # Are we going to exceed [[@width]] with this addition?
       if @curspace and @curpos + data.length > @width then
-        # the space becomes a linebreak
+        # yes, convert [[@curspace]] into a linebreak
         @port.puts @palette.null
         @port.print @hang.content
         @port.print @curmode
@@ -996,6 +1002,7 @@ module Fabricator
     end
 
     def add_space data = ' '
+      _execute_pending_hang
       @port.print @curspace.content if @curspace
       @port.print @curword.content
       @curspace = OpenStruct.new(
@@ -1009,18 +1016,31 @@ module Fabricator
     end
 
     def linebreak
+      _execute_pending_hang
       @port.print @curspace.content if @curspace
       @port.print @curword.content
       @port.puts @palette.null
-      @port.print @hang.content
-      @port.print @curmode
       @curspace = nil
       @curword = OpenStruct.new(
         content: '',
         width: 0)
-      @curpos = @hang.width
+      @curpos = 0
+      @pending_hang = true
       return
     end
+
+    def _execute_pending_hang
+      if @pending_hang then
+        raise 'assertion failed' \
+            if @curspace or !@curword.content.empty?
+        @port.print @hang.content
+        @curpos += @hang.width
+        @port.print @curmode
+        @pending_hang = false
+      end
+      return
+    end
+    private :_execute_pending_hang
 
     def add_node node,
         symbolism: Fabricator.default_symbolism
@@ -1113,6 +1133,7 @@ module Fabricator
     end
 
     def styled sequence_name
+      _execute_pending_hang
       sequence = @palette[sequence_name]
       raise 'unknown palette entry' unless sequence
       prev_mode = @curmode
