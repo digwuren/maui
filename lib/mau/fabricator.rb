@@ -410,7 +410,7 @@ module Fabricator
     def end_blockquote
       prevstate = @nesting_stack.pop
       @blockquote = prevstate.blockquote
-      @curdivert = record.divert
+      @curdivert = prevstate.divert
       @in_code = false
       return
     end
