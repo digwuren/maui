@@ -41,6 +41,29 @@ module Fabricator
       return OpenStruct.new(lines: lines, indent: indent)
     end
 
+    def parse_block prefix
+      lines = []
+      while !eof? and peek_line[0] == prefix do
+        lines.push get_line[1 .. -1]
+      end
+
+      indent = nil
+      lines.each do |line|
+        next if line.empty?
+        line =~ /^\s*/
+        if indent then
+          indent = [indent, $&.length].min
+        else
+          indent = $&.length
+        end
+      end
+      if indent and indent != 0 then
+        lines = lines.map{|l| l[indent .. -1]}
+      end
+
+      return lines * "\n"
+    end
+
     def initialize port,
         filename: nil,
         first_line: 1
@@ -1781,45 +1804,28 @@ class << Fabricator
 
       elsif line[0] == ?> then
         start_location = vp.location_ahead
-        lines = [vp.get_line[1 .. -1]]
-        while !vp.eof? and vp.peek_line[0] == ?> do
-          lines.push vp.get_line[1 .. -1]
-        end
+        content = vp.parse_block ?>
         # Blockquotes are purely narrative nodes, so if narrative
-        # processing is suppressed, there's no point in deindenting
-        # and parsing their content.
+        # processing is suppressed, there's no point in parsing
+        # their content.
         unless suppress_narrative then
-          indent = nil
-          lines.each do |line|
-            next if line.empty?
-            line =~ /^\s*/
-            if indent then
-              indent = [indent, $&.length].min
-            else
-              indent = $&.length
-            end
-          end
-          if indent and indent != 0 then
-            lines = lines.map{|l| l[indent .. -1]}
-          end
-
           # We'll initiate the blockquote by constructing a blank
           # [[OL_BLOCKQUOTE]] node and sending it to the integrator.
           integrator.integrate OpenStruct.new(
                   type: OL_BLOCKQUOTE,
                   elements: []),
               suppress_indexing: suppress_indexing
-          parse_fabric_file StringIO.new(lines * "\n"), integrator,
+          parse_fabric_file StringIO.new(content), integrator,
               suppress_indexing: suppress_indexing,
               blockquote_mode: true,
               filename: start_location.filename,
               first_line: start_location.line
           integrator.end_blockquote
-          next
-              # since we have no [[element]] to be handled after the
-              # massive [[if ...]] construct, we'll have to restart
-              # the loop manually here
         end
+        next
+            # since we have no [[element]] to be handled after the
+            # massive [[if ...]] construct, we'll have to restart
+            # the loop manually here
 
       elsif !blockquote_mode and line =~ /^\.\s+/ then
         name = $'
