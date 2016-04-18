@@ -958,7 +958,6 @@ module Fabricator
 
   class Text_Wrapper
     attr_reader :width
-    attr_reader :hangindent
 
     def initialize port = $stdout,
         width: 80,
@@ -969,8 +968,9 @@ module Fabricator
       @width = width
       @pseudographics = pseudographics
       @palette = palette
-      @hangindent = 0
-      @hangindent_filler = ''
+      @hang = OpenStruct.new(
+        prepared_output: '',
+        width: 0)
       @curpos = 0
       @curspace = nil
       @curword = OpenStruct.new(
@@ -984,10 +984,10 @@ module Fabricator
       if @curspace and @curpos + data.length > @width then
         # the space becomes a linebreak
         @port.puts @palette.null
-        @port.print '%%-%is' % @hangindent % @hangindent_filler
+        @port.print @hang.prepared_output
         @port.print @curmode
         @curspace = nil
-        @curpos = @hangindent + @curword.width
+        @curpos = @hang.width + @curword.width
       end
       @curword.prepared_output << data
       @curword.width += data.length
@@ -1012,13 +1012,13 @@ module Fabricator
       @port.print @curspace.prepared_output if @curspace
       @port.print @curword.prepared_output
       @port.puts @palette.null
-      @port.print '%%-%is' % @hangindent % @hangindent_filler
+      @port.print @hang.prepared_output
       @port.print @curmode
       @curspace = nil
       @curword = OpenStruct.new(
         prepared_output: '',
         width: 0)
-      @curpos = @hangindent
+      @curpos = @hang.width
       return
     end
 
@@ -1093,17 +1093,23 @@ module Fabricator
         @curspace = nil
       end
 
-      prev_hangindent = @hangindent
-      prev_filler = @hangindent_filler
+      prev_hang = @hang
       begin
-        @hangindent = column || @curpos
-        @hangindent_filler = filler
+        @hang = OpenStruct.new(width: column || @curpos)
+        new_hang_width = @hang.width - prev_hang.width
+        raise 'assertion failed: too much filler' \
+            if filler.length > new_hang_width
+        @hang.prepared_output = prev_hang.prepared_output +
+            '%%-%is' % new_hang_width % filler
         yield
       ensure
-        @hangindent = prev_hangindent
-        @hangindent_filler = prev_filler
+        @hang = prev_hang
       end
       return
+    end
+
+    def hangindent
+      return @hang.width
     end
 
     def styled sequence_name
