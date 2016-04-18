@@ -969,12 +969,12 @@ module Fabricator
       @pseudographics = pseudographics
       @palette = palette
       @hang = OpenStruct.new(
-        prepared_output: '',
+        content: '',
         width: 0)
       @curpos = 0
       @curspace = nil
       @curword = OpenStruct.new(
-        prepared_output: '',
+        content: '',
         width: 0)
       @curmode = @palette.null
       return
@@ -984,39 +984,39 @@ module Fabricator
       if @curspace and @curpos + data.length > @width then
         # the space becomes a linebreak
         @port.puts @palette.null
-        @port.print @hang.prepared_output
+        @port.print @hang.content
         @port.print @curmode
         @curspace = nil
         @curpos = @hang.width + @curword.width
       end
-      @curword.prepared_output << data
+      @curword.content << data
       @curword.width += data.length
       @curpos += data.length
       return
     end
 
     def add_space data = ' '
-      @port.print @curspace.prepared_output if @curspace
-      @port.print @curword.prepared_output
+      @port.print @curspace.content if @curspace
+      @port.print @curword.content
       @curspace = OpenStruct.new(
-        prepared_output: data,
+        content: data,
         width: data.length)
       @curword = OpenStruct.new(
-        prepared_output: '',
+        content: '',
         width: 0)
       @curpos += data.length
       return
     end
 
     def linebreak
-      @port.print @curspace.prepared_output if @curspace
-      @port.print @curword.prepared_output
+      @port.print @curspace.content if @curspace
+      @port.print @curword.content
       @port.puts @palette.null
-      @port.print @hang.prepared_output
+      @port.print @hang.content
       @port.print @curmode
       @curspace = nil
       @curword = OpenStruct.new(
-        prepared_output: '',
+        content: '',
         width: 0)
       @curpos = @hang.width
       return
@@ -1089,7 +1089,7 @@ module Fabricator
       # convert the preceding whitespace, if any, into 'hard'
       # space not subject to future wrapping
       if @curspace then
-        @port.print @curspace.prepared_output
+        @port.print @curspace.content
         @curspace = nil
       end
 
@@ -1099,7 +1099,7 @@ module Fabricator
         new_hang_width = @hang.width - prev_hang.width
         raise 'assertion failed: too much filler' \
             if filler.length > new_hang_width
-        @hang.prepared_output = prev_hang.prepared_output +
+        @hang.content = prev_hang.content +
             '%%-%is' % new_hang_width % filler
         yield
       ensure
@@ -1118,11 +1118,11 @@ module Fabricator
       prev_mode = @curmode
       begin
         @curmode = sequence
-        @curword.prepared_output << sequence
+        @curword.content << sequence
         yield
       ensure
         @curmode = prev_mode
-        @curword.prepared_output << prev_mode
+        @curword.content << prev_mode
       end
       return
     end
