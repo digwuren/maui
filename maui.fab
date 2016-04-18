@@ -3292,6 +3292,17 @@ width, for word-wrapping purposes, is zero.
       @curword = OpenStruct.new(
         content: '',
         width: 0)
+      # If [[@pending_hang]] is set, we say the wrapper is in a
+      # /pending hang/ state.  In this state, nothing of the
+      # current line has been output yet, but the indentation is
+      # supposed to be output immediately before anything else
+      # gets output, including a linebreak.  It is possible to
+      # change [[@hang]] during this time.  This way, if the
+      # thunk supplied to [[hang]] calls [[linebreak]]
+      # immediately before returning, the line gets properly
+      # broken, but the subsequent line will be prefixed with
+      # the hang that was in effect outside this particular
+      # [[hang]] call.
       @pending_hang = false
       @curmode = @palette.null
       return
