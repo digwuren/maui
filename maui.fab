@@ -128,7 +128,7 @@ blocks.
          peek_line(1) =~ /^\s+/) do
       # If the line ahead is not indented but we passed the
       # test, then [[get_line]] will return [[""]] and [[$&]]
-      # is the _following_ line's indentation.
+      # is the /following/ line's indentation.
       indent = $&.length if indent.nil? or $&.length < indent
       lines.push get_line
     end
@@ -356,18 +356,23 @@ an indented block is followed by another indented line).
 
 << in [[Vertical_Peeker]] >>:
 
-  def initialize port
+  def initialize port,
+      filename: nil,
+      first_line: 1
     super()
     @port = port
-    if @port.respond_to? :path then
-      @filename = @port.path
-    elsif @port == $stdin then
-      @filename = '(stdin)'
-    else
-      @filename = '(unknown)'
-    end
+    @filename =
+        if filename then
+          filename
+        elsif @port.respond_to? :path then
+          @filename = @port.path
+        elsif @port == $stdin then
+          @filename = '(stdin)'
+        else
+          @filename = '(unknown)'
+        end
     @buffer = []
-    @line_number = 1 # number of the first line in the buffer
+    @line_number = first_line
     @eof_seen = false
     return
   end
