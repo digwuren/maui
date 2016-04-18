@@ -82,11 +82,12 @@ higher-level list has already been established.
         suppress_indexing: suppress_indexing,
         suppress_narrative: suppress_narrative
   end
-  << Handle the end of fabric >>
+  unless blockquote_mode then
+    << Handle the end of fabric >>
+  end
 
 
 . "more than two consecutive blank lines" (warning)
-  integrator = Fabricator::Integrator.new
 
 << Pass and count blank lines >>:
   parser_state.vertical_separation = 0
@@ -566,6 +567,7 @@ them next:
     @in_code = false
     @last_title_level = 0
     @warning_counter = 0
+    << Initialise slots of [[Integrator]] .dense >>
     return
   end
 
@@ -623,11 +625,20 @@ addition to [[presentation]] collected into [[toc]].
   end
 
 
+Thematic breaks can appear in two somewhat different kinds of
+contexts: in the main presentation, when they can only appear
+between sections and thus must force a section break, but also
+in blockquotes, where there are no section breaks:
+
 << Integrate the thematic break >>:
-  force_section_break
-  # but won't clear diversion
-  unless suppress_narrative then
-    @output.presentation.push element
+  unless @blockquote then
+    force_section_break
+    # but won't clear diversion
+    unless suppress_narrative then
+      @output.presentation.push element
+    end
+  else
+    @blockquote.elements.push element
   end
 
 
@@ -647,8 +658,13 @@ addition to [[presentation]] collected into [[toc]].
     << Add [[manual]] index entry >>
   else
     @list_stack = nil
-    @cursec.elements.push element
+    unless @blockquote then
+      @cursec.elements.push element
+    else
+      @blockquote.elements.push element
+    end
     << Chunk or divert?  Parse and cross-reference >>
+    << Blockquote starts?  Prepare for content >>
 
     # If a chunk body is followed by a narrative-type
     # element, we'll want to generate an automatic section
@@ -746,6 +762,81 @@ explicitly marked, usually by two adjacent blank lines.
   end
 
 
+Let's now consider blockquotes.
+
+The basic idea of a blockquote is fairly simple: the front-end
+parser initiates blockquote mode, then sends a bunch of nodes in
+for integration, then clears the blockquote mode.  However,
+there are a few tricky points:
+- blockquotes are nestable;
+- blockquotes do not support active blocks in them but they do
+  support indented coded blocks, so diversion needs to be turned
+  off for the duration of blockquote mode;
+- but whatever diversion was in force before should be restored
+  after the blockquote, for blockquotes are purely narrative
+  elements that should not affect tangling; and
+- thematic breaks, which are normally elements between sections,
+  can appear in a blockquote.
+
+
+. [[@nesting_stack]] (slot of [[Integrator]])
+
+We will thus implement blockquote support by means of a /nesting
+stack/, into which the integrator's previous state can be
+stashed and later restored.  Its frames are [[OpenStruct]]
+records.
+
+<< Initialise slots of [[Integrator]] >>:
+
+  @nesting_stack = []
+
+
+. [[@blockquote]] (slot of [[Integrator]])
+
+If a blockquote is in force, it's pointed to by
+[[@blockquote]].  The integration mechanism will check
+it.
+
+  @blockquote = nil
+
+
+The integrator starts a new blockquote when the parser creates
+an empty [[OL_BLOCKQUOTE]] node and passes it for integration --
+this way, we can use the ordinary rules for integrating
+narrative nodes that fit into sections -- and ends it when the
+parser calls the [[end_blockquote]] method.
+
+<< Blockquote starts?  Prepare for content >>:
+  if element.type == OL_BLOCKQUOTE then
+    # [[@in_code]] should be clear at this point --
+    # [[OL_BLOCKQUOTE]] is a narrative node type, so even if it
+    # was set before, the preparatory code should have performed
+    # an automatic section break, which should have cleared
+    # [[@in_code]].  Thus, we can restore it to [[false]]
+    # without having to save it in the [[@nesting_stack]] frame.
+    raise 'assertion failed' \
+        if @in_code
+
+    @nesting_stack.push OpenStruct.new(
+      blockquote: @blockquote,
+      divert: @curdivert)
+    @curdivert = nil
+    @blockquote = element
+  end
+
+
+. [[end_blockquote]]
+
+<< in [[Integrator]] >>:
+  def end_blockquote
+    prevstate = @nesting_stack.pop
+    @blockquote = prevstate.blockquote
+    @curdivert = record.divert
+    @in_code = false
+    return
+  end
+
+
 << Integrate the list item >>:
   # Is this a top-level or descendant item?
   unless @list_stack then
@@ -756,7 +847,11 @@ explicitly marked, usually by two adjacent blank lines.
       type: OL_LIST,
       items: [],
       indent: element.indent)
-    @cursec.elements.push new_list
+    unless @blockquote then
+      @cursec.elements.push new_list
+    else
+      @blockquote.elements.push new_list
+    end
     @list_stack = [new_list]
   else
     << Discard pending lists deeper than [[element.indent]] >>
@@ -1340,6 +1435,7 @@ Now, we can enumerate the node types.
 . [[OL_CHUNK]]
 . [[OL_INDEX_ANCHOR]]
 . [[OL_THEMBREAK]]
+. [[OL_BLOCKQUOTE]]
 
   OL_TITLE           = 0x10
   OL_SECTION         = 0x20
@@ -1353,6 +1449,7 @@ Now, we can enumerate the node types.
   OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
   OL_INDEX_ANCHOR    = 0x90
   OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
+  OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
 
 
 Next, we'll consider the markup nodes.  First, in

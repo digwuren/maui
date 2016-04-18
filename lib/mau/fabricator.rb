@@ -159,6 +159,8 @@ module Fabricator
       @in_code = false
       @last_title_level = 0
       @warning_counter = 0
+      @nesting_stack = []
+      @blockquote = nil
       return
     end
 
@@ -193,10 +195,14 @@ module Fabricator
           @output.toc.push element
         end
       elsif element.type == OL_THEMBREAK then
-        force_section_break
-        # but won't clear diversion
-        unless suppress_narrative then
-          @output.presentation.push element
+        unless @blockquote then
+          force_section_break
+          # but won't clear diversion
+          unless suppress_narrative then
+            @output.presentation.push element
+          end
+        else
+          @blockquote.elements.push element
         end
       else
         if element.type == OL_BLOCK and @curdivert then
@@ -255,7 +261,11 @@ module Fabricator
               type: OL_LIST,
               items: [],
               indent: element.indent)
-            @cursec.elements.push new_list
+            unless @blockquote then
+              @cursec.elements.push new_list
+            else
+              @blockquote.elements.push new_list
+            end
             @list_stack = [new_list]
           else
             while @list_stack.last.indent > element.indent do
@@ -295,7 +305,11 @@ module Fabricator
           end
         else
           @list_stack = nil
-          @cursec.elements.push element
+          unless @blockquote then
+            @cursec.elements.push element
+          else
+            @blockquote.elements.push element
+          end
           if element.type & OLF_FUNCTIONAL != 0 then
             element.section_number = @cursec.section_number \
                 unless suppress_narrative
@@ -364,6 +378,22 @@ module Fabricator
               end
             end
           end
+          if element.type == OL_BLOCKQUOTE then
+            # [[@in_code]] should be clear at this point --
+            # [[OL_BLOCKQUOTE]] is a narrative node type, so even if it
+            # was set before, the preparatory code should have performed
+            # an automatic section break, which should have cleared
+            # [[@in_code]].  Thus, we can restore it to [[false]]
+            # without having to save it in the [[@nesting_stack]] frame.
+            raise 'assertion failed' \
+                if @in_code
+
+            @nesting_stack.push OpenStruct.new(
+              blockquote: @blockquote,
+              divert: @curdivert)
+            @curdivert = nil
+            @blockquote = element
+          end
 
           # If a chunk body is followed by a narrative-type
           # element, we'll want to generate an automatic section
@@ -374,6 +404,14 @@ module Fabricator
           end
         end
       end
+      return
+    end
+
+    def end_blockquote
+      prevstate = @nesting_stack.pop
+      @blockquote = prevstate.blockquote
+      @curdivert = record.divert
+      @in_code = false
       return
     end
 
@@ -678,6 +716,7 @@ module Fabricator
   OL_CHUNK           = 0x80 | OLF_HAS_HEADER | OLF_HAS_CODE
   OL_INDEX_ANCHOR    = 0x90
   OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
+  OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -1726,10 +1765,10 @@ class << Fabricator
           suppress_indexing: suppress_indexing,
           suppress_narrative: suppress_narrative
     end
-    integrator.force_section_break
-    integrator.clear_diversion
-
-    integrator = Fabricator::Integrator.new
+    unless blockquote_mode then
+      integrator.force_section_break
+      integrator.clear_diversion
+    end
     return
   end
 
