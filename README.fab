@@ -115,6 +115,32 @@ dash-breaks also be valid bulleted items -- an ambiguity that
 would benefit nobody.
 
 
+> Quotable quotations are quoted in the familiar Usenet and
+> email notation -- by prepending a [[>]] character to every
+> line.
+>
+> > Such blockquotes can even be nested.
+>
+> - And they can also
+> - contain bulleted lists.
+>
+> == No titles, however.
+>
+> * Nor rubrics.
+>
+> ---
+>
+> Inside a blockquote, even a thematic break won't cause a
+> section break.  This is because a blockquote is entirely
+> /inside/ its parent section.
+
+> Nothing prevents the author from putting blockquotes next to
+> each other in adjacent sections, however.
+
+
+> Like this.
+
+
 == Chunks and transclusion
 
 Each section can contain one or more /chunks/, with the

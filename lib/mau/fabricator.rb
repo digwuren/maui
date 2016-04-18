@@ -1388,6 +1388,17 @@ module Fabricator
           @port.print line.to_xml
         end
         @port.puts "</pre>"
+
+      when OL_BLOCKQUOTE then
+        @port.print "<blockquote class='maui-blockquote'>"
+        element.elements.each do |child|
+          html_section_part child
+          @port.puts
+        end
+        @port.puts "</blockquote>"
+
+      when OL_THEMBREAK then
+        @port.puts "<hr />"
       else
         raise 'data structure error'
       end
@@ -1756,6 +1767,48 @@ class << Fabricator
           content: parse_markup(lines.map(&:strip).join ' '),
           indent: 0,
           loc: element_location)
+
+      elsif line[0] == ?> then
+        start_location = vp.location_ahead
+        lines = [vp.get_line[1 .. -1]]
+        while !vp.eof? and vp.peek_line[0] == ?> do
+          lines.push vp.get_line[1 .. -1]
+        end
+        # Blockquotes are purely narrative nodes, so if narrative
+        # processing is suppressed, there's no point in deindenting
+        # and parsing their content.
+        unless suppress_narrative then
+          indent = nil
+          lines.each do |line|
+            next if line.empty?
+            line =~ /^\s*/
+            if indent then
+              indent = [indent, $&.length].min
+            else
+              indent = $&.length
+            end
+          end
+          if indent and indent != 0 then
+            lines = lines.map{|l| l[indent .. -1]}
+          end
+
+          # We'll initiate the blockquote by constructing a blank
+          # [[OL_BLOCKQUOTE]] node and sending it to the integrator.
+          integrator.integrate OpenStruct.new(
+                  type: OL_BLOCKQUOTE,
+                  elements: []),
+              suppress_indexing: suppress_indexing
+          parse_fabric_file StringIO.new(lines * "\n"), integrator,
+              suppress_indexing: suppress_indexing,
+              blockquote_mode: true,
+              filename: start_location.filename,
+              first_line: start_location.line
+          integrator.end_blockquote
+          next
+              # since we have no [[element]] to be handled after the
+              # massive [[if ...]] construct, we'll have to restart
+              # the loop manually here
+        end
 
       elsif !blockquote_mode and line =~ /^\.\s+/ then
         name = $'
@@ -2305,6 +2358,20 @@ class << Fabricator
 
     when OL_BLOCK then
       weave_ctxt_block element, wr
+
+    when OL_BLOCKQUOTE then
+      wr.add_plain '> '
+      wr.hang wr.hangindent + 2, '>' do
+        element.elements.each_with_index do |child, i|
+          wr.linebreak unless i.zero?
+          weave_ctxt_section_part child, fabric, wr,
+              symbolism: symbolism
+        end
+      end
+
+    when OL_THEMBREAK then
+      wr.add_plain '-' * (wr.width - wr.hangindent)
+      wr.linebreak
     else
       raise 'data structure error'
     end
