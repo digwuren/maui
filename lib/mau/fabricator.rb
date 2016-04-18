@@ -958,6 +958,7 @@ module Fabricator
 
   class Text_Wrapper
     attr_reader :width
+    attr_reader :hangindent
 
     def initialize port = $stdout,
         width: 80,
@@ -969,6 +970,7 @@ module Fabricator
       @pseudographics = pseudographics
       @palette = palette
       @hangindent = 0
+      @hangindent_filler = ''
       @curpos = 0
       @curspace = nil
       @curword = OpenStruct.new(
@@ -982,7 +984,8 @@ module Fabricator
       if @curspace and @curpos + data.length > @width then
         # the space becomes a linebreak
         @port.puts @palette.null
-        @port.print ' ' * @hangindent + @curmode
+        @port.print '%%-%is' % @hangindent % @hangindent_filler
+        @port.print @curmode
         @curspace = nil
         @curpos = @hangindent + @curword.width
       end
@@ -1009,7 +1012,8 @@ module Fabricator
       @port.print @curspace.prepared_output if @curspace
       @port.print @curword.prepared_output
       @port.puts @palette.null
-      @port.print ' ' * @hangindent + @curmode
+      @port.print '%%-%is' % @hangindent % @hangindent_filler
+      @port.print @curmode
       @curspace = nil
       @curword = OpenStruct.new(
         prepared_output: '',
@@ -1081,7 +1085,7 @@ module Fabricator
       return
     end
 
-    def hang column = nil
+    def hang column = nil, filler = ''
       # convert the preceding whitespace, if any, into 'hard'
       # space not subject to future wrapping
       if @curspace then
@@ -1090,11 +1094,14 @@ module Fabricator
       end
 
       prev_hangindent = @hangindent
+      prev_filler = @hangindent_filler
       begin
         @hangindent = column || @curpos
+        @hangindent_filler = filler
         yield
       ensure
         @hangindent = prev_hangindent
+        @hangindent_filler = prev_filler
       end
       return
     end

@@ -3210,6 +3210,7 @@ width, for word-wrapping purposes, is zero.
 << in [[Fabricator]] >>:
   class Text_Wrapper
     attr_reader :width
+    attr_reader :hangindent
 
     def initialize port = $stdout,
         width: 80,
@@ -3221,6 +3222,7 @@ width, for word-wrapping purposes, is zero.
       @pseudographics = pseudographics
       @palette = palette
       @hangindent = 0
+      @hangindent_filler = ''
       @curpos = 0
       @curspace = nil
       @curword = OpenStruct.new(
@@ -3248,7 +3250,8 @@ nonbreakable.
     if @curspace and @curpos + data.length > @width then
       # the space becomes a linebreak
       @port.puts @palette.null
-      @port.print ' ' * @hangindent + @curmode
+      @port.print '%%-%is' % @hangindent % @hangindent_filler
+      @port.print @curmode
       @curspace = nil
       @curpos = @hangindent + @curword.width
     end
@@ -3286,7 +3289,8 @@ Explicit linebreak.
     @port.print @curspace.prepared_output if @curspace
     @port.print @curword.prepared_output
     @port.puts @palette.null
-    @port.print ' ' * @hangindent + @curmode
+    @port.print '%%-%is' % @hangindent % @hangindent_filler
+    @port.print @curmode
     @curspace = nil
     @curword = OpenStruct.new(
       prepared_output: '',
@@ -3404,7 +3408,7 @@ Optionally, the column to be used can be set explicitly.
 
 . [[hang]] (method of [[Text_Wrapper]])
 
-  def hang column = nil
+  def hang column = nil, filler = ''
     # convert the preceding whitespace, if any, into 'hard'
     # space not subject to future wrapping
     if @curspace then
@@ -3413,11 +3417,14 @@ Optionally, the column to be used can be set explicitly.
     end
 
     prev_hangindent = @hangindent
+    prev_filler = @hangindent_filler
     begin
       @hangindent = column || @curpos
+      @hangindent_filler = filler
       yield
     ensure
       @hangindent = prev_hangindent
+      @hangindent_filler = prev_filler
     end
     return
   end
