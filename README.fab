@@ -141,6 +141,31 @@ would benefit nobody.
 > Like this.
 
 
+| Syntactically similar to blockquotes are /subplots/, denoted
+| by the [[|]] prefix.  Unlike blockquotes, subplots exist
+| outside sections and can contain full sections, including code
+| chunks and diverts.  Importantly, a divert inside a subplot
+| will not affect any divert that might have been in force
+| outside the subplot.
+|
+|
+| | Subplots can be nested.  This reflects the programmer's
+| | internal stack and can be handy for recording scattered
+| | pieces of code in the middle of a longer mixture of code
+| | and narrative, such as occasionally adding CSS rules in the
+| | middle on code aimed at generating HTML.  Beware, however,
+| | of overuse -- wetware stack space can be surprisingly
+| | limited.
+|
+|
+| > Subplots can also contain blockquotes.
+| >
+| > | But blockquotes can not contain subplots.  This is because
+| > blockquotes belong into sections and are codeless constructs
+| > of pure narrative but subplots are a structural
+| > supersectional device.
+
+
 == Chunks and transclusion
 
 Each section can contain one or more /chunks/, with the

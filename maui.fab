@@ -28,9 +28,9 @@ only cross-linked for tangling but not entered into the
 [[presentation]] list of the output.  (These two flags are
 useful to support invisible 'base' files that establish
 definitions before the main file gets loaded.)  If
-[[blockquote_mode]] is true, the rules that do not make sense in
-a blockquote are not recognised.  (FIXME: actually implement
-support for blockquote syntax.)
+[[nesting_mode]] is not [[nil]], the rules that do not make
+sense in the specified nesting mode -- either [[:blockquote]] or
+[[:subplot]] -- are disabled during the parsing.
 
 The [[filename]] and [[first_line]] parameters, if given, are
 passed on to [[Vertical_Peeker#initialize]] and used for
@@ -42,9 +42,12 @@ errors accurately.
   def parse_fabric_file input, integrator,
       suppress_indexing: false,
       suppress_narrative: false,
-      blockquote_mode: false,
+      nesting_mode: nil,
       filename: nil,
       first_line: 1
+    raise 'assertion failed' \
+        unless [nil, :blockquote, :subplot].include?(
+            nesting_mode)
     << Parse fabric from [[input]] to [[integrator]] >>
     return
   end
@@ -82,7 +85,7 @@ higher-level list has already been established.
         suppress_indexing: suppress_indexing,
         suppress_narrative: suppress_narrative
   end
-  unless blockquote_mode then
+  if nesting_mode.nil? then
     << Handle the end of fabric >>
   end
 
@@ -171,7 +174,7 @@ it's followed by an indented block, it's a chunk.
 
 << Vertical elements' parsing rules >>:
 
-  elsif !blockquote_mode and line =~ /^<<\s*
+  elsif nesting_mode != :blockquote and line =~ /^<<\s*
       (?: (?<root-type> \.file|\.script) \s+ )?
       (?<raw-name> [^\s].*?)
       (?: \s* \# (?<seq> \d+) )?
@@ -248,7 +251,7 @@ A line starting with a [[>]] character begins a blockquote.
           suppress_indexing: suppress_indexing
       parse_fabric_file StringIO.new(content), integrator,
           suppress_indexing: suppress_indexing,
-          blockquote_mode: true,
+          nesting_mode: :blockquote,
           filename: start_location.filename,
           first_line: start_location.line
       integrator.end_blockquote
@@ -286,7 +289,32 @@ A line starting with a [[>]] character begins a blockquote.
   end
 
 
+A line starting with a [[|]] character begins a subplot.
+
 << Vertical elements' parsing rules >>:
+  elsif nesting_mode != :blockquote and line[0] == ?| then
+    start_location = vp.location_ahead
+    content = vp.parse_block ?|
+
+    integrator.integrate OpenStruct.new(
+            type: OL_SUBPLOT,
+            elements: []),
+        suppress_narrative: suppress_narrative,
+        suppress_indexing: suppress_indexing
+    parse_fabric_file StringIO.new(content), integrator,
+        suppress_indexing: suppress_indexing,
+        nesting_mode: :subplot,
+        filename: start_location.filename,
+        first_line: start_location.line
+    integrator.end_subplot
+    next
+        # since we have no [[element]] to be handled after the
+        # massive [[if ...]] construct, we'll have to restart
+        # the loop manually here
+
+
+<< Vertical elements' parsing rules >>:
+
 
 . [[OL_INDEX_ANCHOR]]
 
@@ -297,7 +325,7 @@ each other without the need for intervening whitespace.
 Luckily, index keywords (or -phrases) are normally reasonably
 short.
 
-  elsif !blockquote_mode and line =~ /^\.\s+/ then
+  elsif nesting_mode != :blockquote and line =~ /^\.\s+/ then
     name = $'
     element = OpenStruct.new(
         type: OL_INDEX_ANCHOR,
@@ -325,7 +353,7 @@ an ordinary paragraph, a title, or a rubric.
 
 << Rules for interpreting a paragraph-like element >>:
 
-  if !blockquote_mode and lines[0] =~ /^(==+)(\s+)/ then
+  if nesting_mode.nil? and lines[0] =~ /^(==+)(\s+)/ then
     lines[0] = $2 + $'
     element = OpenStruct.new(
       type: OL_TITLE,
@@ -334,7 +362,7 @@ an ordinary paragraph, a title, or a rubric.
     mode_flags_to_suppress |= PF_LINK
 
 
-  elsif !blockquote_mode and lines[0] =~ /^\*\s+/ then
+  elsif nesting_mode.nil? and lines[0] =~ /^\*\s+/ then
     lines[0] = $'
     element = OpenStruct.new(
         type: OL_RUBRIC,
@@ -354,7 +382,7 @@ element triggers an explicit section break.
 
 << Handle explicit section break >>:
   if parser_state.vertical_separation >= 2 then
-    if !blockquote_mode then
+    if nesting_mode != :blockquote then
       integrator.force_section_break
     else
       # FIXME: generate a warning about ignoring the section
@@ -535,8 +563,9 @@ construct.
 The /content/ of the fabric will be stored in the integrator
 output under the key of [[presentation]].  In its immediate
 form, it's a Ruby [[Array]] containing the [[OL_TITLE]],
-[[OL_SECTION]], and [[OL_THEMBREAK]] nodes, in order; the first
-two kinds of these can contain further, lower-level, structure.
+[[OL_SECTION]], [[OL_SUBPLOT]], and [[OL_THEMBREAK]] nodes, in
+order; the first three kinds of these can contain further,
+lower-level, structure.
 
   presentation: [], # list of titles and sections
 
@@ -636,8 +665,11 @@ The integrator's main entry point.
   def integrate element,
       suppress_indexing: false,
       suppress_narrative: false
+    << ? Generate a candidate [[OL_IMPLICIT_TOC]] node >>
     if element.type == OL_TITLE then
       << Integrate the title >>
+    elsif element.type == OL_SUBPLOT then
+      << Integrate the subplot >>
     elsif element.type == OL_THEMBREAK then
       << Integrate the thematic break >>
     else
@@ -679,6 +711,50 @@ addition to [[presentation]] collected into [[toc]].
     # Append the node to [[presentation]] and [[toc]]
     @output.presentation.push element
     @output.toc.push element
+
+    << ? Upgrade [[@toc_candidate]] >>
+  end
+
+
+Subplot nodes function as containers for sequences of section
+nodes, other subplot nodes, and thematic breaks.
+
+<< Integrate the subplot >>:
+  force_section_break
+  # [[force_section_break]] clears [[@in_code]]
+  raise 'assertion failed' \
+      if @in_code
+  # [[subplots can not appear in blockquotes]]
+  raise 'assertion failed' \
+      if @blockquote
+
+  if @subplot.nil? then
+    @output.presentation.push element
+  else
+    @subplot.elements.push element
+  end
+
+  @nesting_stack.push @subplot, @curdivert
+  @curdivert = nil
+  @blockquote = nil
+  @subplot = element
+
+
+<< in [[Integrator]] >>:
+  def end_subplot
+    force_section_break
+    @blockquote = nil
+    @curdivert = @nesting_stack.pop
+    raise 'assertion failed' \
+        unless @curdivert.nil? or @curdivert.type == OL_DIVERT
+    @subplot = @nesting_stack.pop
+    raise 'assertion failed' \
+        unless @subplot.nil? or @subplot.type == OL_SUBPLOT
+    # the [[force_section_break]] above should have ensured that
+    # [[@in_code]] is cleared
+    raise 'assertion failed' \
+        if @in_code
+    return
   end
 
 
@@ -704,8 +780,9 @@ in blockquotes, where there are no section breaks:
   << New chunk header?  Clear diversion >>
   << ? Break section and warn >>
   << ? Begin new section >>
-  unless suppress_narrative then
-    << [[OL_RUBRIC]]?  Link to [[toc]] >>
+  if !suppress_narrative and element.type == OL_RUBRIC then
+    << Link this rubric to [[toc]] >>
+    << ? Upgrade [[@toc_candidate]] >>
   end
   << [[OL_DIVERT]]?  Apply it >>
 
@@ -800,16 +877,18 @@ explicitly marked, usually by two adjacent blank lines.
       @cursec.section_number =
           @first_section_number + @section_count
       @section_count += 1
-      @output.presentation.push @cursec
+      if @subplot.nil? then
+        @output.presentation.push @cursec
+      else
+        @subplot.elements.push @cursec
+      end
     end
   end
 
 
-<< [[OL_RUBRIC]]?  Link to [[toc]] >>:
-  if element.type == OL_RUBRIC then
-    element.section_number = @cursec.section_number
-    @output.toc.push element
-  end
+<< Link this rubric to [[toc]] >>:
+  element.section_number = @cursec.section_number
+  @output.toc.push element
 
 
 << [[OL_DIVERT]]?  Apply it >>:
@@ -850,11 +929,18 @@ records.
 
 . [[@blockquote]] (slot of [[Integrator]])
 
-If a blockquote is in force, it's pointed to by
-[[@blockquote]].  The integration mechanism will check
-it.
+If a blockquote is being parsed, it's pointed to by
+[[@blockquote]].  The integration mechanism will check it.
 
   @blockquote = nil
+
+
+. [[@subplot]] (slot of [[Integrator]])
+
+If a subplot is being parsed, it's pointed to by [[@subplot]].
+The integration mechanism will check it.
+
+  @subplot = nil
 
 
 The integrator starts a new blockquote when the parser creates
@@ -874,10 +960,11 @@ parser calls the [[end_blockquote]] method.
     raise 'assertion failed' \
         if @in_code
 
-    @nesting_stack.push OpenStruct.new(
-      blockquote: @blockquote,
-      divert: @curdivert)
-    @curdivert = nil
+    # We won't need to save or restore [[@subplot]] or
+    # [[@curdivert]], for these are not supposed to change
+    # during the parsing of a blockquote.  We'll just save
+    # [[@blockquote]] (which may be [[nil]]).
+    @nesting_stack.push @blockquote
     @blockquote = element
   end
 
@@ -886,9 +973,10 @@ parser calls the [[end_blockquote]] method.
 
 << in [[Integrator]] >>:
   def end_blockquote
-    prevstate = @nesting_stack.pop
-    @blockquote = prevstate.blockquote
-    @curdivert = prevstate.divert
+    @blockquote = @nesting_stack.pop
+    raise 'assertion failed' \
+        unless @blockquote.nil? or
+            @blockquote.type == OL_BLOCKQUOTE
     @in_code = false
     return
   end
@@ -1266,6 +1354,7 @@ This concludes the main integration decision tree.
     end
     @cursec = nil
     @list_stack = nil
+    @blockquote = nil
     @in_code = false
     return
   end
@@ -1482,6 +1571,7 @@ semantics: it marks major narrative nodes.
 
 Now, we can enumerate the node types.
 
+. [[OL_NOP]]
 . [[OL_RUBRIC]]
 . [[OL_ITEM]]
 . [[OL_LIST]]
@@ -1493,7 +1583,10 @@ Now, we can enumerate the node types.
 . [[OL_INDEX_ANCHOR]]
 . [[OL_THEMBREAK]]
 . [[OL_BLOCKQUOTE]]
+. [[OL_SUBPLOT]]
+. [[OL_IMPLICIT_TOC]]
 
+  OL_NOP             = 0x00
   OL_TITLE           = 0x10
   OL_SECTION         = 0x20
   OL_RUBRIC          = 0x30 | OLF_NARRATIVE
@@ -1507,6 +1600,8 @@ Now, we can enumerate the node types.
   OL_INDEX_ANCHOR    = 0x90
   OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
   OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
+  OL_SUBPLOT         = 0xC0
+  OL_IMPLICIT_TOC    = 0xD0
 
 
 Next, we'll consider the markup nodes.  First, in
@@ -2658,7 +2753,11 @@ This output mode is convenient for use in a modern (x)terminal.
         width: width,
         pseudographics: pseudographics
     << Weave fabric's warnings (ctxt) >>
-    << Weave presentation (ctxt) >>
+    fabric.presentation.each do |element|
+      wr.vseparate
+      weave_ctxt_plot_element element, fabric, wr,
+          symbolism: symbolism
+    end
     unless fabric.index.empty? then
       << Weave index (ctxt) >>
     end
@@ -2715,21 +2814,65 @@ to an empty list.
   end
 
 
-<< Weave presentation (ctxt) >>:
-  toc_generated = false
-  fabric.presentation.each do |element|
+. [[weave_ctxt_plot_element]]
+
+<< Other methods >>:
+  def weave_ctxt_plot_element element, fabric, wr,
+      symbolism: default_symbolism
     case element.type
-    when OL_TITLE then
-      << Weave the title (ctxt) >>
-    when OL_SECTION then
-      << Weave the section (ctxt) >>
-    when OL_THEMBREAK then
-      # FIXME: use pseudographics instead of a dash
-      wr.add_plain '-' * wr.width
-      wr.linebreak
+    << [[weave_ctxt_plot_element]] rules >>
     else raise 'data structure error'
     end
+    return
   end
+
+
+<< [[weave_ctxt_plot_element]] rules >>:
+
+  when OL_TITLE then
+    << Weave the title (ctxt) >>
+
+
+  when OL_SUBPLOT then
+    << Weave the subplot (ctxt) >>
+
+
+  when OL_SECTION then
+    << Weave the section (ctxt) >>
+
+
+  when OL_THEMBREAK then
+    wr.width.times do
+      wr.add_pseudographics :thematic_break_char
+    end
+    wr.linebreak
+
+
+  when OL_NOP then
+    # no operation
+
+
+  when OL_IMPLICIT_TOC then
+    weave_ctxt_toc fabric.toc, wr,
+        symbolism: symbolism
+
+
+<< Weave the subplot (ctxt) >>:
+  wr.add_pseudographics :subplot_leadin
+  wr.linebreak
+  wr.add_pseudographics :subplot_margin
+  # A subplot's ends are already separated.
+  wr.vsep = 2
+  wr.hang wr.hangindent + 2,
+      wr.pseudographics[:subplot_margin] do
+    element.elements.each do |child|
+      wr.vseparate
+      weave_ctxt_plot_element child, fabric, wr,
+          symbolism: symbolism
+    end
+  end
+  wr.add_pseudographics :subplot_leadout
+  wr.linebreak
 
 
 << Weave the section (ctxt) >>:
@@ -2739,13 +2882,6 @@ to an empty list.
   # we'll need to check.
   rubricated = !element.elements.empty? &&
       element.elements[0].type == OL_RUBRIC
-  # If we're encountering the first rubric/title, output
-  # the table of contents.
-  if rubricated and !toc_generated then
-    weave_ctxt_toc fabric.toc, wr,
-        symbolism: symbolism
-    toc_generated = true
-  end
 
   << Weave the section's lead and set [[start_index]] (ctxt) >>
 
@@ -2769,6 +2905,7 @@ precise).  This distinction corresponds to the Knuth's original
 plain ones.
 
 << Weave the section's lead and set [[start_index]] (ctxt) >>:
+  wr.vseparate
   start_index = 0 # index of the first non-special child
   << Output section number and, possibly, the rubric (ctxt) >>
 
@@ -2787,10 +2924,6 @@ plain ones.
       wr.linebreak
     end
   end
-
-  # Finally, the blank line that separates the special
-  # paragraph from the section's body, if any.
-  wr.linebreak
 
 << Output section number and, possibly, the rubric (ctxt) >>:
   if rubricated then
@@ -2813,9 +2946,9 @@ plain ones.
 
 << Weave the section's body from [[start_index]] on (ctxt) >>:
   element.elements[start_index .. -1].each do |child|
+    wr.vseparate
     weave_ctxt_section_part child, fabric, wr,
         symbolism: symbolism
-    wr.linebreak
   end
 
 . [[weave_ctxt_section_part]]
@@ -2883,7 +3016,9 @@ plain ones.
 
 
   when OL_THEMBREAK then
-    wr.add_plain '-' * (wr.width - wr.hangindent)
+    (wr.width - wr.hangindent).times do
+      wr.add_pseudographics :thematic_break_char
+    end
     wr.linebreak
 
 
@@ -2891,7 +3026,6 @@ plain ones.
   unless (element.warnings || []).empty? then
     weave_ctxt_warning_list element.warnings, wr,
         inline: true, indent: false
-    wr.linebreak
   end
 
 
@@ -3110,20 +3244,15 @@ nodes, with appropriate joiners interspersed.
 * Weaving other narrative elements.
 
 << Weave the title (ctxt) >>:
-  if !toc_generated then
-    weave_ctxt_toc fabric.toc, wr,
-        symbolism: symbolism
-    toc_generated = true
-  end
   wr.styled :section_title do
+    wr.vseparate 2
     wr.add_plain "#{element.number}."
     wr.add_space
     wr.hang do
       wr.add_nodes element.content, symbolism: symbolism
     end
   end
-  wr.linebreak
-  wr.linebreak
+  wr.linebreak # line terminator
 
 
 << Other methods >>:
@@ -3162,6 +3291,7 @@ nodes, with appropriate joiners interspersed.
   def weave_ctxt_toc toc, wr,
       symbolism: default_symbolism
     if toc.length >= 2 then
+      wr.vseparate 2
       wr.styled :section_title do
         wr.add_plain 'Contents'
       end
@@ -3170,7 +3300,6 @@ nodes, with appropriate joiners interspersed.
       toc.each do |entry|
         << Weave the TOC entry (ctxt) >>
       end
-      wr.linebreak
     end
     return
   end
@@ -3206,6 +3335,7 @@ nodes, with appropriate joiners interspersed.
 * Weaving the index.
 
 << Weave index (ctxt) >>:
+  wr.vseparate 2
   wr.styled :section_title do
     wr.add_plain 'Index'
   end
@@ -3279,10 +3409,16 @@ width, for word-wrapping purposes, is zero.
 
 . [[Text_Wrapper]]
 . [[width]] (method of [[Text_Wrapper]])
+. [[vsep]] (method of [[Text_Wrapper]])
+. [[@vsep]] (slot of [[Text_Wrapper]])
+. [[pseudographics]] (method of [[Text_Wrapper]])
+. zero-one-many counting (of vertical separation)
 
 << in [[Fabricator]] >>:
   class Text_Wrapper
     attr_reader :width
+    attr_accessor :vsep
+    attr_reader :pseudographics
 
     def initialize port = $stdout,
         width: 80,
@@ -3317,6 +3453,11 @@ width, for word-wrapping purposes, is zero.
       # [[hang]] call.
       @pending_hang = false
       @curmode = @palette.null
+      # [[@vsep]] keeps track of consecutive blank lines.
+      # Since we subscribe to zero-one-many counting, and the
+      # amount of separation at the top of file is infinite,
+      # we'll initialise it to 2.
+      @vsep = 2
       return
     end
 
@@ -3333,6 +3474,7 @@ All word characters, even whitespaces among them, are considered
 nonbreakable.
 
 . [[add_plain]] (method of [[Text_Wrapper]])
+. [[@vsep]]
 
   def add_plain data
     _execute_pending_hang
@@ -3348,6 +3490,12 @@ nonbreakable.
     @curword.content << data
     @curword.width += data.length
     @curpos += data.length
+
+    # Since we're writing horizontally now, there's no vertical
+    # separation anymore.  In fact, there's so little separation
+    # that adding one linebreak would mean zero blank lines.
+    @vsep = -1
+
     return
   end
 
@@ -3368,6 +3516,9 @@ permitted line break point.
       content: '',
       width: 0)
     @curpos += data.length
+
+    # Like with [[add_plain]], we'll clear [[@vsep]] here.
+    @vsep = -1
     return
   end
 
@@ -3387,6 +3538,26 @@ Explicit linebreak.
       width: 0)
     @curpos = 0
     @pending_hang = true
+    @vsep += 1 unless @vsep >= 2
+    return
+  end
+
+
+Conditional (possibly multiple) linebreaks for attaining at
+least a given number of blank lines.
+
+. [[vseparate]] (method of [[Text_Wrapper]])
+. [[@vsep]]
+. zero-one-many counting (of vertical separation)
+
+  def vseparate amount = 1
+    # In zero-one-many counting, we can't count any higher than
+    # 'many'.
+    raise 'too much separation needed' \
+        unless amount <= 2
+    while @vsep < amount do
+      linebreak
+    end
     return
   end
 
@@ -3558,6 +3729,7 @@ Note that [[styled]] calls can be nested, but only the innermost
 style is restored after linebreaks.
 
 . [[styled]] (method of [[Text_Wrapper]])
+. [[@vsep]]
 
   def styled sequence_name
     _execute_pending_hang
@@ -3571,6 +3743,7 @@ style is restored after linebreaks.
     ensure
       @curmode = prev_mode
       @curword.content << prev_mode
+      @vsep = -1
     end
     return
   end
@@ -3595,6 +3768,10 @@ we'll also support plain ASCII box graphics.
     block_margin: "  ",
     final_chunk_marker:
         ([0x0020, 0x2514] + [0x2500] * 3).pack('U*'),
+    thematic_break_char: [0x2500].pack('U*'),
+    subplot_leadin: ([0x256D] + [0x2500] * 3).pack('U*'),
+    subplot_margin: [0x2502, 0x0020].pack('U*'),
+    subplot_leadout: ([0x2570] + [0x2500] * 3).pack('U*'),
   )
 
 
@@ -3606,6 +3783,10 @@ we'll also support plain ASCII box graphics.
     chunk_margin: "| ",
     block_margin: "  ",
     final_chunk_marker: "----",
+    thematic_break_char: "-",
+    subplot_leadin: ",---",
+    subplot_margin: "| ",
+    subplot_leadout: "`---",
   )
 
 
@@ -3773,27 +3954,37 @@ conventions.
 . [[html_presentation]] (method of [[HTML_Weaving]])
 
   def html_presentation
-    toc_generated = false
     @fabric.presentation.each do |element|
-      case element.type
-      when OL_TITLE then
-        << Weave the title (HTML) >>
-      when OL_SECTION then
-        << Weave the section (HTML) >>
-      when OL_THEMBREAK then
-        @port.puts "<hr />"
-      else raise 'data structure error'
-      end
+      html_presentation_element element
       @port.puts
     end
     return
   end
 
-<< Weave the title (HTML) >>:
-  if !toc_generated then
-    html_toc
-    toc_generated = true
+
+. [[html_presentation_element]] (method of [[HTML_Weaving]])
+
+  def html_presentation_element element
+    case element.type
+    when OL_TITLE then
+      << Weave the title (HTML) >>
+    when OL_SUBPLOT 
+      << Weave the subplot (HTML) >>
+    when OL_SECTION then
+      << Weave the section (HTML) >>
+    when OL_THEMBREAK then
+      @port.puts "<hr />"
+    when OL_NOP then
+      # no operation
+    when OL_IMPLICIT_TOC then
+      html_toc
+    else raise 'data structure error'
+    end
+    return
   end
+
+
+<< Weave the title (HTML) >>:
   @port.print '<h%i' % (element.level + 1)
   @port.print " id='%s'" % "T.#{element.number}"
   @port.print '>'
@@ -3801,18 +3992,38 @@ conventions.
   htmlify element.content
   @port.puts '</h%i>' % (element.level + 1)
 
+
+. [[.maui-subplot]] (CSS class)
+
+<< Weave the subplot (HTML) >>:
+  @port.puts "<aside class='maui-subplot'>"
+  element.elements.each_with_index do |element, i|
+    @port.puts unless i.zero?
+    html_presentation_element element
+  end
+  @port.puts '</aside>'
+
+
+| . [[.maui-subplot]] (CSS class)
+| << Sass rules >>:
+|   .maui-subplot
+|     border: solid 2px $subplot-frame
+|     border-radius: 24px
+|     padding-left: 12px
+|     padding-right: 12px
+|
+|
+| . [[$subplot-frame]] (Sass colour)
+| << Sass colours >>:
+|   // Darker than the edge of code chunks.
+|   $subplot-frame: #888
+
+
 . [[.maui-section]] (CSS class)
 
 << Weave the section (HTML) >>:
   rubricated = !element.elements.empty? &&
       element.elements[0].type == OL_RUBRIC
-  # If we're encountering the first rubric/title, output
-  # the table of contents.
-  if rubricated and !toc_generated then
-    html_toc
-    toc_generated = true
-  end
-
   start_index = 0
   @port.puts "<section class='maui-section' id='%s'>" %
       "S.#{element.section_number}"
@@ -3850,6 +4061,7 @@ conventions.
   if warnings then
     html_warning_list warnings, inline: true
   end
+
 
 . [[.maui-rubric]] (CSS class)
 . [[.maui-section-number]] (CSS class)
@@ -3995,7 +4207,7 @@ into a local link, either in the [[#T.foo]] form for titles or
         << Weave the TOC entry (HTML) >>
         last_level = level
       end
-      @port.puts "</li></ul>" * last_level; @port.puts
+      @port.puts "</li></ul>" * last_level
     end
     return
   end
@@ -4546,11 +4758,12 @@ to chunks, except without the running vertical rule.
 
 
 Finally, this rule tells pre-HTML5 browsers that [[main]],
-[[article], and [[section]] are [[div]]-like, not [[span]]-like:
+[[article]], [[aside]], and [[section]] are [[div]]-like, not
+[[span]]-like:
 
 << Sass rules >>:
   /* Backwards compatibility with pre-HTML5 browsers */
-  main, article, section
+  main, article, aside, section
     display: block
 
 
@@ -4999,3 +5212,41 @@ Finally, the GNU Coding Standards recommend implementing
 
   There is NO WARRANTY, to the extent permitted by law.
 
+
+== Implicit TOC place determination
+
+We'll want an [[OL_IMPLICIT_TOC]] node just before the first
+node in the main plot that contains [[OL_TITLE]] (which must be
+in the main plot itself) or [[OL_RUBRIC]] (which is inside an
+[[OL_SECTION]] and perhaps an [[OL_SUBPLOT]] or several).  We
+do this by:
+- adding an [[OL_NOP]] node to the main plot just before adding
+  an [[OL_TITLE]], [[OL_SUBPLOT]], or [[OL_SECTION]] node
+  directly to it, unless we have already found the place for the
+  implicit TOC;
+- saving a pointer to [[OL_NOP]] node in [[@toc_candidate]];
+- and upgrading [[@toc_candidate]] to [[OL_IMPLICIT_TOC]] upon
+  integrating the first [[OL_TITLE]] or [[OL_RUBRIC]] node.
+
+<< Initialise slots of [[Integrator]] >>:
+  @toc_candidate = nil
+
+
+<< ? Generate a candidate [[OL_IMPLICIT_TOC]] node >>:
+  if !suppress_narrative and
+      [OL_TITLE, OL_SUBPLOT, OL_SECTION].include?(
+          element.type) and
+      @subplot.nil? and
+      (@toc_candidate.nil? or
+          @toc_candidate.type == OL_NOP) then
+    @toc_candidate = OpenStruct.new type: OL_NOP
+    @output.presentation.push @toc_candidate
+  end
+
+
+<< ? Upgrade [[@toc_candidate]] >>:
+  # If this is the first TOC entry, promote our TOC candidate
+  # into the actual place for implicit TOC
+  if @toc_candidate.type == OL_NOP then
+    @toc_candidate.type = OL_IMPLICIT_TOC
+  end

@@ -184,12 +184,23 @@ module Fabricator
       @warning_counter = 0
       @nesting_stack = []
       @blockquote = nil
+      @subplot = nil
+      @toc_candidate = nil
       return
     end
 
     def integrate element,
         suppress_indexing: false,
         suppress_narrative: false
+      if !suppress_narrative and
+          [OL_TITLE, OL_SUBPLOT, OL_SECTION].include?(
+              element.type) and
+          @subplot.nil? and
+          (@toc_candidate.nil? or
+              @toc_candidate.type == OL_NOP) then
+        @toc_candidate = OpenStruct.new type: OL_NOP
+        @output.presentation.push @toc_candidate
+      end
       if element.type == OL_TITLE then
         force_section_break
         # Enforce (sub(sub))chapter-locality of diversions
@@ -216,7 +227,32 @@ module Fabricator
           # Append the node to [[presentation]] and [[toc]]
           @output.presentation.push element
           @output.toc.push element
+
+          # If this is the first TOC entry, promote our TOC candidate
+          # into the actual place for implicit TOC
+          if @toc_candidate.type == OL_NOP then
+            @toc_candidate.type = OL_IMPLICIT_TOC
+          end
         end
+      elsif element.type == OL_SUBPLOT then
+        force_section_break
+        # [[force_section_break]] clears [[@in_code]]
+        raise 'assertion failed' \
+            if @in_code
+        # [[subplots can not appear in blockquotes]]
+        raise 'assertion failed' \
+            if @blockquote
+
+        if @subplot.nil? then
+          @output.presentation.push element
+        else
+          @subplot.elements.push element
+        end
+
+        @nesting_stack.push @subplot, @curdivert
+        @curdivert = nil
+        @blockquote = nil
+        @subplot = element
       elsif element.type == OL_THEMBREAK then
         unless @blockquote then
           force_section_break
@@ -260,13 +296,20 @@ module Fabricator
             @cursec.section_number =
                 @first_section_number + @section_count
             @section_count += 1
-            @output.presentation.push @cursec
+            if @subplot.nil? then
+              @output.presentation.push @cursec
+            else
+              @subplot.elements.push @cursec
+            end
           end
         end
-        unless suppress_narrative then
-          if element.type == OL_RUBRIC then
-            element.section_number = @cursec.section_number
-            @output.toc.push element
+        if !suppress_narrative and element.type == OL_RUBRIC then
+          element.section_number = @cursec.section_number
+          @output.toc.push element
+          # If this is the first TOC entry, promote our TOC candidate
+          # into the actual place for implicit TOC
+          if @toc_candidate.type == OL_NOP then
+            @toc_candidate.type = OL_IMPLICIT_TOC
           end
         end
         if element.type == OL_DIVERT then
@@ -411,10 +454,11 @@ module Fabricator
             raise 'assertion failed' \
                 if @in_code
 
-            @nesting_stack.push OpenStruct.new(
-              blockquote: @blockquote,
-              divert: @curdivert)
-            @curdivert = nil
+            # We won't need to save or restore [[@subplot]] or
+            # [[@curdivert]], for these are not supposed to change
+            # during the parsing of a blockquote.  We'll just save
+            # [[@blockquote]] (which may be [[nil]]).
+            @nesting_stack.push @blockquote
             @blockquote = element
           end
 
@@ -430,10 +474,27 @@ module Fabricator
       return
     end
 
+    def end_subplot
+      force_section_break
+      @blockquote = nil
+      @curdivert = @nesting_stack.pop
+      raise 'assertion failed' \
+          unless @curdivert.nil? or @curdivert.type == OL_DIVERT
+      @subplot = @nesting_stack.pop
+      raise 'assertion failed' \
+          unless @subplot.nil? or @subplot.type == OL_SUBPLOT
+      # the [[force_section_break]] above should have ensured that
+      # [[@in_code]] is cleared
+      raise 'assertion failed' \
+          if @in_code
+      return
+    end
+
     def end_blockquote
-      prevstate = @nesting_stack.pop
-      @blockquote = prevstate.blockquote
-      @curdivert = prevstate.divert
+      @blockquote = @nesting_stack.pop
+      raise 'assertion failed' \
+          unless @blockquote.nil? or
+              @blockquote.type == OL_BLOCKQUOTE
       @in_code = false
       return
     end
@@ -543,6 +604,7 @@ module Fabricator
       end
       @cursec = nil
       @list_stack = nil
+      @blockquote = nil
       @in_code = false
       return
     end
@@ -727,6 +789,7 @@ module Fabricator
 
   OLF_NARRATIVE      = 0x08
 
+  OL_NOP             = 0x00
   OL_TITLE           = 0x10
   OL_SECTION         = 0x20
   OL_RUBRIC          = 0x30 | OLF_NARRATIVE
@@ -740,6 +803,8 @@ module Fabricator
   OL_INDEX_ANCHOR    = 0x90
   OL_THEMBREAK       = 0xA0 | OLF_NARRATIVE
   OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
+  OL_SUBPLOT         = 0xC0
+  OL_IMPLICIT_TOC    = 0xD0
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -981,6 +1046,8 @@ module Fabricator
 
   class Text_Wrapper
     attr_reader :width
+    attr_accessor :vsep
+    attr_reader :pseudographics
 
     def initialize port = $stdout,
         width: 80,
@@ -1015,6 +1082,11 @@ module Fabricator
       # [[hang]] call.
       @pending_hang = false
       @curmode = @palette.null
+      # [[@vsep]] keeps track of consecutive blank lines.
+      # Since we subscribe to zero-one-many counting, and the
+      # amount of separation at the top of file is infinite,
+      # we'll initialise it to 2.
+      @vsep = 2
       return
     end
 
@@ -1032,6 +1104,12 @@ module Fabricator
       @curword.content << data
       @curword.width += data.length
       @curpos += data.length
+
+      # Since we're writing horizontally now, there's no vertical
+      # separation anymore.  In fact, there's so little separation
+      # that adding one linebreak would mean zero blank lines.
+      @vsep = -1
+
       return
     end
 
@@ -1046,6 +1124,9 @@ module Fabricator
         content: '',
         width: 0)
       @curpos += data.length
+
+      # Like with [[add_plain]], we'll clear [[@vsep]] here.
+      @vsep = -1
       return
     end
 
@@ -1060,6 +1141,18 @@ module Fabricator
         width: 0)
       @curpos = 0
       @pending_hang = true
+      @vsep += 1 unless @vsep >= 2
+      return
+    end
+
+    def vseparate amount = 1
+      # In zero-one-many counting, we can't count any higher than
+      # 'many'.
+      raise 'too much separation needed' \
+          unless amount <= 2
+      while @vsep < amount do
+        linebreak
+      end
       return
     end
 
@@ -1178,6 +1271,7 @@ module Fabricator
       ensure
         @curmode = prev_mode
         @curword.content << prev_mode
+        @vsep = -1
       end
       return
     end
@@ -1204,6 +1298,10 @@ module Fabricator
     block_margin: "  ",
     final_chunk_marker:
         ([0x0020, 0x2514] + [0x2500] * 3).pack('U*'),
+    thematic_break_char: [0x2500].pack('U*'),
+    subplot_leadin: ([0x256D] + [0x2500] * 3).pack('U*'),
+    subplot_margin: [0x2502, 0x0020].pack('U*'),
+    subplot_leadout: ([0x2570] + [0x2500] * 3).pack('U*'),
   )
 
   ASCII_PSEUDOGRAPHICS = OpenStruct.new(
@@ -1212,6 +1310,10 @@ module Fabricator
     chunk_margin: "| ",
     block_margin: "  ",
     final_chunk_marker: "----",
+    thematic_break_char: "-",
+    subplot_leadin: ",---",
+    subplot_margin: "| ",
+    subplot_leadout: "`---",
   )
 
   DEFAULT_PALETTE = OpenStruct.new(
@@ -1295,83 +1397,87 @@ module Fabricator
     end
 
     def html_presentation
-      toc_generated = false
       @fabric.presentation.each do |element|
-        case element.type
-        when OL_TITLE then
-          if !toc_generated then
-            html_toc
-            toc_generated = true
-          end
-          @port.print '<h%i' % (element.level + 1)
-          @port.print " id='%s'" % "T.#{element.number}"
-          @port.print '>'
-          @port.print "#{element.number}. "
-          htmlify element.content
-          @port.puts '</h%i>' % (element.level + 1)
-        when OL_SECTION then
-          rubricated = !element.elements.empty? &&
-              element.elements[0].type == OL_RUBRIC
-          # If we're encountering the first rubric/title, output
-          # the table of contents.
-          if rubricated and !toc_generated then
-            html_toc
-            toc_generated = true
-          end
+        html_presentation_element element
+        @port.puts
+      end
+      return
+    end
 
-          start_index = 0
-          @port.puts "<section class='maui-section' id='%s'>" %
-              "S.#{element.section_number}"
-          @port.puts
-          @port.print "<p>"
-          @port.print "<b class='%s'>" %
-              (rubricated ? 'maui-rubric' :
-                  'maui-section-number')
-          @port.print @symbolism.section_prefix
-          @port.print element.section_number
-          @port.print "."
-          if rubricated then
-            @port.print " "
-            htmlify element.elements[start_index].content
-            start_index += 1
+    def html_presentation_element element
+      case element.type
+      when OL_TITLE then
+        @port.print '<h%i' % (element.level + 1)
+        @port.print " id='%s'" % "T.#{element.number}"
+        @port.print '>'
+        @port.print "#{element.number}. "
+        htmlify element.content
+        @port.puts '</h%i>' % (element.level + 1)
+      when OL_SUBPLOT
+        @port.puts "<aside class='maui-subplot'>"
+        element.elements.each_with_index do |element, i|
+          @port.puts unless i.zero?
+          html_presentation_element element
+        end
+        @port.puts '</aside>'
+      when OL_SECTION then
+        rubricated = !element.elements.empty? &&
+            element.elements[0].type == OL_RUBRIC
+        start_index = 0
+        @port.puts "<section class='maui-section' id='%s'>" %
+            "S.#{element.section_number}"
+        @port.puts
+        @port.print "<p>"
+        @port.print "<b class='%s'>" %
+            (rubricated ? 'maui-rubric' :
+                'maui-section-number')
+        @port.print @symbolism.section_prefix
+        @port.print element.section_number
+        @port.print "."
+        if rubricated then
+          @port.print " "
+          htmlify element.elements[start_index].content
+          start_index += 1
+        end
+        @port.print "</b>"
+        subelement = element.elements[start_index]
+        warnings = nil
+        if subelement then
+          case subelement.type
+            when OL_PARAGRAPH then
+              @port.print " "
+              htmlify subelement.content
+              start_index += 1
+            when OL_DIVERT then
+              @port.print " "
+              html_chunk_header subelement, 'maui-divert',
+                  tag: 'span'
+              warnings = subelement.warnings
+              start_index += 1
+            # FIXME: also support chunks here
           end
-          @port.print "</b>"
-          subelement = element.elements[start_index]
-          warnings = nil
-          if subelement then
-            case subelement.type
-              when OL_PARAGRAPH then
-                @port.print " "
-                htmlify subelement.content
-                start_index += 1
-              when OL_DIVERT then
-                @port.print " "
-                html_chunk_header subelement, 'maui-divert',
-                    tag: 'span'
-                warnings = subelement.warnings
-                start_index += 1
-              # FIXME: also support chunks here
-            end
-          end
-          @port.puts "</p>"
-          if warnings then
-            html_warning_list warnings, inline: true
-          end
-          @port.puts
-          element.elements[start_index .. -1].each do |child|
-            html_section_part child
-            @port.puts
-          end
-          unless (element.warnings || []).empty? then
-            html_warning_list element.warnings, inline: true
-            @port.puts
-          end
-          @port.puts "</section>"
-        when OL_THEMBREAK then
-          @port.puts "<hr />"
-        else raise 'data structure error'
+        end
+        @port.puts "</p>"
+        if warnings then
+          html_warning_list warnings, inline: true
         end
         @port.puts
+        element.elements[start_index .. -1].each do |child|
+          html_section_part child
+          @port.puts
+        end
+        unless (element.warnings || []).empty? then
+          html_warning_list element.warnings, inline: true
+          @port.puts
+        end
+        @port.puts "</section>"
+      when OL_THEMBREAK then
+        @port.puts "<hr />"
+      when OL_NOP then
+        # no operation
+      when OL_IMPLICIT_TOC then
+        html_toc
+      else raise 'data structure error'
       end
       return
     end
@@ -1481,7 +1587,7 @@ module Fabricator
           end
           last_level = level
         end
-        @port.puts "</li></ul>" * last_level; @port.puts
+        @port.puts "</li></ul>" * last_level
       end
       return
     end
@@ -1697,9 +1803,12 @@ class << Fabricator
   def parse_fabric_file input, integrator,
       suppress_indexing: false,
       suppress_narrative: false,
-      blockquote_mode: false,
+      nesting_mode: nil,
       filename: nil,
       first_line: 1
+    raise 'assertion failed' \
+        unless [nil, :blockquote, :subplot].include?(
+            nesting_mode)
     vp = Fabricator::Vertical_Peeker.new input,
         filename: filename,
         first_line: first_line
@@ -1721,7 +1830,7 @@ class << Fabricator
       end
       break if vp.eof?
       if parser_state.vertical_separation >= 2 then
-        if !blockquote_mode then
+        if nesting_mode != :blockquote then
           integrator.force_section_break
         else
           # FIXME: generate a warning about ignoring the section
@@ -1757,7 +1866,7 @@ class << Fabricator
             loc: element_location)
         end
 
-      elsif !blockquote_mode and line =~ /^<<\s*
+      elsif nesting_mode != :blockquote and line =~ /^<<\s*
           (?: (?<root-type> \.file|\.script) \s+ )?
           (?<raw-name> [^\s].*?)
           (?: \s* \# (?<seq> \d+) )?
@@ -1817,7 +1926,7 @@ class << Fabricator
               suppress_indexing: suppress_indexing
           parse_fabric_file StringIO.new(content), integrator,
               suppress_indexing: suppress_indexing,
-              blockquote_mode: true,
+              nesting_mode: :blockquote,
               filename: start_location.filename,
               first_line: start_location.line
           integrator.end_blockquote
@@ -1827,7 +1936,27 @@ class << Fabricator
             # massive [[if ...]] construct, we'll have to restart
             # the loop manually here
 
-      elsif !blockquote_mode and line =~ /^\.\s+/ then
+      elsif nesting_mode != :blockquote and line[0] == ?| then
+        start_location = vp.location_ahead
+        content = vp.parse_block ?|
+
+        integrator.integrate OpenStruct.new(
+                type: OL_SUBPLOT,
+                elements: []),
+            suppress_narrative: suppress_narrative,
+            suppress_indexing: suppress_indexing
+        parse_fabric_file StringIO.new(content), integrator,
+            suppress_indexing: suppress_indexing,
+            nesting_mode: :subplot,
+            filename: start_location.filename,
+            first_line: start_location.line
+        integrator.end_subplot
+        next
+            # since we have no [[element]] to be handled after the
+            # massive [[if ...]] construct, we'll have to restart
+            # the loop manually here
+
+      elsif nesting_mode != :blockquote and line =~ /^\.\s+/ then
         name = $'
         element = OpenStruct.new(
             type: OL_INDEX_ANCHOR,
@@ -1841,7 +1970,7 @@ class << Fabricator
           lines.push vp.get_line
         end
         mode_flags_to_suppress = 0
-        if !blockquote_mode and lines[0] =~ /^(==+)(\s+)/ then
+        if nesting_mode.nil? and lines[0] =~ /^(==+)(\s+)/ then
           lines[0] = $2 + $'
           element = OpenStruct.new(
             type: OL_TITLE,
@@ -1849,7 +1978,7 @@ class << Fabricator
             loc: element_location)
           mode_flags_to_suppress |= PF_LINK
 
-        elsif !blockquote_mode and lines[0] =~ /^\*\s+/ then
+        elsif nesting_mode.nil? and lines[0] =~ /^\*\s+/ then
           lines[0] = $'
           element = OpenStruct.new(
               type: OL_RUBRIC,
@@ -1869,7 +1998,7 @@ class << Fabricator
           suppress_indexing: suppress_indexing,
           suppress_narrative: suppress_narrative
     end
-    unless blockquote_mode then
+    if nesting_mode.nil? then
       integrator.force_section_break
       integrator.clear_diversion
     end
@@ -2157,97 +2286,13 @@ class << Fabricator
       weave_ctxt_warning_list fabric.warnings, wr
       wr.linebreak
     end
-    toc_generated = false
     fabric.presentation.each do |element|
-      case element.type
-      when OL_TITLE then
-        if !toc_generated then
-          weave_ctxt_toc fabric.toc, wr,
-              symbolism: symbolism
-          toc_generated = true
-        end
-        wr.styled :section_title do
-          wr.add_plain "#{element.number}."
-          wr.add_space
-          wr.hang do
-            wr.add_nodes element.content, symbolism: symbolism
-          end
-        end
-        wr.linebreak
-        wr.linebreak
-      when OL_SECTION then
-        # [[element.elements]] can be empty if a section
-        # contains index anchor(s) but no content.  This is a
-        # pathological case, to be sure, but it can happen, so
-        # we'll need to check.
-        rubricated = !element.elements.empty? &&
-            element.elements[0].type == OL_RUBRIC
-        # If we're encountering the first rubric/title, output
-        # the table of contents.
-        if rubricated and !toc_generated then
-          weave_ctxt_toc fabric.toc, wr,
-              symbolism: symbolism
-          toc_generated = true
-        end
-
-        start_index = 0 # index of the first non-special child
-        if rubricated then
-          start_index += 1
-          wr.styled :rubric do
-            wr.add_plain "%s%i." % [
-              symbolism.section_prefix,
-              element.section_number]
-            wr.add_space
-            wr.add_nodes element.elements.first.content,
-                symbolism: symbolism
-          end
-        else
-          wr.styled :section_number do
-            wr.add_plain "%s%i." % [
-              symbolism.section_prefix,
-              element.section_number]
-          end
-        end
-
-        # If the rubric or the section sign is followed by a
-        # paragraph, a chunk header, or a divert, we'll output
-        # it in the same paragraph.
-        starter = element.elements[start_index]
-        if starter then
-          case starter.type
-          when OL_PARAGRAPH, OL_DIVERT, OL_CHUNK then
-            wr.add_space
-            weave_ctxt_section_part starter, fabric, wr,
-                symbolism: symbolism
-            start_index += 1
-          else
-            wr.linebreak
-          end
-        end
-
-        # Finally, the blank line that separates the special
-        # paragraph from the section's body, if any.
-        wr.linebreak
-
-        element.elements[start_index .. -1].each do |child|
-          weave_ctxt_section_part child, fabric, wr,
-              symbolism: symbolism
-          wr.linebreak
-        end
-
-        unless (element.warnings || []).empty? then
-          weave_ctxt_warning_list element.warnings, wr,
-              inline: true, indent: false
-          wr.linebreak
-        end
-      when OL_THEMBREAK then
-        # FIXME: use pseudographics instead of a dash
-        wr.add_plain '-' * wr.width
-        wr.linebreak
-      else raise 'data structure error'
-      end
+      wr.vseparate
+      weave_ctxt_plot_element element, fabric, wr,
+          symbolism: symbolism
     end
     unless fabric.index.empty? then
+      wr.vseparate 2
       wr.styled :section_title do
         wr.add_plain 'Index'
       end
@@ -2309,6 +2354,109 @@ class << Fabricator
         end
       end
       wr.linebreak
+    end
+    return
+  end
+
+  def weave_ctxt_plot_element element, fabric, wr,
+      symbolism: default_symbolism
+    case element.type
+    when OL_TITLE then
+      wr.styled :section_title do
+        wr.vseparate 2
+        wr.add_plain "#{element.number}."
+        wr.add_space
+        wr.hang do
+          wr.add_nodes element.content, symbolism: symbolism
+        end
+      end
+      wr.linebreak # line terminator
+
+    when OL_SUBPLOT then
+      wr.add_pseudographics :subplot_leadin
+      wr.linebreak
+      wr.add_pseudographics :subplot_margin
+      # A subplot's ends are already separated.
+      wr.vsep = 2
+      wr.hang wr.hangindent + 2,
+          wr.pseudographics[:subplot_margin] do
+        element.elements.each do |child|
+          wr.vseparate
+          weave_ctxt_plot_element child, fabric, wr,
+              symbolism: symbolism
+        end
+      end
+      wr.add_pseudographics :subplot_leadout
+      wr.linebreak
+
+    when OL_SECTION then
+      # [[element.elements]] can be empty if a section
+      # contains index anchor(s) but no content.  This is a
+      # pathological case, to be sure, but it can happen, so
+      # we'll need to check.
+      rubricated = !element.elements.empty? &&
+          element.elements[0].type == OL_RUBRIC
+
+      wr.vseparate
+      start_index = 0 # index of the first non-special child
+      if rubricated then
+        start_index += 1
+        wr.styled :rubric do
+          wr.add_plain "%s%i." % [
+            symbolism.section_prefix,
+            element.section_number]
+          wr.add_space
+          wr.add_nodes element.elements.first.content,
+              symbolism: symbolism
+        end
+      else
+        wr.styled :section_number do
+          wr.add_plain "%s%i." % [
+            symbolism.section_prefix,
+            element.section_number]
+        end
+      end
+
+      # If the rubric or the section sign is followed by a
+      # paragraph, a chunk header, or a divert, we'll output
+      # it in the same paragraph.
+      starter = element.elements[start_index]
+      if starter then
+        case starter.type
+        when OL_PARAGRAPH, OL_DIVERT, OL_CHUNK then
+          wr.add_space
+          weave_ctxt_section_part starter, fabric, wr,
+              symbolism: symbolism
+          start_index += 1
+        else
+          wr.linebreak
+        end
+      end
+
+      element.elements[start_index .. -1].each do |child|
+        wr.vseparate
+        weave_ctxt_section_part child, fabric, wr,
+            symbolism: symbolism
+      end
+
+      unless (element.warnings || []).empty? then
+        weave_ctxt_warning_list element.warnings, wr,
+            inline: true, indent: false
+      end
+
+    when OL_THEMBREAK then
+      wr.width.times do
+        wr.add_pseudographics :thematic_break_char
+      end
+      wr.linebreak
+
+    when OL_NOP then
+      # no operation
+
+    when OL_IMPLICIT_TOC then
+      weave_ctxt_toc fabric.toc, wr,
+          symbolism: symbolism
+    else raise 'data structure error'
     end
     return
   end
@@ -2387,7 +2535,9 @@ class << Fabricator
       end
 
     when OL_THEMBREAK then
-      wr.add_plain '-' * (wr.width - wr.hangindent)
+      (wr.width - wr.hangindent).times do
+        wr.add_pseudographics :thematic_break_char
+      end
       wr.linebreak
     else
       raise 'data structure error'
@@ -2564,6 +2714,7 @@ class << Fabricator
   def weave_ctxt_toc toc, wr,
       symbolism: default_symbolism
     if toc.length >= 2 then
+      wr.vseparate 2
       wr.styled :section_title do
         wr.add_plain 'Contents'
       end
@@ -2595,7 +2746,6 @@ class << Fabricator
         end
         wr.linebreak
       end
-      wr.linebreak
     end
     return
   end

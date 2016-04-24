@@ -8,6 +8,12 @@
 @import url("http://fonts.googleapis.com/css?family=Roboto:400,400italic,700,700italic");
 @import url("http://fonts.googleapis.com/css?family=Cousine:400,400italic,700,700italic");
 /* * * *   Rules   * * */
+.maui-subplot {
+  border: solid 2px #888;
+  border-radius: 24px;
+  padding-left: 12px;
+  padding-right: 12px; }
+
 .maui-blockquote {
   margin-left: 0;
   border-left: solid 4px #ddd;
@@ -82,7 +88,7 @@ ul.maui-warnings {
   margin-left: 27px; }
 
 /* Backwards compatibility with pre-HTML5 browsers */
-main, article, section {
+main, article, aside, section {
   display: block; }
 </style>
 </head>
@@ -260,11 +266,39 @@ new block.</pre>
 
 </section>
 
-<h2 id='T.3'>3. Chunks and transclusion</h2>
-
+<aside class='maui-subplot'>
 <section class='maui-section' id='S.13'>
 
-<p><b class='maui-section-number'>§13.</b> Each section can contain one or more <i>chunks</i>, with the following notation:</p>
+<p><b class='maui-section-number'>§13.</b> Syntactically similar to blockquotes are <i>subplots</i>, denoted by the <code>|</code> prefix. Unlike blockquotes, subplots exist outside sections and can contain full sections, including code chunks and diverts. Importantly, a divert inside a subplot will not affect any divert that might have been in force outside the subplot.</p>
+
+</section>
+
+<aside class='maui-subplot'>
+<section class='maui-section' id='S.14'>
+
+<p><b class='maui-section-number'>§14.</b> Subplots can be nested. This reflects the programmer&apos;s internal stack and can be handy for recording scattered pieces of code in the middle of a longer mixture of code and narrative, such as occasionally adding CSS rules in the middle on code aimed at generating HTML. Beware, however, of overuse &mdash; wetware stack space can be surprisingly limited.</p>
+
+</section>
+</aside>
+
+<section class='maui-section' id='S.15'>
+
+<p><b class='maui-section-number'>§15.</b></p>
+
+<blockquote class='maui-blockquote'><p>Subplots can also contain blockquotes.</p>
+
+<p>| But blockquotes can not contain subplots. This is because blockquotes belong into sections and are codeless constructs of pure narrative but subplots are a structural supersectional device.</p>
+
+</blockquote>
+
+</section>
+</aside>
+
+<h2 id='T.3'>3. Chunks and transclusion</h2>
+
+<section class='maui-section' id='S.16'>
+
+<p><b class='maui-section-number'>§16.</b> Each section can contain one or more <i>chunks</i>, with the following notation:</p>
 
 <pre class='maui-block'>&lt;&lt; Chunk name &gt;&gt;:
   Chunk content, possibly on many lines,
@@ -276,9 +310,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.14'>
+<section class='maui-section' id='S.17'>
 
-<p><b class='maui-section-number'>§14.</b> A chunk can be marked as a <i>root</i> chunk by applying a <code>.file</code> or <code>.script</code> directive, like this:</p>
+<p><b class='maui-section-number'>§17.</b> A chunk can be marked as a <i>root</i> chunk by applying a <code>.file</code> or <code>.script</code> directive, like this:</p>
 
 <pre class='maui-block'>&lt;&lt; .script hello.rb &gt;&gt;:
   #! /usr/bin/ruby -rubygems
@@ -289,9 +323,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.15'>
+<section class='maui-section' id='S.18'>
 
-<p><b class='maui-section-number'>§15.</b> The (mechanical) power of literate programming comes from <i>transclusion</i>, which is notated by adding the target chunk&apos;s name into another chunk, as seen above.</p>
+<p><b class='maui-section-number'>§18.</b> The (mechanical) power of literate programming comes from <i>transclusion</i>, which is notated by adding the target chunk&apos;s name into another chunk, as seen above.</p>
 
 <pre class='maui-block'>&lt;&lt; Friendly, familiar greeting &gt;&gt;:
   Hello, world!</pre>
@@ -304,9 +338,9 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.16'>
+<section class='maui-section' id='S.19'>
 
-<p><b class='maui-section-number'>§16.</b> Normally, Fabricator obeys indentation in a nested manner. In certain cases &mdash; most importantly, the &apos;here-documents&apos; in shell scripts and languages borrowing their notation &mdash;, you may want to suppress this. This is achieved by the <code>.clearindent</code> directive:</p>
+<p><b class='maui-section-number'>§19.</b> Normally, Fabricator obeys indentation in a nested manner. In certain cases &mdash; most importantly, the &apos;here-documents&apos; in shell scripts and languages borrowing their notation &mdash;, you may want to suppress this. This is achieved by the <code>.clearindent</code> directive:</p>
 
 <pre class='maui-block'>&lt;&lt; ... &gt;&gt;:
   module Beast
@@ -330,17 +364,17 @@ new block.</pre>
 
 </section>
 
-<section class='maui-section' id='S.17'>
+<section class='maui-section' id='S.20'>
 
-<p><b class='maui-section-number'>§17.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks &mdash;- which would otherwise be interpreted as blocks of example code &mdash;- are then treated as chunks of this name. A diversion is in effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
+<p><b class='maui-section-number'>§20.</b> It&apos;s often useful to intersperse many chunks of the same name with a narrative explaining the actions taken. Mau facilitates this via <i>diversions</i>. The notation for a diversion is a chunk header without the chunk; the subsequent indented blocks &mdash;- which would otherwise be interpreted as blocks of example code &mdash;- are then treated as chunks of this name. A diversion is in effect until another diversion replaces it or until a title begins a new narrative unit of the document. Note that a rubric does not cancel a diversion&apos;s effect.</p>
 
 </section>
 
 <h2 id='T.4'>4. Postprocessing</h2>
 
-<section class='maui-section' id='S.18'>
+<section class='maui-section' id='S.21'>
 
-<p><b class='maui-section-number'>§18.</b> Fabricator provides experimental support for <i>postprocessing</i> text constructed using the standard LP transclusion mechanism. The notation for this is subject to change in future versions, and the available postprocessors are environment-dependent.</p>
+<p><b class='maui-section-number'>§21.</b> Fabricator provides experimental support for <i>postprocessing</i> text constructed using the standard LP transclusion mechanism. The notation for this is subject to change in future versions, and the available postprocessors are environment-dependent.</p>
 
 <p>In the current version, Maui defines two postprocessors related to <a href='http://sass-lang.com'>Sass</a>, the preprocessor for CSS. These are <code>|scss-&gt;css</code> and <code>|sass-&gt;css</code>, and they are invoked by attaching their names to the transclusion notation like this:</p>
 
@@ -363,9 +397,9 @@ new block.</pre>
 
 <h2 id='T.5'>5. Invocation</h2>
 
-<section class='maui-section' id='S.19'>
+<section class='maui-section' id='S.22'>
 
-<p><b class='maui-section-number'>§19.</b> Last but not least, the way to run <code>maui</code> goes like this:</p>
+<p><b class='maui-section-number'>§22.</b> Last but not least, the way to run <code>maui</code> goes like this:</p>
 
 <pre class='maui-block'>$ maui foo.fab</pre>
 
