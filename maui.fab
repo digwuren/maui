@@ -333,6 +333,22 @@ short.
     vp.get_line
 
 
+. [[OL_EXPLICIT_TOC]]
+. [[.toc]] directive, parsing
+
+A line consisting of the string [[.toc]] (recognised
+case-insensitively) is the place for the table of contents.  It
+is not recognised inside blockquotes, because the TOC runs very
+clearly against the purpose of quotes.  We recognise [[.toc]] in
+subplots -- while the utility of nesting the TOC off the outer
+outline level is dubious, somebody might find a use for this.
+
+  elsif nesting_mode != :blockquote and
+      line.downcase == '.toc' then
+    element = OpenStruct.new type: OL_EXPLICIT_TOC
+    vp.get_line
+
+
 Finally, a line starting with a non-whitespace character starts
 an ordinary paragraph, a title, or a rubric.
 
@@ -672,6 +688,8 @@ The integrator's main entry point.
       << Integrate the subplot >>
     elsif element.type == OL_THEMBREAK then
       << Integrate the thematic break >>
+    elsif element.type == OL_EXPLICIT_TOC then
+      << Integrate the [[.toc]] directive >>
     else
       << Integrate the part of section >>
     end
@@ -773,6 +791,26 @@ in blockquotes, where there are no section breaks:
   else
     @blockquote.elements.push element
   end
+
+
+An manual [[.toc]] cancels the automatic TOC place (if any).
+
+<< Integrate the [[.toc]] directive >>:
+  clear_diversion
+  force_section_break
+  unless suppress_narrative then
+    if @subplot.nil? then
+      @output.presentation.push element
+    else
+      @subplot.elements.push element
+    end
+  end
+  if @toc_candidate and
+      @toc_candidate.type == OL_IMPLICIT_TOC then
+    # cancel the previous automatic TOC placement
+    @toc_candidate.type = OL_NOP
+  end
+  @toc_candidate = element
 
 
 << Integrate the part of section >>:
@@ -1585,6 +1623,7 @@ Now, we can enumerate the node types.
 . [[OL_BLOCKQUOTE]]
 . [[OL_SUBPLOT]]
 . [[OL_IMPLICIT_TOC]]
+. [[OL_EXPLICIT_TOC]]
 
   OL_NOP             = 0x00
   OL_TITLE           = 0x10
@@ -1602,6 +1641,7 @@ Now, we can enumerate the node types.
   OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
   OL_SUBPLOT         = 0xC0
   OL_IMPLICIT_TOC    = 0xD0
+  OL_EXPLICIT_TOC    = 0xE0
 
 
 Next, we'll consider the markup nodes.  First, in
@@ -2852,7 +2892,7 @@ to an empty list.
     # no operation
 
 
-  when OL_IMPLICIT_TOC then
+  when OL_IMPLICIT_TOC, OL_EXPLICIT_TOC then
     weave_ctxt_toc fabric.toc, wr,
         symbolism: symbolism
 
@@ -3976,7 +4016,7 @@ conventions.
       @port.puts "<hr />"
     when OL_NOP then
       # no operation
-    when OL_IMPLICIT_TOC then
+    when OL_IMPLICIT_TOC, OL_EXPLICIT_TOC then
       html_toc
     else raise 'data structure error'
     end

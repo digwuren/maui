@@ -263,6 +263,22 @@ module Fabricator
         else
           @blockquote.elements.push element
         end
+      elsif element.type == OL_EXPLICIT_TOC then
+        clear_diversion
+        force_section_break
+        unless suppress_narrative then
+          if @subplot.nil? then
+            @output.presentation.push element
+          else
+            @subplot.elements.push element
+          end
+        end
+        if @toc_candidate and
+            @toc_candidate.type == OL_IMPLICIT_TOC then
+          # cancel the previous automatic TOC placement
+          @toc_candidate.type = OL_NOP
+        end
+        @toc_candidate = element
       else
         if element.type == OL_BLOCK and @curdivert then
           element.type = OL_DIVERTED_CHUNK
@@ -805,6 +821,7 @@ module Fabricator
   OL_BLOCKQUOTE      = 0xB0 | OLF_NARRATIVE
   OL_SUBPLOT         = 0xC0
   OL_IMPLICIT_TOC    = 0xD0
+  OL_EXPLICIT_TOC    = 0xE0
 
   MU_PLAIN           = 0x00
   MU_SPACE           = 0x01
@@ -1475,7 +1492,7 @@ module Fabricator
         @port.puts "<hr />"
       when OL_NOP then
         # no operation
-      when OL_IMPLICIT_TOC then
+      when OL_IMPLICIT_TOC, OL_EXPLICIT_TOC then
         html_toc
       else raise 'data structure error'
       end
@@ -1961,6 +1978,11 @@ class << Fabricator
         element = OpenStruct.new(
             type: OL_INDEX_ANCHOR,
             name: name)
+        vp.get_line
+
+      elsif nesting_mode != :blockquote and
+          line.downcase == '.toc' then
+        element = OpenStruct.new type: OL_EXPLICIT_TOC
         vp.get_line
 
       elsif line =~ /^[^\s]/ then
@@ -2453,7 +2475,7 @@ class << Fabricator
     when OL_NOP then
       # no operation
 
-    when OL_IMPLICIT_TOC then
+    when OL_IMPLICIT_TOC, OL_EXPLICIT_TOC then
       weave_ctxt_toc fabric.toc, wr,
           symbolism: symbolism
     else raise 'data structure error'
