@@ -267,18 +267,19 @@ module Fabricator
         clear_diversion
         force_section_break
         unless suppress_narrative then
-          if @subplot.nil? then
-            @output.presentation.push element
-          else
-            @subplot.elements.push element
+          raise 'assertion failed' unless @subplot.nil?
+          @output.presentation.push element
+          if @toc_candidate and
+              @toc_candidate.type == OL_IMPLICIT_TOC then
+            # cancel the previous automatic TOC placement
+            @toc_candidate.type = OL_NOP
           end
+          @toc_candidate = element
         end
-        if @toc_candidate and
-            @toc_candidate.type == OL_IMPLICIT_TOC then
-          # cancel the previous automatic TOC placement
-          @toc_candidate.type = OL_NOP
+        while @title_counters.length > 1 do
+          @title_counters.pop
         end
-        @toc_candidate = element
+        @last_title_level = 0
       else
         if element.type == OL_BLOCK and @curdivert then
           element.type = OL_DIVERTED_CHUNK
@@ -1980,8 +1981,7 @@ class << Fabricator
             name: name)
         vp.get_line
 
-      elsif nesting_mode != :blockquote and
-          line.downcase == '.toc' then
+      elsif nesting_mode.nil? and line.downcase == '.toc' then
         element = OpenStruct.new type: OL_EXPLICIT_TOC
         vp.get_line
 

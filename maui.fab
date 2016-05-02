@@ -338,13 +338,9 @@ short.
 
 A line consisting of the string [[.toc]] (recognised
 case-insensitively) is the place for the table of contents.  It
-is not recognised inside blockquotes, because the TOC runs very
-clearly against the purpose of quotes.  We recognise [[.toc]] in
-subplots -- while the utility of nesting the TOC off the outer
-outline level is dubious, somebody might find a use for this.
+is not recognised inside blockquotes or subplots.
 
-  elsif nesting_mode != :blockquote and
-      line.downcase == '.toc' then
+  elsif nesting_mode.nil? and line.downcase == '.toc' then
     element = OpenStruct.new type: OL_EXPLICIT_TOC
     vp.get_line
 
@@ -793,24 +789,27 @@ in blockquotes, where there are no section breaks:
   end
 
 
-An manual [[.toc]] cancels the automatic TOC place (if any).
+An manual [[.toc]] cancels the automatic TOC place (if any),
+unwinds the title hierarchy down to the top level, and restricts
+the subsequent title to top level, too.
 
 << Integrate the [[.toc]] directive >>:
   clear_diversion
   force_section_break
   unless suppress_narrative then
-    if @subplot.nil? then
-      @output.presentation.push element
-    else
-      @subplot.elements.push element
+    raise 'assertion failed' unless @subplot.nil?
+    @output.presentation.push element
+    if @toc_candidate and
+        @toc_candidate.type == OL_IMPLICIT_TOC then
+      # cancel the previous automatic TOC placement
+      @toc_candidate.type = OL_NOP
     end
+    @toc_candidate = element
   end
-  if @toc_candidate and
-      @toc_candidate.type == OL_IMPLICIT_TOC then
-    # cancel the previous automatic TOC placement
-    @toc_candidate.type = OL_NOP
+  while @title_counters.length > 1 do
+    @title_counters.pop
   end
-  @toc_candidate = element
+  @last_title_level = 0
 
 
 << Integrate the part of section >>:
