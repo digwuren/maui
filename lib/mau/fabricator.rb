@@ -1011,6 +1011,113 @@ module Fabricator
       "AAAA////////P/AAAMD77z4AAAAAAA4AAAAAAAAAAAAAAAAAAAAA+P//" +
       "/wAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAD/////"
     ).unpack('m').first
+
+    def unicode_alphanumeric? cp
+      return false unless (0x0030 .. 0x2FA1D).include? cp
+      ptr = UNICODE_ALPHANUMERICS.getbyte(cp >> 8) << 5
+      ptr += (cp >> 3) & 0x1F
+      return UNICODE_ALPHANUMERICS.getbyte(ptr + 763)[cp & 7] != 0
+    end
+
+    # 3995 bytes of index and bitfields
+    UNICODE_ALPHANUMERICS = (
+      "VGQuVl4zTkEbPDs0MjArEFBkWUpjZDlANycYLDgfZEYVDgAAWAAAEgAA" +
+      "AABIKgUAUVceAGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQcZGRkZGRk" +
+      "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkI2RkZGRLZDFV" +
+      "SUw1PmRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZCZa" +
+      "ZENHKUIPRCIZCmQLUlsvGlMADQA/Nj0JJSggBk0AOgAAAAAAZGRkFF8H" +
+      "AAAAAAAAAAAAAGRkZGQEAAAAAAAAAAAAAAAAAAAAZGQIAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGQtEQAAABYAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAEwAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAAAMXWBPXAAAAAAAAAAAAAAAAAAAAAAhAAAAAAAdAAACAAAAAAAA" +
+      "AAAAAAAAAABkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZGRkJGRkZGRkZGRkZGRkZGRkZGRhYmRkZGRkZGRkZGRkZGRkZGRk" +
+      "ZGRkZBcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAGRkAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/HwAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAP///z8AAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAA//////9/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP///wMAAP8PAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAA//////////8PAAAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAD//////////38AAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AOCf+f///e0jAAAB4AMAAAAAAAAAAAAAAAAAAAAAAAAA//////8A////" +
+      "////DwAAAAAAAAAAAAAAAAAAAAAAAAD///////9/AP//PwD/AAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP//AwAAAAAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAA////fwAAAAAAAAAAAAAAAAAAAACE/C8+UL3/" +
+      "8+BD/////////wMAAAAAAAAAAAAAAAAAAID//////w8A/////////wEA" +
+      "DAAAAAAAAAAAAAAAAAAAAQAAAP//DwD//v///x8AAAAfAAAAAAAAAAAA" +
+      "AAAAAAD///////8AAA8A//v7///g//8AAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AAAAAAAAAAAAwP///w8AAAAAAAAAAAAAAAAA/////////////////wf/" +
+      "H/8B/wMAAAAAAAAAAAAAAAD/////////////////////////AwAAAAAA" +
+      "AAAAAAAAAAAAAAAAAAAAAAAAAAAA84P/A/8fAAAAAAAAAAAAAAAA////" +
+      "//////8fAAEAAAAAAAAA+P8AAAAAAAAAAAAAAAD/////////////////" +
+      "/////////wMAAAAAAAAAAAAAAP//fwD///////8fAAAAAAD/A/8DgAAA" +
+      "AAAAAAAAAAAA/////////////////////////z//AwAAAAAAAAAAAAD/" +
+      "//////8/AP//P////wf///8DAAD+AAAAAAAAAAAAAP//PwQQAQAA////" +
+      "AQAAAAAAAAAA//8fAAAAAAAAAAAA////////////////////////////" +
+      "/z8AAAAAAAAAAADv////lv73CoTqlqqW9/de//v/D+77/w8AAAAAAAAA" +
+      "AAAAAAD/AwAAAP/+/wAAAAD/AwAAAAD+/wAAAAAAAAAA////////////" +
+      "////////////////////AAAAAAAAAAD///////8AABAA/wMAAAAA////" +
+      "//8HAAD/AwAAAAAAAP///////////////////////////////5//AAAA" +
+      "AAAA/////w8A////B/////8/AP///z//////D/8+AAAAAAD/////////" +
+      "/////////////////////////z8AAAAAAP//////////////////////" +
+      "////////////fwAAAAAAAAAAAAAAAAAAAAAAAAAAAP///////wAAsAD/" +
+      "AwAAAAD/////////////////P/////////////////8DAAAAAP///38A" +
+      "AAAAwP////8/HwD//////w////8D/wcAAAAAAAAAAAAAAAAAAAAAAAAA" +
+      "AP//////fwAAAAAADwAAAAAAAP8D/v//B/7//wfA/////////////3/8" +
+      "/PwcAAAAAP////+/IP////////+AAAD//38Af39/f39/f38AAAAA/v//" +
+      "////DQB/AP8DAAAAAJYl8P6u7A0gXwD/8wAAAADg//////8PAOAP/wMA" +
+      "AAAA+P///wHA////////PwAAAP////////8B////f/8DAAAAAAAAAAAA" +
+      "AAAA////PwAA////////////////////////////////w/8DAB9QAAAB" +
+      "AO/+//8PAP8AAAD///9//////wAAAAD//v//H/gAAODf/f////8nAEAA" +
+      "gMP/P/zg/3/8///7L38AAADA/wAA/x////8PAAD//////38AgP///z//" +
+      "////////////AADg3/3///3/IwAAAAfD/wB/4N/9///97yMAAABAw/8G" +
+      "AP////////7///9/Av7/////AAAAAAAAAAAA////BwcA4J/5///97SMA" +
+      "AACww//+AOjHPdYYx/8DAAABAMD/BwD//////wEAAPcP/wP//3/E////" +
+      "////Yj4FAAA4/wccAPj///9/AMD/AAD/////RwD4//////8HAB4A/xf+" +
+      "/x8AAAD/A///////////////AP//////Bf//////////PwD/////DwAA" +
+      "AP/j//////8/AAAAAAAAAAAAAAAAAN5jAP////////////////+f///+" +
+      "//8H////////////x/8BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA////" +
+      "/////wHgh/n///1tAwAAAF7A/xwA4L/7///97SMAAAEAw/8AAvD/////" +
+      "//8jAAAB/8P//v/hn/n///3FIwBAALDD//MD///7//8PAAAAAAAAAAAA" +
+      "AH+9/7//Af//////fwAA/wN+fn4Af3////////c/AP//////////////" +
+      "////BwD/A/j///////8AAAD8////AAD4//////8AAAAA////Af8D/98D" +
+      "AP//AwD//wMA/98BAP///////w8AAACAEP8D/wMAAP3///8AAADg////" +
+      "/////////z8AAgD//////wcwBP/v//9///+3/z//PwAAAAD/////////" +
+      "//////////8H/////////z8AAP///////////P///////wAAAAAA/w8A" +
+      "AAAAAAAAAAAAAAAAAAAA////H////////wEA/v//D///////////////" +
+      "////////////DwD//3/4//////8P//8/P/////8/P/+q////P///////" +
+      "/99f3B/PD/8f3B8AAAAAAAAAAAAAAAAAAN//////////////////////" +
+      "H///////f///////f/////////////////////8feAwgu/f//wcAPwD/" +
+      "//////8PAPz//////w8AAAD/AwAA/Cj//z3//////////wcA/v8f//8A" +
+      "AP////////////8/P///////////////////////HwAAAAAAAAAA////" +
+      "//8//////z8A//9/AAAA////H/D//////wcAAID/A9///38AAAAAAAAA" +
+      "AAAAAAAAAAAAAAAAAP////////////8HgAAAAAD//////wcAAP/D/v//" +
+      "////////////LwBgwP+f//////////////////////////8//////f//" +
+      "9/////f//////wcAgP8DPzxiwOH/A0D/A/////+/IP//////9+AAAAD+" +
+      "Az4f/v///////////3/g/v/////////////3P/3/////v5H//z////9/" +
+      "/v///3+A/wAAAAAAAP//N/j///////////8BAAAAAAAA////////BwD/" +
+      "//////8H/AAAAAAAAP8D/v//B/7//wcAAAAAAAQsdv//f////3//AACA" +
+      "//z////////////////5////P/8AAAAAAAAAgP8AAAAAAAAAAAAAAAAA" +
+      "AN+8QNf///v///////////+//+D/////P/7/////////////fzwA////" +
+      "BwAAAAAAAP//AAAAAAAAAAAAAAAA/////////w8AAAAAAAAAAAD8////" +
+      "//////////89fz3//////z3/////PX89/3///////38A+KD//X9f2///" +
+      "//////////////8DAAAA+P//////////D////wMAAAAAAAAAAP//////" +
+      "///w///8/////////9/////f//9/////f/////3////9///3z///////" +
+      "///////////////f///////////fZN7/6+//////////////////////" +
+      "/////////wP8////////////////////////////////////fwAA////" +
+      "/////////////////7/n39////97X/z9////////////////////////" +
+      "////////////HwD///////////////////////////////////8/////" +
+      "//////////////////////////////////7/////////////////////" +
+      "////////////////////////////////////////////////////////" +
+      "//////8="
+    ).unpack('m').first
   end
 
   class Markup_Constructor < Array
