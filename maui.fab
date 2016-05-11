@@ -2182,24 +2182,14 @@ lookbehind) while traversing the string.  We'll derive it from
     << in [[Pointered_String]] >>
   end
 
-
-The most basic operation is extracting up to a given number of
-characters of lookahead.
-
 << in [[Pointered_String]] >>:
 
-. [[ahead]] (method of [[Pointered_String]])
 
-  def ahead length
-    return self[@pointer, length]
-  end
-
-
-An alternative way of lookahead extracts only a single
-character, specified via a relative offset from [[@pointer]].
-The [[delta]] parameter can be negative for lookbehind, and
-attempts to look before the string begins produce [[nil]] rather
-than wrapping over to the end of the string.
+This lookahead function extracts only a single character,
+specified via a relative offset from [[@pointer]].  The
+[[delta]] parameter can be negative for lookbehind, and attempts
+to look before the string begins produce [[nil]] rather than
+wrapping over to the end of the string.
 
 . [[char_ahead]] (method of [[Pointered_String]])
 
@@ -2210,12 +2200,15 @@ than wrapping over to the end of the string.
 
 
 Parsing decisions often depend on whether the current lookahead
-matches an etalon.  We'll call this operation [[at?]].
+matches an etalon.  We'll call this operation [[at?]].  Note
+that we're checking that there aren't any combining Unicode
+characters after the match.
 
 . [[at?]] (method of [[Pointered_String]])
 
   def at? etalon
-    return ahead(etalon.length) == etalon
+    return self[@pointer, etalon.length] == etalon &&
+        !unicode_combining?(self[@pointer + etalon.length] || 0)
   end
 
 

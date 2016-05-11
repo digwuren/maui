@@ -925,17 +925,14 @@ module Fabricator
           ![?\s, c].include?(char_ahead(-1))
     end
 
-    def ahead length
-      return self[@pointer, length]
-    end
-
     def char_ahead delta = 0
       offset = @pointer + delta
       return offset >= 0 ? self[offset] : nil
     end
 
     def at? etalon
-      return ahead(etalon.length) == etalon
+      return self[@pointer, etalon.length] == etalon &&
+          !unicode_combining?(self[@pointer + etalon.length] || 0)
     end
 
     def unicode_combining? cp
