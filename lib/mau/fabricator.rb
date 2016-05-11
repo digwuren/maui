@@ -2207,7 +2207,7 @@ class << Fabricator
       else
         j = ps.pointer + 1
         while j < s.length and
-            !" *-./<>[_|\u00A0\u2013\u2014".include? ps[j] do
+            !" \$*-./<>[_|~\u00A0\u2013\u2014".include? ps[j] do
           j += 1
         end
         stack.last.content.plain(
@@ -2278,7 +2278,7 @@ class << Fabricator
       bases: []
     integrator = Fabricator::Integrator.new
     bases.each do |base|
-      File.open base, 'r' do |port|
+      File.open base, 'r', encoding: Encoding::UTF_8 do |port|
         parse_fabric_file port, integrator,
             suppress_narrative: true,
             suppress_indexing: true

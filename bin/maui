@@ -145,7 +145,8 @@ rescue GetoptLong::Error => e
   exit 1
 end
 
-fabric = open $cmdline.fabric_filename, 'r' do |port|
+fabric = open $cmdline.fabric_filename, 'r',
+    encoding: Encoding::UTF_8 do |port|
   Fabricator.load_fabric port,
       chunk_size_limit: $cmdline.chunk_size_limit,
       bases: $cmdline.bases

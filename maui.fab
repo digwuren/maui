@@ -2151,7 +2151,7 @@ construct a new [[String]] instance with its content.
   else
     j = ps.pointer + 1
     while j < s.length and
-        !" *-./<>[_|\u00A0\u2013\u2014".include? ps[j] do
+        !" \$*-./<>[_|~\u00A0\u2013\u2014".include? ps[j] do
       j += 1
     end
     stack.last.content.plain(
@@ -2728,6 +2728,7 @@ We also want to find out the generated file's width.
   @longest_line_length = @line.length \
       if @line.length > @longest_line_length
 
+
 == Fabric loader's façade
 
 For user's convenience, we'll encapsulate the parsing,
@@ -2740,7 +2741,7 @@ integration, and tangling of a fabric into a single procedure.
       bases: []
     integrator = Fabricator::Integrator.new
     bases.each do |base|
-      File.open base, 'r' do |port|
+      File.open base, 'r', encoding: Encoding::UTF_8 do |port|
         parse_fabric_file port, integrator,
             suppress_narrative: true,
             suppress_indexing: true
@@ -2753,6 +2754,7 @@ integration, and tangling of a fabric into a single procedure.
     integrator.check_chunk_sizes(chunk_size_limit)
     return integrator.output
   end
+
 
 == Weaving
 
@@ -4862,7 +4864,8 @@ symbols.  Here are the defaults.
   $0 = 'maui' # for [[GetoptLong]] error reporting
   << Parse command line >>
 
-  fabric = open $cmdline.fabric_filename, 'r' do |port|
+  fabric = open $cmdline.fabric_filename, 'r',
+      encoding: Encoding::UTF_8 do |port|
     Fabricator.load_fabric port,
         chunk_size_limit: $cmdline.chunk_size_limit,
         bases: $cmdline.bases
