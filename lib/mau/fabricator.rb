@@ -2260,6 +2260,9 @@ class << Fabricator
     stack = Fabricator::Markup_Parser_Stack.new suppress_modes
     while ps.pointer < s.length do
       if ps.at? "[[" and
+          # FIXME: we should be looking for two right brackets with
+          # no Unicode combining characters following, not just two
+          # right brackets
           end_offset = s.index("]]", ps.pointer + 2) then
         while ps[end_offset + 2] == ?] do
           end_offset += 1
@@ -2308,9 +2311,14 @@ class << Fabricator
 
       elsif stack.last.mode & PF_END_LINK != 0 and
           ps.at? '|' and
+          # FIXME: we should be looking for a [[>]] with no Unicode
+          # combining character(s) following, not just a right
+          # broket
           end_offset = s.index(?>, ps.pointer + 1) then
         target = ps[ps.pointer + 1 ... end_offset]
         # Remove the 'soft hyphenation' for URLs
+        # FIXME: but consider potential Unicode combining characters
+        # following the last space
         target = target.gsub(/%\s+/, '')
         if link_like? target then
           stack.ennode MU_LINK, PF_END_LINK,
@@ -2331,6 +2339,8 @@ class << Fabricator
         target = ps[stack[j].start_offset + 1 ... ps.pointer]
         # Remove the URL's 'soft hyphenation' but keep it for
         # the link's face
+        # FIXME: but consider potential Unicode combining characters
+        # following the last space
         solidified_target = target.gsub(/%\s+/, '')
         if link_like? solidified_target then
           stack[j .. -1] = []
