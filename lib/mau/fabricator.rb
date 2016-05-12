@@ -914,15 +914,67 @@ module Fabricator
     attr_accessor :pointer
 
     def biu_starter? c
-      return char_ahead == c &&
-          char_ahead(-1) != c &&
-          ![?\s, c].include?(char_ahead(1))
+      return false unless char_ahead == c
+      return false if char_ahead(-1) == c
+      # If the same character is ahead, it's not a match except if
+      # that character is then followed by a combining character.
+      return false \
+          if char_ahead(1) == c && \
+              (char_ahead(2).nil? ||
+                  !unicode_combining?(char_ahead(2).ord))
+      return false if char_ahead(1).nil? or char_ahead(1) == ?\s
+
+      # Final check: if either to the left or to the right of this
+      # character is something that is not alphanumeric, it's a
+      # starter.
+      # Let's check right first because it's simpler:
+      return true if !unicode_alphanumeric?(char_ahead(1).ord)
+      # Now, left:
+      i = -1
+      while char_ahead(i) &&
+          unicode_combining?(char_ahead(i).ord) do
+        i -= 1
+      end
+      # Now, [[i]] points either out of the string or at the base
+      # code point, sans any combining suffixen, of the character
+      # immediately to the left of the candidate.
+      c = char_ahead(i)
+      return true if c.nil?
+      return true if !unicode_alphanumeric?(c.ord)
+
+      return false # because surrounded by alphanumerics
     end
 
     def biu_terminator? c
-      return char_ahead == c &&
-          char_ahead(1) != c &&
-          ![?\s, c].include?(char_ahead(-1))
+      return false unless char_ahead == c
+      return false if char_ahead(-1) == c
+      # If the same character is ahead, it's not a match except if
+      # that character is then followed by a combining character.
+      return false \
+          if char_ahead(1) == c && \
+              (char_ahead(2).nil? ||
+                  !unicode_combining?(char_ahead(2).ord))
+      return false if char_ahead(-1).nil? or char_ahead(-1) == ?\s
+
+      # Final check: if either to the left or to the right of this
+      # character is something that is not alphanumeric, it's a
+      # starter.
+      # Let's check right first because it's simpler:
+      return true if !unicode_alphanumeric?(char_ahead(1).ord)
+      # Now, left:
+      i = -1
+      while char_ahead(i) &&
+          unicode_combining?(char_ahead(i).ord) do
+        i -= 1
+      end
+      # Now, [[i]] points either out of the string or at the base
+      # code point, sans any combining suffixen, of the character
+      # immediately to the left of the candidate.
+      c = char_ahead(i)
+      return true if c.nil?
+      return true if !unicode_alphanumeric?(c.ord)
+
+      return false # because surrounded by alphanumerics
     end
 
     def char_ahead delta = 0

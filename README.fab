@@ -15,7 +15,9 @@ markup elements:
 
 - *Bold* text is marked by surrounding stars: [[*foo*]]
 
-- /Italic/ text is marked by surrounding slashes: [[/foo/]]
+- /Italic/ text is marked by surrounding slashes: [[/foo/]].
+  Note that slashes in/side words or numbers such as 22/7 are
+  literal slashes, not italic markers.
 
 - _Underlined_ text is marked by surrounding underscores:
   [[_foo_]]
