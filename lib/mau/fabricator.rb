@@ -228,8 +228,8 @@ module Fabricator
           @output.presentation.push element
           @output.toc.push element
 
-          # If this is the first TOC entry, promote our TOC candidate
-          # into the actual place for implicit TOC
+          # If this is the first TOC entry, promote our TOC
+          # candidate into the actual place for implicit TOC
           if @toc_candidate.type == OL_NOP then
             @toc_candidate.type = OL_IMPLICIT_TOC
           end
@@ -323,8 +323,8 @@ module Fabricator
         if !suppress_narrative and element.type == OL_RUBRIC then
           element.section_number = @cursec.section_number
           @output.toc.push element
-          # If this is the first TOC entry, promote our TOC candidate
-          # into the actual place for implicit TOC
+          # If this is the first TOC entry, promote our TOC
+          # candidate into the actual place for implicit TOC
           if @toc_candidate.type == OL_NOP then
             @toc_candidate.type = OL_IMPLICIT_TOC
           end

@@ -5565,8 +5565,8 @@ do this by:
 
 
 << ? Upgrade [[@toc_candidate]] >>:
-  # If this is the first TOC entry, promote our TOC candidate
-  # into the actual place for implicit TOC
+  # If this is the first TOC entry, promote our TOC
+  # candidate into the actual place for implicit TOC
   if @toc_candidate.type == OL_NOP then
     @toc_candidate.type = OL_IMPLICIT_TOC
   end
