@@ -2080,7 +2080,7 @@ ASCII-formatted text --- as links.
 
 << Other methods >>:
   def link_like? s
-    return !!(s =~ /\A(?:#\s*)?[[:alnum:]]/)
+    return !!(s =~ /\A(?:#\s*|\.)?[[:alnum:]_-]/)
   end
 
 

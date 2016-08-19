@@ -2462,7 +2462,7 @@ class << Fabricator
   end
 
   def link_like? s
-    return !!(s =~ /\A(?:#\s*)?[[:alnum:]]/)
+    return !!(s =~ /\A(?:#\s*|\.)?[[:alnum:]_-]/)
   end
 
   def markup
